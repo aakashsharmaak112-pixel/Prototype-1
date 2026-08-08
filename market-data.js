@@ -161,11 +161,13 @@ console.log("Status:", MARKET_DATA.status);
 console.log("API:", MARKET_API_URL || "Not configured");
 console.log("--------------------------------");
 
+
 // --------------------------------------------
 // TEST MARKET DATA
 // --------------------------------------------
 
 const TEST_MARKET_DATA = {
+
   HDFCBANK: {
     price: 1000,
     change: 2.5
@@ -215,6 +217,7 @@ const TEST_MARKET_DATA = {
     price: 1100,
     change: 1.5
   }
+
 };
 
 
