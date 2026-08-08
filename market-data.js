@@ -1,11 +1,10 @@
 // ============================================
 // PROTOTYPE-1
-// MARKET DATA LAYER
-// Step 2: Market Data Structure
+// MARKET DATA ENGINE
 // ============================================
 
 const MARKET_DATA = {
-  source: "Pending",
+  source: "API",
   status: "NOT_CONNECTED",
   lastUpdated: null,
   stocks: {}
@@ -13,7 +12,17 @@ const MARKET_DATA = {
 
 
 // --------------------------------------------
-// Save market data
+// API CONFIGURATION
+// --------------------------------------------
+
+// IMPORTANT:
+// API URL baad mein yahan set karenge.
+// Abhi blank rakha gaya hai.
+const MARKET_API_URL = "";
+
+
+// --------------------------------------------
+// Save received market data
 // --------------------------------------------
 
 function saveMarketData(data) {
@@ -25,16 +34,20 @@ function saveMarketData(data) {
 
   MARKET_DATA.stocks = data;
   MARKET_DATA.lastUpdated = new Date().toISOString();
-  MARKET_DATA.status = "LOADED";
+  MARKET_DATA.status = "LIVE_DATA_LOADED";
 
-  console.log("Market data loaded:", MARKET_DATA);
+  console.log(
+    "Market data loaded:",
+    Object.keys(data).length,
+    "stocks"
+  );
 
   return true;
 }
 
 
 // --------------------------------------------
-// Get one stock
+// Get single stock
 // --------------------------------------------
 
 function getMarketStock(symbol) {
@@ -44,7 +57,7 @@ function getMarketStock(symbol) {
 
 
 // --------------------------------------------
-// Get all market data
+// Get all stocks
 // --------------------------------------------
 
 function getAllMarketData() {
@@ -54,7 +67,7 @@ function getAllMarketData() {
 
 
 // --------------------------------------------
-// Market status
+// Get market status
 // --------------------------------------------
 
 function getMarketStatus() {
@@ -65,50 +78,60 @@ function getMarketStatus() {
     lastUpdated: MARKET_DATA.lastUpdated,
     stockCount: Object.keys(MARKET_DATA.stocks).length
   };
-
 }
 
 
 // --------------------------------------------
-// Temporary test data
+// Fetch market data
 // --------------------------------------------
-// IMPORTANT:
-// These are TEST values only.
-// They are NOT live market prices.
-// Real market API will be connected next.
 
-const TEST_MARKET_DATA = {
+async function fetchMarketData() {
 
-  HDFCBANK: {
-    price: 0,
-    change: 0
-  },
+  if (!MARKET_API_URL) {
 
-  RELIANCE: {
-    price: 0,
-    change: 0
-  },
+    console.warn(
+      "Market API is not configured yet."
+    );
 
-  ICICIBANK: {
-    price: 0,
-    change: 0
-  },
+    MARKET_DATA.status = "API_NOT_CONFIGURED";
 
-  INFY: {
-    price: 0,
-    change: 0
-  },
-
-  SBIN: {
-    price: 0,
-    change: 0
+    return false;
   }
 
-};
+  try {
+
+    MARKET_DATA.status = "LOADING";
+
+    const response = await fetch(MARKET_API_URL);
+
+    if (!response.ok) {
+      throw new Error(
+        "API response error: " + response.status
+      );
+    }
+
+    const data = await response.json();
+
+    saveMarketData(data);
+
+    return true;
+
+  } catch (error) {
+
+    console.error(
+      "Market data error:",
+      error
+    );
+
+    MARKET_DATA.status = "ERROR";
+
+    return false;
+  }
+}
 
 
 // --------------------------------------------
-// Make functions available to the app
+// Make engine available to browser
 // --------------------------------------------
 
 if (typeof window !== "undefined") {
@@ -123,14 +146,17 @@ if (typeof window !== "undefined") {
 
   window.getMarketStatus = getMarketStatus;
 
-  window.TEST_MARKET_DATA = TEST_MARKET_DATA;
-
+  window.fetchMarketData = fetchMarketData;
 }
 
 
 // --------------------------------------------
-// Engine startup
+// Startup
 // --------------------------------------------
 
-console.log("--------------------------------
-            
+console.log("--------------------------------");
+console.log("PROTOTYPE-1 MARKET DATA ENGINE");
+console.log("--------------------------------");
+console.log("Status:", MARKET_DATA.status);
+console.log("API:", MARKET_API_URL || "Not configured");
+console.log("--------------------------------");
