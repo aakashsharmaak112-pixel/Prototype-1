@@ -7,6 +7,7 @@
   <title>Prototype-1 | AI Stock Assistant</title>
 
   <style>
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -17,24 +18,24 @@
     body {
       background: #0b0f14;
       color: white;
-      padding: 20px;
+      padding: 18px;
     }
 
     .container {
-      max-width: 800px;
+      max-width: 700px;
       margin: auto;
     }
 
-    header {
+    .header {
       margin-bottom: 20px;
     }
 
-    header h1 {
+    .header h1 {
       font-size: 28px;
       margin-bottom: 6px;
     }
 
-    header p {
+    .header p {
       color: #9aa4b2;
     }
 
@@ -48,28 +49,21 @@
 
     .card h2 {
       font-size: 19px;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
 
-    label {
-      display: block;
-      color: #9aa4b2;
-      margin-bottom: 7px;
-      font-size: 14px;
-    }
-
-    input {
+    .input-box {
       width: 100%;
       padding: 14px;
-      border-radius: 10px;
-      border: 1px solid #394554;
       background: #0d1218;
       color: white;
+      border: 1px solid #394554;
+      border-radius: 10px;
       font-size: 16px;
       margin-bottom: 12px;
     }
 
-    button {
+    .button {
       width: 100%;
       padding: 14px;
       border: none;
@@ -81,11 +75,11 @@
       cursor: pointer;
     }
 
-    button:active {
+    .button:active {
       transform: scale(0.98);
     }
 
-    .stats {
+    .summary {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
@@ -97,27 +91,52 @@
       border-radius: 10px;
     }
 
-    .stat span {
-      display: block;
+    .stat small {
       color: #8994a3;
-      font-size: 13px;
-      margin-bottom: 6px;
     }
 
     .stat strong {
+      display: block;
       font-size: 20px;
+      margin-top: 5px;
+    }
+
+    .status-ready {
+      color: #38e89a;
+    }
+
+    .status-pending {
+      color: #ffd166;
     }
 
     .stock {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 14px 0;
+      padding: 13px 0;
       border-bottom: 1px solid #252d38;
     }
 
     .stock:last-child {
       border-bottom: none;
+    }
+
+    .stock-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .rank {
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0d1218;
+      border-radius: 8px;
+      font-weight: bold;
+      color: #19c37d;
     }
 
     .stock-name {
@@ -127,13 +146,26 @@
     .stock-sector {
       color: #8994a3;
       font-size: 12px;
-      margin-top: 4px;
+      margin-top: 3px;
+    }
+
+    .stock-change {
+      text-align: right;
+      font-weight: bold;
+    }
+
+    .positive {
+      color: #38e89a;
+    }
+
+    .negative {
+      color: #ff6b6b;
     }
 
     .badge {
       padding: 6px 9px;
       border-radius: 7px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: bold;
     }
 
@@ -144,100 +176,169 @@
 
     .watch {
       background: #403719;
-      color: #ffd45c;
+      color: #ffd166;
     }
 
     .recommendation {
-      color: #b9c2cf;
       line-height: 1.6;
+      color: #d8dee7;
+    }
+
+    .note {
+      color: #8994a3;
+      font-size: 12px;
+      line-height: 1.5;
+      margin-top: 10px;
     }
 
     .footer {
       text-align: center;
-      color: #687383;
+      color: #697586;
       font-size: 12px;
+      padding: 15px 0 25px;
       line-height: 1.6;
-      margin-top: 25px;
     }
 
-    @media (max-width: 500px) {
-      body {
-        padding: 14px;
-      }
-
-      header h1 {
-        font-size: 24px;
-      }
+    .hidden {
+      display: none;
     }
+
   </style>
 </head>
 
 <body>
 
-  <div class="container">
+<div class="container">
 
-    <header>
-      <h1>📊 Prototype-1</h1>
-      <p>AI Stock Assistant</p>
-    </header>
+  <!-- HEADER -->
 
-    <div class="card">
-      <h2>💰 Investment Amount</h2>
+  <div class="header">
 
-      <label for="amount">
-        Enter the amount you want to invest
-      </label>
+    <h1>📊 Prototype-1</h1>
 
-      <input
-        id="amount"
-        type="number"
-        value="10000"
-        min="1"
-        placeholder="Example: 50000"
-      >
+    <p>
+      AI Stock Assistant
+    </p>
 
-      <button onclick="analyzeInvestment()">
-        Analyze Investment
-      </button>
-    </div>
+  </div>
 
-    <div class="card">
 
-      <h2>📊 Engine Status</h2>
+  <!-- INVESTMENT -->
 
-      <div class="stats">
+  <div class="card">
 
-        <div class="stat">
-          <span>Nifty 50 Stocks</span>
-          <strong>50</strong>
-        </div>
+    <h2>💰 Investment Amount</h2>
 
-        <div class="stat">
-          <span>Target Top Stocks</span>
-          <strong>20</strong>
-        </div>
+    <input
+      id="amount"
+      class="input-box"
+      type="number"
+      placeholder="Enter amount e.g. 10000"
+    >
 
-        <div class="stat">
-          <span>Market Data</span>
-          <strong>Pending</strong>
-        </div>
+    <button
+      class="button"
+      onclick="analyzeInvestment()"
+    >
+      Analyze Investment
+    </button>
 
-        <div class="stat">
-          <span>AI Engine</span>
-          <strong>Prototype</strong>
-        </div>
+  </div>
+
+
+  <!-- ENGINE STATUS -->
+
+  <div class="card">
+
+    <h2>📊 Engine Status</h2>
+
+    <div class="summary">
+
+      <div class="stat">
+
+        <small>Nifty 50 Stocks</small>
+
+        <strong id="stockCount">
+          50
+        </strong>
+
+      </div>
+
+
+      <div class="stat">
+
+        <small>Target Top Stocks</small>
+
+        <strong>
+          20
+        </strong>
+
+      </div>
+
+
+      <div class="stat">
+
+        <small>Market Data</small>
+
+        <strong
+          id="marketStatus"
+          class="status-pending"
+        >
+          TEST
+        </strong>
+
+      </div>
+
+
+      <div class="stat">
+
+        <small>AI Engine</small>
+
+        <strong>
+          Prototype
+        </strong>
 
       </div>
 
     </div>
 
-    <div class="card">
+  </div>
 
-      <h2>⭐ Current AI Watchlist</h2>
+
+  <!-- TOP 20 -->
+
+  <div class="card">
+
+    <h2>🏆 Current Top 20</h2>
+
+    <div id="top20List">
+
+      <p class="note">
+        Ranking calculate ho raha hai...
+      </p>
+
+    </div>
+
+    <p class="note">
+      ⚠️ Abhi ye test market data hai.
+      Real market data connect hone ke baad ranking live hogi.
+    </p>
+
+  </div>
+
+
+  <!-- AI WATCHLIST -->
+
+  <div class="card">
+
+    <h2>⭐ AI Watchlist</h2>
+
+    <div id="watchlist">
 
       <div class="stock">
 
         <div>
+
           <div class="stock-name">
             HDFC Bank
           </div>
@@ -245,17 +346,20 @@
           <div class="stock-sector">
             Financial Services
           </div>
+
         </div>
 
-        <span class="badge buy">
+        <span class="badge watch">
           WATCH
         </span>
 
       </div>
 
+
       <div class="stock">
 
         <div>
+
           <div class="stock-name">
             Reliance Industries
           </div>
@@ -263,17 +367,20 @@
           <div class="stock-sector">
             Oil, Gas & Consumable Fuels
           </div>
+
         </div>
 
-        <span class="badge buy">
+        <span class="badge watch">
           WATCH
         </span>
 
       </div>
 
+
       <div class="stock">
 
         <div>
+
           <div class="stock-name">
             ICICI Bank
           </div>
@@ -281,6 +388,7 @@
           <div class="stock-sector">
             Financial Services
           </div>
+
         </div>
 
         <span class="badge watch">
@@ -291,76 +399,302 @@
 
     </div>
 
-    <div class="card">
+  </div>
 
-      <h2>🤖 AI Recommendation</h2>
 
-      <p
-        id="recommendation"
-        class="recommendation"
-      >
-        Investment amount enter karke
-        “Analyze Investment” dabaiye.
-      </p>
+  <!-- AI RECOMMENDATION -->
 
-    </div>
+  <div class="card">
 
-    <div class="footer">
-      Prototype-1<br>
-      AI analysis based on available data.<br>
-      Investment ka final decision aapka hai.
-    </div>
+    <h2>🤖 AI Recommendation</h2>
+
+    <p
+      id="recommendation"
+      class="recommendation"
+    >
+      Investment amount enter karke
+      “Analyze Investment” dabaiye.
+    </p>
 
   </div>
 
 
-  <script>
+  <!-- FOOTER -->
 
-    function analyzeInvestment() {
+  <div class="footer">
 
-      const amount =
-        Number(document.getElementById("amount").value);
+    Prototype-1<br>
 
-      const recommendation =
-        document.getElementById("recommendation");
+    AI analysis based on available data.<br>
 
-      if (!amount || amount <= 0) {
+    Investment ka final decision aapka hai.
 
-        recommendation.innerText =
-          "Please valid investment amount enter karein.";
+  </div>
 
-        return;
-      }
+</div>
 
-      if (amount < 5000) {
 
-        recommendation.innerText =
-          "₹" +
-          amount.toLocaleString("en-IN") +
-          " ke liye AI limited number of quality stocks par focus karne ka suggestion dega.";
+<!-- ========================================= -->
+<!-- SCRIPTS -->
+<!-- ========================================= -->
 
-      } else if (amount < 25000) {
+<script src="market-data.js"></script>
 
-        recommendation.innerText =
-          "₹" +
-          amount.toLocaleString("en-IN") +
-          " ke liye AI diversification aur risk control ko priority dega.";
+<script src="ranking-engine.js"></script>
 
-      } else {
+<script src="app.js"></script>
 
-        recommendation.innerText =
-          "₹" +
-          amount.toLocaleString("en-IN") +
-          " ke liye AI multiple sectors mein diversification aur risk management ko priority dega.";
 
-      }
+<script>
+
+  // ==========================================
+  // ANALYZE INVESTMENT
+  // ==========================================
+
+  function analyzeInvestment() {
+
+    const amount =
+      Number(
+        document.getElementById("amount").value
+      );
+
+    const recommendation =
+      document.getElementById(
+        "recommendation"
+      );
+
+
+    if (!amount || amount <= 0) {
+
+      recommendation.innerText =
+        "Please valid investment amount enter karein.";
+
+      return;
 
     }
 
-  </script>
 
-  <script src="market-data.js"></script>
-  <script src="app.js"></script>
+    if (amount < 5000) {
+
+      recommendation.innerText =
+        "₹" +
+        amount.toLocaleString("en-IN") +
+        " ke liye limited number of quality stocks aur risk control par focus karna better hoga.";
+
+    }
+
+    else if (amount < 25000) {
+
+      recommendation.innerText =
+        "₹" +
+        amount.toLocaleString("en-IN") +
+        " ke liye diversification aur risk management ko priority di jayegi.";
+
+    }
+
+    else {
+
+      recommendation.innerText =
+        "₹" +
+        amount.toLocaleString("en-IN") +
+        " ke liye multiple sectors mein diversification aur risk management ko priority di jayegi.";
+
+    }
+
+  }
+
+
+  // ==========================================
+  // LOAD TOP 20
+  // ==========================================
+
+  function loadTop20() {
+
+    const list =
+      document.getElementById(
+        "top20List"
+      );
+
+    const status =
+      document.getElementById(
+        "marketStatus"
+      );
+
+    const stockCount =
+      document.getElementById(
+        "stockCount"
+      );
+
+
+    // Check engines
+
+    if (
+      typeof window.runAppRanking !==
+      "function"
+    ) {
+
+      list.innerHTML =
+        '<p class="note">Ranking engine load nahi hua.</p>';
+
+      return;
+
+    }
+
+
+    // Run ranking
+
+    const top20 =
+      window.runAppRanking();
+
+
+    // Update stock count
+
+    if (
+      window.NIFTY_50_STOCKS
+    ) {
+
+      stockCount.innerText =
+        window.NIFTY_50_STOCKS.length;
+
+    }
+
+
+    // Update status
+
+    if (top20 && top20.length > 0) {
+
+      status.innerText =
+        "TEST READY";
+
+      status.className =
+        "status-ready";
+
+    }
+
+
+    // No result
+
+    if (
+      !top20 ||
+      top20.length === 0
+    ) {
+
+      list.innerHTML =
+        '<p class="note">Top 20 data available nahi hai.</p>';
+
+      return;
+
+    }
+
+
+    // Create list
+
+    list.innerHTML = "";
+
+
+    top20.forEach(
+      function(item, index) {
+
+        const stock =
+          window.getStockInfo(
+            item.symbol
+          );
+
+
+        if (!stock) {
+          return;
+        }
+
+
+        const change =
+          Number(item.change) || 0;
+
+
+        const changeClass =
+          change >= 0
+            ? "positive"
+            : "negative";
+
+
+        const changeText =
+          (change >= 0 ? "+" : "") +
+          change.toFixed(2) +
+          "%";
+
+
+        const row =
+          document.createElement(
+            "div"
+          );
+
+
+        row.className =
+          "stock";
+
+
+        row.innerHTML = `
+
+          <div class="stock-left">
+
+            <div class="rank">
+              ${index + 1}
+            </div>
+
+            <div>
+
+              <div class="stock-name">
+                ${stock.name}
+              </div>
+
+              <div class="stock-sector">
+                ${stock.sector}
+              </div>
+
+            </div>
+
+          </div>
+
+          <div class="stock-change">
+
+            <div class="${changeClass}">
+              ${changeText}
+            </div>
+
+            <div class="stock-sector">
+              Test
+            </div>
+
+          </div>
+
+        `;
+
+
+        list.appendChild(row);
+
+      }
+    );
+
+  }
+
+
+  // ==========================================
+  // START
+  // ==========================================
+
+  document.addEventListener(
+    "DOMContentLoaded",
+    function() {
+
+      console.log(
+        "Prototype-1 dashboard loaded."
+      );
+
+      loadTop20();
+
+    }
+  );
+
+</script>
 
 </body>
 </html>
