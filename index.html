@@ -199,10 +199,6 @@
       line-height: 1.6;
     }
 
-    .hidden {
-      display: none;
-    }
-
   </style>
 </head>
 
@@ -264,7 +260,6 @@
 
       </div>
 
-
       <div class="stat">
 
         <small>Target Top Stocks</small>
@@ -274,7 +269,6 @@
         </strong>
 
       </div>
-
 
       <div class="stat">
 
@@ -288,7 +282,6 @@
         </strong>
 
       </div>
-
 
       <div class="stat">
 
@@ -355,7 +348,6 @@
 
       </div>
 
-
       <div class="stock">
 
         <div>
@@ -375,7 +367,6 @@
         </span>
 
       </div>
-
 
       <div class="stock">
 
@@ -526,10 +517,10 @@
       );
 
 
-    // Check engines
+    // Check ranking engine
 
     if (
-      typeof window.runAppRanking !==
+      typeof window.runTestRanking !==
       "function"
     ) {
 
@@ -541,20 +532,22 @@
     }
 
 
-    // Run ranking
+    // Run test ranking
 
     const top20 =
-      window.runAppRanking();
+      window.runTestRanking();
 
 
     // Update stock count
 
     if (
-      window.NIFTY_50_STOCKS
+      window.TEST_MARKET_DATA
     ) {
 
       stockCount.innerText =
-        window.NIFTY_50_STOCKS.length;
+        Object.keys(
+          window.TEST_MARKET_DATA
+        ).length;
 
     }
 
@@ -596,7 +589,7 @@
       function(item, index) {
 
         const stock =
-          window.getStockInfo(
+          getStockInfo(
             item.symbol
           );
 
