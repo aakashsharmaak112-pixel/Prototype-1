@@ -1,7 +1,7 @@
 // ============================================
 // PROTOTYPE-1
 // AI STOCK ASSISTANT
-// APP ENGINE
+// APP ENGINE - SELF CONTAINED
 // ============================================
 
 
@@ -10,7 +10,6 @@
 // ============================================
 
 const NIFTY_50_STOCKS = [
-
   { symbol: "HDFCBANK", name: "HDFC Bank", sector: "Financial Services" },
   { symbol: "ICICIBANK", name: "ICICI Bank", sector: "Financial Services" },
   { symbol: "RELIANCE", name: "Reliance Industries", sector: "Oil, Gas & Consumable Fuels" },
@@ -21,7 +20,6 @@ const NIFTY_50_STOCKS = [
   { symbol: "AXISBANK", name: "Axis Bank", sector: "Financial Services" },
   { symbol: "BAJFINANCE", name: "Bajaj Finance", sector: "Financial Services" },
   { symbol: "M&M", name: "Mahindra & Mahindra", sector: "Automobile" },
-
   { symbol: "ADANIENT", name: "Adani Enterprises", sector: "Metals & Mining" },
   { symbol: "ADANIPORTS", name: "Adani Ports", sector: "Services" },
   { symbol: "APOLLOHOSP", name: "Apollo Hospitals", sector: "Healthcare" },
@@ -32,7 +30,6 @@ const NIFTY_50_STOCKS = [
   { symbol: "CIPLA", name: "Cipla", sector: "Healthcare" },
   { symbol: "COALINDIA", name: "Coal India", sector: "Oil, Gas & Consumable Fuels" },
   { symbol: "DRREDDY", name: "Dr. Reddy's Laboratories", sector: "Healthcare" },
-
   { symbol: "EICHERMOT", name: "Eicher Motors", sector: "Automobile" },
   { symbol: "ETERNAL", name: "Eternal", sector: "Consumer Services" },
   { symbol: "GRASIM", name: "Grasim Industries", sector: "Construction Materials" },
@@ -43,7 +40,6 @@ const NIFTY_50_STOCKS = [
   { symbol: "ITC", name: "ITC", sector: "FMCG" },
   { symbol: "INDIGO", name: "InterGlobe Aviation", sector: "Services" },
   { symbol: "JSWSTEEL", name: "JSW Steel", sector: "Metals & Mining" },
-
   { symbol: "JIOFIN", name: "Jio Financial Services", sector: "Financial Services" },
   { symbol: "KOTAKBANK", name: "Kotak Mahindra Bank", sector: "Financial Services" },
   { symbol: "MARUTI", name: "Maruti Suzuki", sector: "Automobile" },
@@ -54,7 +50,6 @@ const NIFTY_50_STOCKS = [
   { symbol: "POWERGRID", name: "Power Grid", sector: "Power" },
   { symbol: "SHRIRAMFIN", name: "Shriram Finance", sector: "Financial Services" },
   { symbol: "SUNPHARMA", name: "Sun Pharmaceutical", sector: "Healthcare" },
-
   { symbol: "TATACONSUM", name: "Tata Consumer Products", sector: "FMCG" },
   { symbol: "TATASTEEL", name: "Tata Steel", sector: "Metals & Mining" },
   { symbol: "TCS", name: "Tata Consultancy Services", sector: "Information Technology" },
@@ -63,44 +58,40 @@ const NIFTY_50_STOCKS = [
   { symbol: "TRENT", name: "Trent", sector: "Consumer Services" },
   { symbol: "ULTRACEMCO", name: "UltraTech Cement", sector: "Construction Materials" },
   { symbol: "WIPRO", name: "Wipro", sector: "Information Technology" },
-  { symbol: "HINDZINC", name: "Hindustan Zinc", sector: "Metals & Mining" },
-  { symbol: "BEL", name: "Bharat Electronics", sector: "Capital Goods" }
-
+  { symbol: "HINDZINC", name: "Hindustan Zinc", sector: "Metals & Mining" }
 ];
 
 
 // ============================================
-// REMOVE DUPLICATE STOCKS
+// TEST MARKET DATA
 // ============================================
 
-const UNIQUE_STOCKS = [];
+const TEST_MARKET_DATA = {};
 
-const SEEN_SYMBOLS = {};
+NIFTY_50_STOCKS.forEach(function (stock, index) {
 
-NIFTY_50_STOCKS.forEach(function(stock) {
+  TEST_MARKET_DATA[stock.symbol] = {
 
-  if (!SEEN_SYMBOLS[stock.symbol]) {
+    price: 500 + (index * 37),
 
-    SEEN_SYMBOLS[stock.symbol] = true;
+    change: Number(
+      (((index * 7) % 15) - 5) * 0.45
+    .toFixed(2))
 
-    UNIQUE_STOCKS.push(stock);
-
-  }
+  };
 
 });
 
 
 // ============================================
-// APP STATUS
+// APP STATE
 // ============================================
 
 const APP_STATE = {
 
-  stockCount: UNIQUE_STOCKS.length,
+  stockCount: NIFTY_50_STOCKS.length,
 
-  marketDataStatus: "TEST DATA",
-
-  rankingStatus: "READY",
+  marketDataStatus: "TEST READY",
 
   top20: [],
 
@@ -110,63 +101,64 @@ const APP_STATE = {
 
 
 // ============================================
-// CREATE TEST MARKET DATA
-// ============================================
-// IMPORTANT:
-// These are ONLY test values.
-// They are NOT live market prices.
+// INTERNAL RANKING ENGINE
 // ============================================
 
-const APP_TEST_DATA = {};
+function calculateTop20() {
 
-UNIQUE_STOCKS.forEach(function(stock, index) {
+  const rankings = NIFTY_50_STOCKS.map(
+    function (stock) {
 
-  APP_TEST_DATA[stock.symbol] = {
+      const data =
+        TEST_MARKET_DATA[stock.symbol] || {};
 
-    price: 500 + (index * 37),
+      const change =
+        Number(data.change) || 0;
 
-    change: Number(
-      ((index % 11) - 4) * 0.65
-    .toFixed(2)
+      const price =
+        Number(data.price) || 0;
 
-    )
+      return {
 
-  };
+        symbol: stock.symbol,
 
-});
+        name: stock.name,
+
+        sector: stock.sector,
+
+        price: price,
+
+        change: change,
+
+        score: change
+
+      };
+
+    }
+  );
 
 
-// ============================================
-// RUN RANKING
-// ============================================
+  rankings.sort(
+    function (a, b) {
 
-function runAppRanking() {
+      return b.score - a.score;
 
-  if (
-    typeof window.rankStocks !== "function"
-  ) {
+    }
+  );
 
-    console.warn(
-      "Ranking engine not loaded."
-    );
 
-    return [];
+  rankings.forEach(
+    function (stock, index) {
 
-  }
+      stock.rank = index + 1;
 
-  const result =
-    window.rankStocks(APP_TEST_DATA);
+    }
+  );
+
 
   APP_STATE.top20 =
-    result.slice(0, 20);
+    rankings.slice(0, 20);
 
-  APP_STATE.rankingStatus =
-    "TOP 20 READY";
-
-  console.log(
-    "Prototype-1 Top 20:",
-    APP_STATE.top20
-  );
 
   return APP_STATE.top20;
 
@@ -174,13 +166,13 @@ function runAppRanking() {
 
 
 // ============================================
-// GET STOCK INFORMATION
+// GET STOCK
 // ============================================
 
 function getStockInfo(symbol) {
 
-  return UNIQUE_STOCKS.find(
-    function(stock) {
+  return NIFTY_50_STOCKS.find(
+    function (stock) {
 
       return stock.symbol === symbol;
 
@@ -198,12 +190,13 @@ function analyzeInvestmentAmount(amount) {
 
   amount = Number(amount);
 
+
   if (!amount || amount <= 0) {
 
     return {
       success: false,
       message:
-        "Please enter a valid investment amount."
+        "Please valid investment amount enter karein."
     };
 
   }
@@ -212,38 +205,43 @@ function analyzeInvestmentAmount(amount) {
   APP_STATE.investmentAmount = amount;
 
 
+  let message;
+
+
   if (amount < 5000) {
 
-    return {
-      success: true,
-      message:
-        "₹" +
-        amount.toLocaleString("en-IN") +
-        " ke liye limited stocks aur risk control par focus karna better hoga."
-    };
+    message =
+      "₹" +
+      amount.toLocaleString("en-IN") +
+      " ke liye limited quality stocks aur risk control par focus karna better hoga.";
 
   }
 
+  else if (amount < 25000) {
 
-  if (amount < 25000) {
+    message =
+      "₹" +
+      amount.toLocaleString("en-IN") +
+      " ke liye diversification aur risk management ko priority di jayegi.";
 
-    return {
-      success: true,
-      message:
-        "₹" +
-        amount.toLocaleString("en-IN") +
-        " ke liye diversification aur risk management ko priority di jayegi."
-    };
+  }
+
+  else {
+
+    message =
+      "₹" +
+      amount.toLocaleString("en-IN") +
+      " ke liye multiple sectors mein diversification aur risk management ko priority di jayegi.";
 
   }
 
 
   return {
+
     success: true,
-    message:
-      "₹" +
-      amount.toLocaleString("en-IN") +
-      " ke liye multiple sectors mein diversification aur risk management ko priority di jayegi."
+
+    message: message
+
   };
 
 }
@@ -256,16 +254,16 @@ function analyzeInvestmentAmount(amount) {
 if (typeof window !== "undefined") {
 
   window.NIFTY_50_STOCKS =
-    UNIQUE_STOCKS;
+    NIFTY_50_STOCKS;
+
+  window.TEST_MARKET_DATA =
+    TEST_MARKET_DATA;
 
   window.APP_STATE =
     APP_STATE;
 
-  window.APP_TEST_DATA =
-    APP_TEST_DATA;
-
-  window.runAppRanking =
-    runAppRanking;
+  window.calculateTop20 =
+    calculateTop20;
 
   window.getStockInfo =
     getStockInfo;
@@ -281,7 +279,7 @@ if (typeof window !== "undefined") {
 // ============================================
 
 console.log(
-  "--------------------------------"
+  "================================"
 );
 
 console.log(
@@ -289,15 +287,15 @@ console.log(
 );
 
 console.log(
-  "Nifty 50 stocks:",
-  UNIQUE_STOCKS.length
+  "Nifty 50:",
+  NIFTY_50_STOCKS.length
 );
 
 console.log(
-  "Market data:",
+  "Market Data:",
   APP_STATE.marketDataStatus
 );
 
 console.log(
-  "Ranking:",
- 
+  "================================"
+);
