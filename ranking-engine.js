@@ -1,7 +1,6 @@
 // ============================================
 // PROTOTYPE-1
 // TOP 20 RANKING ENGINE
-// Step 3: Stock Ranking Structure
 // ============================================
 
 const RANKING_ENGINE = {
@@ -13,7 +12,7 @@ const RANKING_ENGINE = {
 
 
 // --------------------------------------------
-// Calculate a simple performance score
+// Calculate performance score
 // --------------------------------------------
 
 function calculateScore(stock) {
@@ -24,8 +23,6 @@ function calculateScore(stock) {
 
   const change = Number(stock.change) || 0;
 
-  // Temporary score.
-  // Real market factors will be added later.
   return change;
 }
 
@@ -37,35 +34,65 @@ function calculateScore(stock) {
 function rankStocks(marketData) {
 
   if (!marketData || typeof marketData !== "object") {
+
     console.warn("No market data available.");
+
     return [];
+
   }
 
-  const stocks = Object.entries(marketData);
 
-  const rankings = stocks.map(([symbol, data]) => {
+  const rankings = Object.entries(marketData).map(
+    function ([symbol, data]) {
 
-    return {
-      symbol: symbol,
-      price: Number(data.price) || 0,
-      change: Number(data.change) || 0,
-      score: calculateScore(data)
-    };
+      return {
 
-  });
+        symbol: symbol,
 
-  rankings.sort((a, b) => b.score - a.score);
+        price: Number(data.price) || 0,
 
-  rankings.forEach((stock, index) => {
-    stock.rank = index + 1;
-  });
+        change: Number(data.change) || 0,
+
+        score: calculateScore(data)
+
+      };
+
+    }
+  );
+
+
+  rankings.sort(
+    function (a, b) {
+
+      return b.score - a.score;
+
+    }
+  );
+
+
+  rankings.forEach(
+    function (stock, index) {
+
+      stock.rank = index + 1;
+
+    }
+  );
+
 
   RANKING_ENGINE.rankings = rankings;
-  RANKING_ENGINE.top20 = rankings.slice(0, 20);
-  RANKING_ENGINE.lastRun = new Date().toISOString();
-  RANKING_ENGINE.status = "RANKING_READY";
 
-  return rankings;
+  RANKING_ENGINE.top20 =
+    rankings.slice(0, 20);
+
+  RANKING_ENGINE.lastRun =
+    new Date().toISOString();
+
+  RANKING_ENGINE.status =
+    "RANKING_READY";
+
+
+  return RANKING_ENGINE.top20;
+
 }
 
 
@@ -76,6 +103,7 @@ function rankStocks(marketData) {
 function getTop20() {
 
   return RANKING_ENGINE.top20;
+
 }
 
 
@@ -86,6 +114,7 @@ function getTop20() {
 function getRankings() {
 
   return RANKING_ENGINE.rankings;
+
 }
 
 
@@ -96,30 +125,84 @@ function getRankings() {
 function getRankingStatus() {
 
   return {
+
     status: RANKING_ENGINE.status,
-    totalStocks: RANKING_ENGINE.rankings.length,
-    top20Stocks: RANKING_ENGINE.top20.length,
-    lastRun: RANKING_ENGINE.lastRun
+
+    totalStocks:
+      RANKING_ENGINE.rankings.length,
+
+    top20Stocks:
+      RANKING_ENGINE.top20.length,
+
+    lastRun:
+      RANKING_ENGINE.lastRun
+
   };
 
 }
 
 
 // --------------------------------------------
-// Make engine available to browser
+// Run application ranking
+// --------------------------------------------
+
+function runAppRanking() {
+
+  if (
+    typeof window === "undefined"
+  ) {
+
+    return [];
+
+  }
+
+
+  // Use the 50-stock test data
+  // created by app.js
+
+  if (
+    !window.TEST_MARKET_DATA
+  ) {
+
+    console.error(
+      "TEST_MARKET_DATA not available."
+    );
+
+    return [];
+
+  }
+
+
+  return rankStocks(
+    window.TEST_MARKET_DATA
+  );
+
+}
+
+
+// --------------------------------------------
+// Browser access
 // --------------------------------------------
 
 if (typeof window !== "undefined") {
 
-  window.RANKING_ENGINE = RANKING_ENGINE;
+  window.RANKING_ENGINE =
+    RANKING_ENGINE;
 
-  window.rankStocks = rankStocks;
+  window.rankStocks =
+    rankStocks;
 
-  window.getTop20 = getTop20;
+  window.getTop20 =
+    getTop20;
 
-  window.getRankings = getRankings;
+  window.getRankings =
+    getRankings;
 
-  window.getRankingStatus = getRankingStatus;
+  window.getRankingStatus =
+    getRankingStatus;
+
+  window.runAppRanking =
+    runAppRanking;
 
 }
 
@@ -128,42 +211,19 @@ if (typeof window !== "undefined") {
 // Startup
 // --------------------------------------------
 
-console.log("--------------------------------");
-console.log("PROTOTYPE-1 RANKING ENGINE");
-console.log("--------------------------------");
-console.log("Status:", RANKING_ENGINE.status);
-console.log("--------------------------------");
-// --------------------------------------------
-// TEST RANKING
-// --------------------------------------------
+console.log(
+  "--------------------------------"
+);
 
-if (typeof window !== "undefined") {
+console.log(
+  "PROTOTYPE-1 RANKING ENGINE"
+);
 
-  function runTestRanking() {
+console.log(
+  "Status:",
+  RANKING_ENGINE.status
+);
 
-    if (!window.TEST_MARKET_DATA) {
-      console.error("Test market data not available.");
-      return [];
-    }
-
-    const result = rankStocks(
-      window.TEST_MARKET_DATA
-    );
-
-    console.log("--------------------------------");
-    console.log("TEST TOP 20");
-    console.log("--------------------------------");
-
-    console.table(
-      result.slice(0, 20)
-    );
-
-    return result.slice(0, 20);
-  }
-
-  window.runTestRanking = runTestRanking;
-
-  console.log(
-    "Ranking test ready. Run: runTestRanking()"
-  );
-}
+console.log(
+  "--------------------------------"
+);
