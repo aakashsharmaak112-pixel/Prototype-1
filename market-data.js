@@ -160,3 +160,76 @@ console.log("--------------------------------");
 console.log("Status:", MARKET_DATA.status);
 console.log("API:", MARKET_API_URL || "Not configured");
 console.log("--------------------------------");
+
+// --------------------------------------------
+// TEST MARKET DATA
+// --------------------------------------------
+
+const TEST_MARKET_DATA = {
+  HDFCBANK: {
+    price: 1000,
+    change: 2.5
+  },
+
+  RELIANCE: {
+    price: 1400,
+    change: 1.8
+  },
+
+  ICICIBANK: {
+    price: 1200,
+    change: 3.2
+  },
+
+  INFY: {
+    price: 1600,
+    change: -0.8
+  },
+
+  SBIN: {
+    price: 800,
+    change: 2.1
+  },
+
+  TCS: {
+    price: 3500,
+    change: 1.2
+  },
+
+  ITC: {
+    price: 450,
+    change: -1.1
+  },
+
+  LT: {
+    price: 3600,
+    change: 2.7
+  },
+
+  BHARTIARTL: {
+    price: 1800,
+    change: 3.8
+  },
+
+  AXISBANK: {
+    price: 1100,
+    change: 1.5
+  }
+};
+
+
+// --------------------------------------------
+// Load test data
+// --------------------------------------------
+
+if (typeof window !== "undefined") {
+
+  window.TEST_MARKET_DATA = TEST_MARKET_DATA;
+
+  console.log(
+    "Test market data available:",
+    Object.keys(TEST_MARKET_DATA).length,
+    "stocks"
+  );
+
+}
