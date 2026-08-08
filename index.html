@@ -540,16 +540,14 @@
 
     // Update stock count
 
-    if (
-      window.TEST_MARKET_DATA
-    ) {
+if (
+  window.NIFTY_50_STOCKS
+) {
 
-      stockCount.innerText =
-        Object.keys(
-          window.TEST_MARKET_DATA
-        ).length;
+  stockCount.innerText =
+    window.NIFTY_50_STOCKS.length;
 
-    }
+}
 
 
     // Update status
