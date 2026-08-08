@@ -4,7 +4,7 @@
 // ============================================
 
 const MARKET_DATA = {
-  source: "API",
+  source: "TEST",
   status: "NOT_CONNECTED",
   lastUpdated: null,
   stocks: {}
@@ -15,9 +15,6 @@ const MARKET_DATA = {
 // API CONFIGURATION
 // --------------------------------------------
 
-// IMPORTANT:
-// API URL baad mein yahan set karenge.
-// Abhi blank rakha gaya hai.
 const MARKET_API_URL = "";
 
 
@@ -28,13 +25,20 @@ const MARKET_API_URL = "";
 function saveMarketData(data) {
 
   if (!data || typeof data !== "object") {
+
     console.error("Invalid market data");
+
     return false;
+
   }
 
   MARKET_DATA.stocks = data;
-  MARKET_DATA.lastUpdated = new Date().toISOString();
-  MARKET_DATA.status = "LIVE_DATA_LOADED";
+
+  MARKET_DATA.lastUpdated =
+    new Date().toISOString();
+
+  MARKET_DATA.status =
+    "LIVE_DATA_LOADED";
 
   console.log(
     "Market data loaded:",
@@ -43,6 +47,7 @@ function saveMarketData(data) {
   );
 
   return true;
+
 }
 
 
@@ -53,6 +58,7 @@ function saveMarketData(data) {
 function getMarketStock(symbol) {
 
   return MARKET_DATA.stocks[symbol] || null;
+
 }
 
 
@@ -63,6 +69,7 @@ function getMarketStock(symbol) {
 function getAllMarketData() {
 
   return MARKET_DATA.stocks;
+
 }
 
 
@@ -73,16 +80,26 @@ function getAllMarketData() {
 function getMarketStatus() {
 
   return {
+
     source: MARKET_DATA.source,
+
     status: MARKET_DATA.status,
-    lastUpdated: MARKET_DATA.lastUpdated,
-    stockCount: Object.keys(MARKET_DATA.stocks).length
+
+    lastUpdated:
+      MARKET_DATA.lastUpdated,
+
+    stockCount:
+      Object.keys(
+        MARKET_DATA.stocks
+      ).length
+
   };
+
 }
 
 
 // --------------------------------------------
-// Fetch market data
+// Fetch real market data
 // --------------------------------------------
 
 async function fetchMarketData() {
@@ -93,28 +110,42 @@ async function fetchMarketData() {
       "Market API is not configured yet."
     );
 
-    MARKET_DATA.status = "API_NOT_CONFIGURED";
+    MARKET_DATA.status =
+      "API_NOT_CONFIGURED";
 
     return false;
+
   }
+
 
   try {
 
-    MARKET_DATA.status = "LOADING";
+    MARKET_DATA.status =
+      "LOADING";
 
-    const response = await fetch(MARKET_API_URL);
+
+    const response =
+      await fetch(MARKET_API_URL);
+
 
     if (!response.ok) {
+
       throw new Error(
-        "API response error: " + response.status
+        "API response error: " +
+        response.status
       );
+
     }
 
-    const data = await response.json();
+
+    const data =
+      await response.json();
+
 
     saveMarketData(data);
 
     return true;
+
 
   } catch (error) {
 
@@ -123,10 +154,13 @@ async function fetchMarketData() {
       error
     );
 
-    MARKET_DATA.status = "ERROR";
+    MARKET_DATA.status =
+      "ERROR";
 
     return false;
+
   }
+
 }
 
 
@@ -136,17 +170,24 @@ async function fetchMarketData() {
 
 if (typeof window !== "undefined") {
 
-  window.MARKET_DATA = MARKET_DATA;
+  window.MARKET_DATA =
+    MARKET_DATA;
 
-  window.saveMarketData = saveMarketData;
+  window.saveMarketData =
+    saveMarketData;
 
-  window.getMarketStock = getMarketStock;
+  window.getMarketStock =
+    getMarketStock;
 
-  window.getAllMarketData = getAllMarketData;
+  window.getAllMarketData =
+    getAllMarketData;
 
-  window.getMarketStatus = getMarketStatus;
+  window.getMarketStatus =
+    getMarketStatus;
 
-  window.fetchMarketData = fetchMarketData;
+  window.fetchMarketData =
+    fetchMarketData;
+
 }
 
 
@@ -154,85 +195,19 @@ if (typeof window !== "undefined") {
 // Startup
 // --------------------------------------------
 
-console.log("--------------------------------");
-console.log("PROTOTYPE-1 MARKET DATA ENGINE");
-console.log("--------------------------------");
-console.log("Status:", MARKET_DATA.status);
-console.log("API:", MARKET_API_URL || "Not configured");
-console.log("--------------------------------");
+console.log(
+  "--------------------------------"
+);
 
+console.log(
+  "PROTOTYPE-1 MARKET DATA ENGINE"
+);
 
-// --------------------------------------------
-// TEST MARKET DATA
-// --------------------------------------------
+console.log(
+  "Status:",
+  MARKET_DATA.status
+);
 
-const TEST_MARKET_DATA = {
-
-  HDFCBANK: {
-    price: 1000,
-    change: 2.5
-  },
-
-  RELIANCE: {
-    price: 1400,
-    change: 1.8
-  },
-
-  ICICIBANK: {
-    price: 1200,
-    change: 3.2
-  },
-
-  INFY: {
-    price: 1600,
-    change: -0.8
-  },
-
-  SBIN: {
-    price: 800,
-    change: 2.1
-  },
-
-  TCS: {
-    price: 3500,
-    change: 1.2
-  },
-
-  ITC: {
-    price: 450,
-    change: -1.1
-  },
-
-  LT: {
-    price: 3600,
-    change: 2.7
-  },
-
-  BHARTIARTL: {
-    price: 1800,
-    change: 3.8
-  },
-
-  AXISBANK: {
-    price: 1100,
-    change: 1.5
-  }
-
-};
-
-
-// --------------------------------------------
-// Load test data
-// --------------------------------------------
-
-if (typeof window !== "undefined") {
-
-  window.TEST_MARKET_DATA = TEST_MARKET_DATA;
-
-  console.log(
-    "Test market data available:",
-    Object.keys(TEST_MARKET_DATA).length,
-    "stocks"
-  );
-
-}
+console.log(
+  "--------------------------------"
+);
