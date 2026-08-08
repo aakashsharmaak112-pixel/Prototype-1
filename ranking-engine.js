@@ -133,3 +133,37 @@ console.log("PROTOTYPE-1 RANKING ENGINE");
 console.log("--------------------------------");
 console.log("Status:", RANKING_ENGINE.status);
 console.log("--------------------------------");
+// --------------------------------------------
+// TEST RANKING
+// --------------------------------------------
+
+if (typeof window !== "undefined") {
+
+  function runTestRanking() {
+
+    if (!window.TEST_MARKET_DATA) {
+      console.error("Test market data not available.");
+      return [];
+    }
+
+    const result = rankStocks(
+      window.TEST_MARKET_DATA
+    );
+
+    console.log("--------------------------------");
+    console.log("TEST TOP 20");
+    console.log("--------------------------------");
+
+    console.table(
+      result.slice(0, 20)
+    );
+
+    return result.slice(0, 20);
+  }
+
+  window.runTestRanking = runTestRanking;
+
+  console.log(
+    "Ranking test ready. Run: runTestRanking()"
+  );
+}
