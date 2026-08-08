@@ -137,6 +137,7 @@
       border-radius: 8px;
       font-weight: bold;
       color: #19c37d;
+      flex-shrink: 0;
     }
 
     .stock-name {
@@ -167,11 +168,6 @@
       border-radius: 7px;
       font-size: 11px;
       font-weight: bold;
-    }
-
-    .buy {
-      background: #123d2c;
-      color: #38e89a;
     }
 
     .watch {
@@ -260,6 +256,7 @@
 
       </div>
 
+
       <div class="stat">
 
         <small>Target Top Stocks</small>
@@ -269,6 +266,7 @@
         </strong>
 
       </div>
+
 
       <div class="stat">
 
@@ -282,6 +280,7 @@
         </strong>
 
       </div>
+
 
       <div class="stat">
 
@@ -313,8 +312,10 @@
     </div>
 
     <p class="note">
+
       ⚠️ Abhi ye test market data hai.
       Real market data connect hone ke baad ranking live hogi.
+
     </p>
 
   </div>
@@ -348,6 +349,7 @@
 
       </div>
 
+
       <div class="stock">
 
         <div>
@@ -367,6 +369,7 @@
         </span>
 
       </div>
+
 
       <div class="stock">
 
@@ -426,7 +429,7 @@
 
 
 <!-- ========================================= -->
-<!-- SCRIPTS -->
+<!-- EXISTING ENGINES -->
 <!-- ========================================= -->
 
 <script src="market-data.js"></script>
@@ -439,7 +442,7 @@
 <script>
 
   // ==========================================
-  // ANALYZE INVESTMENT
+  // INVESTMENT ANALYSIS
   // ==========================================
 
   function analyzeInvestment() {
@@ -465,12 +468,38 @@
     }
 
 
+    if (
+      typeof window.analyzeInvestmentAmount ===
+      "function"
+    ) {
+
+      const result =
+        window.analyzeInvestmentAmount(
+          amount
+        );
+
+
+      if (
+        result &&
+        result.success
+      ) {
+
+        recommendation.innerText =
+          result.message;
+
+        return;
+
+      }
+
+    }
+
+
     if (amount < 5000) {
 
       recommendation.innerText =
         "₹" +
         amount.toLocaleString("en-IN") +
-        " ke liye limited number of quality stocks aur risk control par focus karna better hoga.";
+        " ke liye limited quality stocks aur risk control par focus karna better hoga.";
 
     }
 
@@ -496,6 +525,103 @@
 
 
   // ==========================================
+  // BUILD TOP 20 DIRECTLY FROM APP DATA
+  // ==========================================
+
+  function buildTop20Directly() {
+
+    if (
+      !window.NIFTY_50_STOCKS ||
+      !Array.isArray(
+        window.NIFTY_50_STOCKS
+      )
+    ) {
+
+      console.error(
+        "NIFTY_50_STOCKS not available."
+      );
+
+      return [];
+
+    }
+
+
+    if (
+      !window.TEST_MARKET_DATA
+    ) {
+
+      console.error(
+        "TEST_MARKET_DATA not available."
+      );
+
+      return [];
+
+    }
+
+
+    const rankings =
+      window.NIFTY_50_STOCKS.map(
+        function(stock) {
+
+          const data =
+            window.TEST_MARKET_DATA[
+              stock.symbol
+            ] || {};
+
+
+          const price =
+            Number(data.price) || 0;
+
+
+          const change =
+            Number(data.change) || 0;
+
+
+          return {
+
+            symbol: stock.symbol,
+
+            name: stock.name,
+
+            sector: stock.sector,
+
+            price: price,
+
+            change: change,
+
+            score: change
+
+          };
+
+        }
+      );
+
+
+    rankings.sort(
+      function(a, b) {
+
+        return b.score - a.score;
+
+      }
+    );
+
+
+    rankings.forEach(
+      function(stock, index) {
+
+        stock.rank =
+          index + 1;
+
+      }
+    );
+
+
+    return rankings.slice(0, 20);
+
+  }
+
+
+  // ==========================================
   // LOAD TOP 20
   // ==========================================
 
@@ -506,10 +632,12 @@
         "top20List"
       );
 
+
     const status =
       document.getElementById(
         "marketStatus"
       );
+
 
     const stockCount =
       document.getElementById(
@@ -517,88 +645,88 @@
       );
 
 
-    // Check ranking engine
+    // ----------------------------------------
+    // STOCK COUNT
+    // ----------------------------------------
 
     if (
-      typeof window.runTestRanking !==
-      "function"
+      window.NIFTY_50_STOCKS &&
+      Array.isArray(
+        window.NIFTY_50_STOCKS
+      )
     ) {
 
-      list.innerHTML =
-        '<p class="note">Ranking engine load nahi hua.</p>';
-
-      return;
+      stockCount.innerText =
+        window.NIFTY_50_STOCKS.length;
 
     }
 
 
-    // Run test ranking
+    // ----------------------------------------
+    // CREATE TOP 20
+    // ----------------------------------------
 
     const top20 =
-      window.runTestRanking();
+      buildTop20Directly();
 
-
-    // Update stock count
-
-if (
-  window.NIFTY_50_STOCKS
-) {
-
-  stockCount.innerText =
-    window.NIFTY_50_STOCKS.length;
-
-}
-
-
-    // Update status
-
-    if (top20 && top20.length > 0) {
-
-      status.innerText =
-        "TEST READY";
-
-      status.className =
-        "status-ready";
-
-    }
-
-
-    // No result
 
     if (
       !top20 ||
       top20.length === 0
     ) {
 
+      status.innerText =
+        "TEST";
+
+      status.className =
+        "status-pending";
+
+
       list.innerHTML =
-        '<p class="note">Top 20 data available nahi hai.</p>';
+        '<p class="note">Test market data available nahi hai.</p>';
 
       return;
 
     }
 
 
-    // Create list
+    // ----------------------------------------
+    // MARKET STATUS
+    // ----------------------------------------
+
+    status.innerText =
+      "TEST READY";
+
+    status.className =
+      "status-ready";
+
+
+    // ----------------------------------------
+    // CLEAR OLD LIST
+    // ----------------------------------------
 
     list.innerHTML = "";
 
 
-    top20.forEach(
-      function(item, index) {
+    // ----------------------------------------
+    // DISPLAY TOP 20
+    // ----------------------------------------
 
-        const stock =
-          getStockInfo(
-            item.symbol
+    top20.forEach(
+      function(stock, index) {
+
+        const row =
+          document.createElement(
+            "div"
           );
 
 
-        if (!stock) {
-          return;
-        }
+        row.className =
+          "stock";
 
 
         const change =
-          Number(item.change) || 0;
+          Number(stock.change) || 0;
 
 
         const changeClass =
@@ -611,16 +739,6 @@ if (
           (change >= 0 ? "+" : "") +
           change.toFixed(2) +
           "%";
-
-
-        const row =
-          document.createElement(
-            "div"
-          );
-
-
-        row.className =
-          "stock";
 
 
         row.innerHTML = `
@@ -638,12 +756,13 @@ if (
               </div>
 
               <div class="stock-sector">
-                ${stock.sector}
+                ${stock.symbol} • ${stock.sector}
               </div>
 
             </div>
 
           </div>
+
 
           <div class="stock-change">
 
@@ -652,7 +771,7 @@ if (
             </div>
 
             <div class="stock-sector">
-              Test
+              ₹${Number(stock.price).toLocaleString("en-IN")}
             </div>
 
           </div>
@@ -680,7 +799,18 @@ if (
         "Prototype-1 dashboard loaded."
       );
 
-      loadTop20();
+
+      // Small delay allows all
+      // external scripts to load.
+
+      setTimeout(
+        function() {
+
+          loadTop20();
+
+        },
+        100
+      );
 
     }
   );
