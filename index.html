@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prototype-1 | AI Stock Analysis</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      background: #0b0f14;
+      color: white;
+      padding: 18px;
+    }
+
+    .header {
+      margin-bottom: 20px;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      margin-bottom: 6px;
+    }
+
+    .header p {
+      color: #9aa4b2;
+    }
+
+    .card {
+      background: #151b23;
+      border: 1px solid #26303c;
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+
+    .card h2 {
+      font-size: 19px;
+      margin-bottom: 12px;
+    }
+
+    .input-box {
+      width: 100%;
+      padding: 14px;
+      background: #0d1218;
+      color: white;
+      border: 1px solid #394554;
+      border-radius: 10px;
+      font-size: 16px;
+      margin-bottom: 12px;
+    }
+
+    .button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      background: #19c37d;
+      color: #06130d;
+      font-size: 16px;
+      font-weight: bold;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .stat {
+      background: #0d1218;
+      padding: 14px;
+      border-radius: 10px;
+    }
+
+    .stat small {
+      color: #8994a3;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 20px;
+      margin-top: 5px;
+    }
+
+    .stock {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 13px 0;
+      border-bottom: 1px solid #252d38;
+    }
+
+    .stock:last-child {
+      border-bottom: none;
+    }
+
+    .stock-name {
+      font-weight: bold;
+    }
+
+    .stock-sector {
+      color: #8994a3;
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    .badge {
+      padding: 6px 9px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .buy {
+      background: #123d2c;
+      color: #38e89a;
+    }
+
+    .watch {
+      background: #403719;
+      color: #ffd
