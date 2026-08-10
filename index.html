@@ -1,8 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
 
   <title>Prototype-1 | AI Stock Assistant</title>
 
@@ -109,6 +115,10 @@
       color: #ffd166;
     }
 
+    .status-error {
+      color: #ff6b6b;
+    }
+
     .stock {
       display: flex;
       justify-content: space-between;
@@ -196,11 +206,15 @@
     }
 
   </style>
+
 </head>
+
 
 <body>
 
+
 <div class="container">
+
 
   <!-- HEADER -->
 
@@ -246,6 +260,7 @@
 
     <div class="summary">
 
+
       <div class="stat">
 
         <small>Nifty 50 Stocks</small>
@@ -276,7 +291,7 @@
           id="marketStatus"
           class="status-pending"
         >
-          TEST
+          CONNECTING
         </strong>
 
       </div>
@@ -292,6 +307,7 @@
 
       </div>
 
+
     </div>
 
   </div>
@@ -306,15 +322,15 @@
     <div id="top20List">
 
       <p class="note">
-        Ranking calculate ho raha hai...
+        Live market data load ho raha hai...
       </p>
 
     </div>
 
     <p class="note">
 
-      ⚠️ Abhi ye test market data hai.
-      Real market data connect hone ke baad ranking live hogi.
+      Live ranking available market data
+      ke basis par calculate ho rahi hai.
 
     </p>
 
@@ -327,7 +343,9 @@
 
     <h2>⭐ AI Watchlist</h2>
 
+
     <div id="watchlist">
+
 
       <div class="stock">
 
@@ -391,6 +409,7 @@
 
       </div>
 
+
     </div>
 
   </div>
@@ -425,6 +444,7 @@
 
   </div>
 
+
 </div>
 
 
@@ -441,16 +461,21 @@
 
 <script>
 
+
   // ==========================================
   // INVESTMENT ANALYSIS
   // ==========================================
 
   function analyzeInvestment() {
 
+
     const amount =
       Number(
-        document.getElementById("amount").value
+        document.getElementById(
+          "amount"
+        ).value
       );
+
 
     const recommendation =
       document.getElementById(
@@ -458,7 +483,10 @@
       );
 
 
-    if (!amount || amount <= 0) {
+    if (
+      !amount ||
+      amount <= 0
+    ) {
 
       recommendation.innerText =
         "Please valid investment amount enter karein.";
@@ -472,6 +500,7 @@
       typeof window.analyzeInvestmentAmount ===
       "function"
     ) {
+
 
       const result =
         window.analyzeInvestmentAmount(
@@ -525,10 +554,11 @@
 
 
   // ==========================================
-  // BUILD TOP 20 DIRECTLY FROM APP DATA
+  // BUILD TOP 20 FROM LIVE MARKET DATA
   // ==========================================
 
   function buildTop20Directly() {
+
 
     if (
       !window.NIFTY_50_STOCKS ||
@@ -547,11 +577,12 @@
 
 
     if (
-      !window.TEST_MARKET_DATA
+      !window.MARKET_DATA ||
+      !window.MARKET_DATA.stocks
     ) {
 
       console.error(
-        "TEST_MARKET_DATA not available."
+        "LIVE MARKET_DATA not available."
       );
 
       return [];
@@ -559,42 +590,68 @@
     }
 
 
-    const rankings =
-      window.NIFTY_50_STOCKS.map(
-        function(stock) {
-
-          const data =
-            window.TEST_MARKET_DATA[
-              stock.symbol
-            ] || {};
+    const liveData =
+      window.MARKET_DATA.stocks;
 
 
-          const price =
-            Number(data.price) || 0;
+    const rankings = [];
 
 
-          const change =
-            Number(data.change) || 0;
+    window.NIFTY_50_STOCKS.forEach(
+      function(stock) {
 
 
-          return {
+        const data =
+          liveData[
+            stock.symbol
+          ] || {};
 
-            symbol: stock.symbol,
 
-            name: stock.name,
+        const price =
+          Number(
+            data.price
+          ) || 0;
 
-            sector: stock.sector,
 
-            price: price,
+        const change =
+          Number(
+            data.change
+          ) || 0;
 
-            change: change,
 
-            score: change
+        if (
+          price <= 0
+        ) {
 
-          };
+          return;
 
         }
-      );
+
+
+        rankings.push({
+
+          symbol:
+            stock.symbol,
+
+          name:
+            stock.name,
+
+          sector:
+            stock.sector,
+
+          price:
+            price,
+
+          change:
+            change,
+
+          score:
+            change
+
+        });
+
+      }
+    );
 
 
     rankings.sort(
@@ -616,7 +673,10 @@
     );
 
 
-    return rankings.slice(0, 20);
+    return rankings.slice(
+      0,
+      20
+    );
 
   }
 
@@ -626,6 +686,7 @@
   // ==========================================
 
   function loadTop20() {
+
 
     const list =
       document.getElementById(
@@ -663,7 +724,7 @@
 
 
     // ----------------------------------------
-    // CREATE TOP 20
+    // CREATE LIVE TOP 20
     // ----------------------------------------
 
     const top20 =
@@ -676,14 +737,14 @@
     ) {
 
       status.innerText =
-        "TEST";
+        "NO DATA";
 
       status.className =
-        "status-pending";
+        "status-error";
 
 
       list.innerHTML =
-        '<p class="note">Test market data available nahi hai.</p>';
+        '<p class="note">Live market data available nahi hai.</p>';
 
       return;
 
@@ -691,11 +752,11 @@
 
 
     // ----------------------------------------
-    // MARKET STATUS
+    // LIVE STATUS
     // ----------------------------------------
 
     status.innerText =
-      "TEST READY";
+      "LIVE";
 
     status.className =
       "status-ready";
@@ -705,7 +766,8 @@
     // CLEAR OLD LIST
     // ----------------------------------------
 
-    list.innerHTML = "";
+    list.innerHTML =
+      "";
 
 
     // ----------------------------------------
@@ -714,6 +776,7 @@
 
     top20.forEach(
       function(stock, index) {
+
 
         const row =
           document.createElement(
@@ -726,7 +789,9 @@
 
 
         const change =
-          Number(stock.change) || 0;
+          Number(
+            stock.change
+          ) || 0;
 
 
         const changeClass =
@@ -736,7 +801,11 @@
 
 
         const changeText =
-          (change >= 0 ? "+" : "") +
+          (
+            change >= 0
+              ? "+"
+              : ""
+          ) +
           change.toFixed(2) +
           "%";
 
@@ -771,7 +840,9 @@
             </div>
 
             <div class="stock-sector">
-              ₹${Number(stock.price).toLocaleString("en-IN")}
+              ₹${Number(
+                stock.price
+              ).toLocaleString("en-IN")}
             </div>
 
           </div>
@@ -779,7 +850,9 @@
         `;
 
 
-        list.appendChild(row);
+        list.appendChild(
+          row
+        );
 
       }
     );
@@ -788,34 +861,124 @@
 
 
   // ==========================================
-  // START
+  // START LIVE MARKET DATA
   // ==========================================
 
   document.addEventListener(
     "DOMContentLoaded",
-    function() {
+    async function() {
+
 
       console.log(
         "Prototype-1 dashboard loaded."
       );
 
 
-      // Small delay allows all
-      // external scripts to load.
+      const status =
+        document.getElementById(
+          "marketStatus"
+        );
 
-      setTimeout(
-        function() {
+
+      status.innerText =
+        "LOADING";
+
+
+      status.className =
+        "status-pending";
+
+
+      // Wait for scripts
+
+      await new Promise(
+        function(resolve) {
+
+          setTimeout(
+            resolve,
+            100
+          );
+
+        }
+      );
+
+
+      // --------------------------------------
+      // FETCH LIVE DATA
+      // --------------------------------------
+
+      if (
+        typeof window.fetchMarketData ===
+        "function"
+      ) {
+
+
+        const success =
+          await window.fetchMarketData();
+
+
+        if (
+          success
+        ) {
+
+          console.log(
+            "LIVE market data fetched successfully."
+          );
+
 
           loadTop20();
 
-        },
-        100
-      );
+        }
+
+        else {
+
+          status.innerText =
+            "ERROR";
+
+          status.className =
+            "status-error";
+
+
+          document.getElementById(
+            "top20List"
+          ).innerHTML =
+            '<p class="note">Live market data fetch failed.</p>';
+
+        }
+
+
+      }
+
+      else {
+
+
+        console.error(
+          "fetchMarketData() not found."
+        );
+
+
+        status.innerText =
+          "ERROR";
+
+
+        status.className =
+          "status-error";
+
+
+        document.getElementById(
+          "top20List"
+        ).innerHTML =
+          '<p class="note">Market data engine load nahi hua.</p>';
+
+      }
+
 
     }
   );
 
+
 </script>
 
+
 </body>
+
 </html>
