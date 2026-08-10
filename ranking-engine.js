@@ -1,240 +1,376 @@
 // ============================================
 // PROTOTYPE-1
-// TOP 20 RANKING ENGINE
+// LIVE RANKING ENGINE
+// ============================================
+//
+// Ranking is based on currently available
+// live quote data.
+//
+// This is a prototype scoring model.
+// It is NOT a buy/sell recommendation.
 // ============================================
 
+
 const RANKING_ENGINE = {
+
+  version: "1.0",
+
   status: "READY",
-  lastRun: null,
-  rankings: [],
-  top20: []
+
+  targetCount: 20
+
 };
 
 
-// --------------------------------------------
-// Calculate stock score
-// --------------------------------------------
+// ============================================
+// SAFE NUMBER
+// ============================================
 
-function calculateScore(stock) {
+function safeNumber(value) {
 
-  if (!stock) {
-    return 0;
-  }
+  const number =
+    Number(value);
 
-  const change = Number(stock.change) || 0;
+  return Number.isFinite(number)
+    ? number
+    : 0;
 
-  return change;
 }
 
 
-// --------------------------------------------
-// Rank all available stocks
-// --------------------------------------------
+// ============================================
+// CALCULATE STOCK SCORE
+// ============================================
+//
+// Current live quote data gives us:
+// - price
+// - percentage change
+//
+// For now the score is primarily based
+// on live percentage change.
+//
+// Later we will add:
+// - momentum
+// - volatility
+// - liquidity
+// - sector strength
+// - trend
+// - historical data
+//
+// ============================================
 
-function rankStocks(marketData) {
+function calculateStockScore(stock) {
 
-  if (!marketData || typeof marketData !== "object") {
+  const change =
+    safeNumber(stock.change);
 
-    RANKING_ENGINE.status = "NO_DATA";
+
+  // Normalize change into a usable score.
+
+  const momentumScore =
+    Math.max(
+      0,
+      Math.min(
+        100,
+        50 + (change * 5)
+      )
+    );
+
+
+  return Number(
+    momentumScore.toFixed(2)
+  );
+
+}
+
+
+// ============================================
+// BUILD RANKINGS
+// ============================================
+
+function calculateLiveRankings() {
+
+  if (
+    !window.NIFTY_50_STOCKS ||
+    !Array.isArray(
+      window.NIFTY_50_STOCKS
+    )
+  ) {
+
+    console.error(
+      "NIFTY_50_STOCKS not available."
+    );
 
     return [];
 
   }
 
-  const rankings = Object.entries(marketData).map(
-    function ([symbol, data]) {
 
-      return {
+  if (
+    !window.MARKET_DATA ||
+    !window.MARKET_DATA.stocks
+  ) {
 
-        symbol: symbol,
+    console.error(
+      "MARKET_DATA not available."
+    );
 
-        price: Number(data.price) || 0,
+    return [];
 
-        change: Number(data.change) || 0,
+  }
 
-        score: calculateScore(data)
 
-      };
+  const liveData =
+    window.MARKET_DATA.stocks;
+
+
+  const rankings = [];
+
+
+  // ------------------------------------------
+  // PROCESS EACH NIFTY STOCK
+  // ------------------------------------------
+
+  window.NIFTY_50_STOCKS.forEach(
+    function(stock) {
+
+
+      const data =
+        liveData[
+          stock.symbol
+        ];
+
+
+      // Ignore stocks for which
+      // no live quote was received.
+
+      if (!data) {
+        return;
+      }
+
+
+      const price =
+        safeNumber(
+          data.price
+        );
+
+
+      const change =
+        safeNumber(
+          data.change
+        );
+
+
+      if (price <= 0) {
+        return;
+      }
+
+
+      const score =
+        calculateStockScore({
+
+          price:
+            price,
+
+          change:
+            change
+
+        });
+
+
+      rankings.push({
+
+        symbol:
+          stock.symbol,
+
+        name:
+          stock.name,
+
+        sector:
+          stock.sector,
+
+        price:
+          price,
+
+        change:
+          change,
+
+        score:
+          score
+
+      });
 
     }
   );
 
 
-  // Highest score first
+  // ------------------------------------------
+  // SORT BY SCORE
+  // ------------------------------------------
 
   rankings.sort(
-    function (a, b) {
+    function(a, b) {
 
-      return b.score - a.score;
+      return (
+        b.score -
+        a.score
+      );
 
     }
   );
 
 
-  // Add rank
+  // ------------------------------------------
+  // ASSIGN RANK
+  // ------------------------------------------
 
   rankings.forEach(
-    function (stock, index) {
+    function(stock, index) {
 
-      stock.rank = index + 1;
+      stock.rank =
+        index + 1;
 
     }
   );
 
 
-  // Save complete ranking
-
-  RANKING_ENGINE.rankings =
-    rankings;
-
-
-  // Select Top 20
-
-  RANKING_ENGINE.top20 =
-    rankings.slice(0, 20);
-
-
-  RANKING_ENGINE.lastRun =
-    new Date().toISOString();
-
-
-  RANKING_ENGINE.status =
-    "RANKING_READY";
-
-
-  return RANKING_ENGINE.top20;
+  return rankings;
 
 }
 
 
-// --------------------------------------------
-// Get Top 20
-// --------------------------------------------
+// ============================================
+// GET TOP 20
+// ============================================
 
-function getTop20() {
+function getLiveTop20() {
 
-  return RANKING_ENGINE.top20;
+  const rankings =
+    calculateLiveRankings();
 
-}
 
-
-// --------------------------------------------
-// Get complete ranking
-// --------------------------------------------
-
-function getRankings() {
-
-  return RANKING_ENGINE.rankings;
+  return rankings.slice(
+    0,
+    RANKING_ENGINE.targetCount
+  );
 
 }
 
 
-// --------------------------------------------
-// Ranking status
-// --------------------------------------------
+// ============================================
+// GET STOCK RANK
+// ============================================
 
-function getRankingStatus() {
+function getLiveStockRank(symbol) {
+
+  const rankings =
+    calculateLiveRankings();
+
+
+  const stock =
+    rankings.find(
+      function(item) {
+
+        return (
+          item.symbol ===
+          symbol
+        );
+
+      }
+    );
+
+
+  return stock || null;
+
+}
+
+
+// ============================================
+// GET RANKING ENGINE STATUS
+// ============================================
+
+function getRankingEngineStatus() {
 
   return {
+
+    version:
+      RANKING_ENGINE.version,
 
     status:
       RANKING_ENGINE.status,
 
-    totalStocks:
-      RANKING_ENGINE.rankings.length,
+    targetCount:
+      RANKING_ENGINE.targetCount,
 
-    top20Stocks:
-      RANKING_ENGINE.top20.length,
-
-    lastRun:
-      RANKING_ENGINE.lastRun
+    liveStocks:
+      window.MARKET_DATA &&
+      window.MARKET_DATA.stocks
+        ? Object.keys(
+            window.MARKET_DATA.stocks
+          ).length
+        : 0
 
   };
 
 }
 
 
-// --------------------------------------------
-// Run ranking using app market data
-// --------------------------------------------
+// ============================================
+// BROWSER ACCESS
+// ============================================
 
-function runAppRanking() {
-
-  if (typeof window === "undefined") {
-
-    return [];
-
-  }
-
-
-  if (!window.TEST_MARKET_DATA) {
-
-    console.error(
-      "TEST_MARKET_DATA not available."
-    );
-
-    RANKING_ENGINE.status =
-      "NO_TEST_DATA";
-
-    return [];
-
-  }
-
-
-  return rankStocks(
-    window.TEST_MARKET_DATA
-  );
-
-}
-
-
-// --------------------------------------------
-// Browser access
-// --------------------------------------------
-
-if (typeof window !== "undefined") {
+if (
+  typeof window !== "undefined"
+) {
 
   window.RANKING_ENGINE =
     RANKING_ENGINE;
 
-  window.calculateScore =
-    calculateScore;
 
-  window.rankStocks =
-    rankStocks;
+  window.calculateStockScore =
+    calculateStockScore;
 
-  window.getTop20 =
-    getTop20;
 
-  window.getRankings =
-    getRankings;
+  window.calculateLiveRankings =
+    calculateLiveRankings;
 
-  window.getRankingStatus =
-    getRankingStatus;
 
-  window.runAppRanking =
-    runAppRanking;
+  window.getLiveTop20 =
+    getLiveTop20;
+
+
+  window.getLiveStockRank =
+    getLiveStockRank;
+
+
+  window.getRankingEngineStatus =
+    getRankingEngineStatus;
 
 }
 
 
-// --------------------------------------------
-// Startup
-// --------------------------------------------
+// ============================================
+// STARTUP
+// ============================================
 
 console.log(
-  "--------------------------------"
+  "================================"
 );
 
 console.log(
-  "PROTOTYPE-1 RANKING ENGINE"
+  "PROTOTYPE-1 LIVE RANKING ENGINE"
 );
 
 console.log(
-  "Status:",
-  RANKING_ENGINE.status
+  "Version:",
+  RANKING_ENGINE.version
 );
 
 console.log(
-  "--------------------------------"
+  "Target:",
+  RANKING_ENGINE.targetCount
+);
+
+console.log(
+  "================================"
 );
