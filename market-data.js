@@ -16,11 +16,13 @@ const MARKET_DATA = {
 // API CONFIGURATION
 // ============================================
 
-const MARKET_API_URL = "/api/quotes-test";
+// IMPORTANT:
+// Vercel file = api/quotes.js
+const MARKET_API_URL = "/api/quotes";
 
 
 // ============================================
-// STOCK SYMBOL NORMALIZER
+// SYMBOL NORMALIZER
 // ============================================
 
 function normalizeSymbol(symbol) {
@@ -49,20 +51,17 @@ function toNumber(value) {
     return 0;
   }
 
-  const number =
-    Number(
-      String(value).replace(/,/g, "")
-    );
+  const n = Number(
+    String(value).replace(/,/g, "")
+  );
 
-  return Number.isFinite(number)
-    ? number
-    : 0;
+  return Number.isFinite(n) ? n : 0;
 
 }
 
 
 // ============================================
-// CONVERT NEO RESPONSE
+// NORMALIZE NEO QUOTE
 // ============================================
 
 function normalizeNeoQuote(quote) {
@@ -72,17 +71,15 @@ function normalizeNeoQuote(quote) {
   }
 
 
-  // -------------------------------
   // SYMBOL
-  // -------------------------------
 
-  const symbol =
-    normalizeSymbol(
-      quote.display_symbol ||
-      quote.symbol ||
-      quote.trading_symbol ||
-      quote.neo_symbol
-    );
+  const symbol = normalizeSymbol(
+    quote.display_symbol ||
+    quote.displaySymbol ||
+    quote.symbol ||
+    quote.trading_symbol ||
+    quote.tradingSymbol
+  );
 
 
   if (!symbol) {
@@ -90,18 +87,16 @@ function normalizeNeoQuote(quote) {
   }
 
 
-  // -------------------------------
   // LIVE PRICE
-  // -------------------------------
 
-  const price =
-    toNumber(
-      quote.ltp ??
-      quote.last_price ??
-      quote.lastPrice ??
-      quote.close_price ??
-      quote.close
-    );
+  const price = toNumber(
+    quote.price ??
+    quote.ltp ??
+    quote.LTP ??
+    quote.last_price ??
+    quote.lastPrice ??
+    quote.last_traded_price
+  );
 
 
   if (price <= 0) {
@@ -109,89 +104,58 @@ function normalizeNeoQuote(quote) {
   }
 
 
-  // -------------------------------
-  // DIRECT PERCENTAGE CHANGE
-  // -------------------------------
+  // PREVIOUS CLOSE
 
-  let percentChange =
-    toNumber(
-      quote.percentage_change ??
-      quote.percent_change ??
-      quote.percentChange ??
-      quote.change_percent ??
-      quote.changePercent
-    );
+  const previousClose = toNumber(
+    quote.previous_close ??
+    quote.previousClose ??
+    quote.prev_close ??
+    quote.prevClose ??
+    quote.close_price ??
+    quote.close
+  );
 
 
-  // -------------------------------
-  // IF PERCENTAGE NOT PROVIDED,
-  // CALCULATE FROM PRICE + PREVIOUS CLOSE
-  // -------------------------------
+  // CHANGE %
 
-  if (
-    !Number.isFinite(percentChange) ||
-    percentChange === 0
-  ) {
-
-    const previousClose =
-      toNumber(
-        quote.previous_close ??
-        quote.prev_close ??
-        quote.prevClose ??
-        quote.previousClose ??
-        quote.pc
-      );
+  let changePercent = toNumber(
+    quote.changePercent ??
+    quote.percentage_change ??
+    quote.percentageChange ??
+    quote.percent_change ??
+    quote.percentChange ??
+    quote.change_percent ??
+    quote.pChange
+  );
 
 
-    if (previousClose > 0) {
+  // RUPEE CHANGE
 
-      percentChange =
-        (
-          (price - previousClose) /
-          previousClose
-        ) * 100;
-
-    }
-
-  }
+  let rupeeChange = toNumber(
+    quote.change ??
+    quote.net_change ??
+    quote.netChange ??
+    quote.chg
+  );
 
 
-  // -------------------------------
-  // LAST CHANGE IN RUPEES
-  // -------------------------------
-
-  let rupeeChange =
-    toNumber(
-      quote.net_change ??
-      quote.netChange ??
-      quote.change ??
-      quote.chg
-    );
-
-
-  // Calculate rupee change if necessary
+  // ==========================================
+  // CALCULATE FROM LTP + PREVIOUS CLOSE
+  // ==========================================
 
   if (
-    rupeeChange === 0 &&
-    percentChange !== 0
+    price > 0 &&
+    previousClose > 0
   ) {
 
-    const previousClose =
-      toNumber(
-        quote.previous_close ??
-        quote.prev_close ??
-        quote.prevClose ??
-        quote.previousClose ??
-        quote.pc
-      );
+    rupeeChange =
+      price - previousClose;
 
-
-    if (previousClose > 0) {
-
-      rupeeChange =
-        price - previousClose;
-
-    }
+    changePercent =
+      (
+        rupeeChange /
+        previousClose
+      ) * 100;
 
   }
 
@@ -200,21 +164,14 @@ function normalizeNeoQuote(quote) {
 
     symbol: symbol,
 
-    price: price,
-
-    // IMPORTANT:
-    // This is percentage change,
-    // NOT rupee change.
+    price:
+      Number(price.toFixed(2)),
 
     change:
-      Number(
-        percentChange.toFixed(2)
-      ),
+      Number(changePercent.toFixed(2)),
 
     rupeeChange:
-      Number(
-        rupeeChange.toFixed(2)
-      )
+      Number(rupeeChange.toFixed(2))
 
   };
 
@@ -222,7 +179,7 @@ function normalizeNeoQuote(quote) {
 
 
 // ============================================
-// SAVE RECEIVED MARKET DATA
+// SAVE MARKET DATA
 // ============================================
 
 function saveMarketData(data) {
@@ -241,21 +198,9 @@ function saveMarketData(data) {
   let quotes = [];
 
 
-  // -------------------------------
-  // DIFFERENT API RESPONSE FORMATS
-  // -------------------------------
-
   if (Array.isArray(data)) {
 
     quotes = data;
-
-  }
-
-  else if (
-    Array.isArray(data.data)
-  ) {
-
-    quotes = data.data;
 
   }
 
@@ -268,6 +213,14 @@ function saveMarketData(data) {
   }
 
   else if (
+    Array.isArray(data.data)
+  ) {
+
+    quotes = data.data;
+
+  }
+
+  else if (
     Array.isArray(data.quotes)
   ) {
 
@@ -275,10 +228,6 @@ function saveMarketData(data) {
 
   }
 
-
-  // -------------------------------
-  // CONVERT QUOTES
-  // -------------------------------
 
   const normalized = {};
 
@@ -364,7 +313,6 @@ function getMarketStock(symbol) {
   const key =
     normalizeSymbol(symbol);
 
-
   return (
     MARKET_DATA.stocks[key] ||
     null
@@ -412,24 +360,10 @@ function getMarketStatus() {
 
 
 // ============================================
-// FETCH REAL MARKET DATA
+// FETCH LIVE MARKET DATA
 // ============================================
 
 async function fetchMarketData() {
-
-  if (!MARKET_API_URL) {
-
-    console.warn(
-      "Market API is not configured."
-    );
-
-    MARKET_DATA.status =
-      "API_NOT_CONFIGURED";
-
-    return false;
-
-  }
-
 
   try {
 
@@ -461,6 +395,12 @@ async function fetchMarketData() {
       await response.json();
 
 
+    console.log(
+      "Quotes API response:",
+      data
+    );
+
+
     const success =
       saveMarketData(data);
 
@@ -478,7 +418,6 @@ async function fetchMarketData() {
     return true;
 
   }
-
 
   catch (error) {
 
@@ -510,22 +449,17 @@ if (
   window.MARKET_DATA =
     MARKET_DATA;
 
-
   window.saveMarketData =
     saveMarketData;
-
 
   window.getMarketStock =
     getMarketStock;
 
-
   window.getAllMarketData =
     getAllMarketData;
 
-
   window.getMarketStatus =
     getMarketStatus;
-
 
   window.fetchMarketData =
     fetchMarketData;
@@ -547,6 +481,11 @@ console.log(
 
 console.log(
   "Source: KOTAK NEO"
+);
+
+console.log(
+  "API:",
+  MARKET_API_URL
 );
 
 console.log(
