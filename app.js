@@ -2,6 +2,7 @@
 // PROTOTYPE-1
 // AI STOCK ASSISTANT
 // APP ENGINE
+// LIVE MARKET DATA
 // ============================================
 
 
@@ -63,30 +64,6 @@ const NIFTY_50_STOCKS = [
 
 
 // ============================================
-// TEST MARKET DATA
-// ============================================
-
-const TEST_MARKET_DATA = {};
-
-NIFTY_50_STOCKS.forEach(function (stock, index) {
-
-  const price =
-    500 + (index * 37);
-
-  const change =
-    Number(
-      ((((index * 7) % 15) - 5) * 0.45).toFixed(2)
-    );
-
-  TEST_MARKET_DATA[stock.symbol] = {
-    price: price,
-    change: change
-  };
-
-});
-
-
-// ============================================
 // APP STATE
 // ============================================
 
@@ -96,7 +73,7 @@ const APP_STATE = {
     NIFTY_50_STOCKS.length,
 
   marketDataStatus:
-    "TEST READY",
+    "CONNECTING",
 
   top20: [],
 
@@ -113,10 +90,8 @@ const APP_STATE = {
 function getStockInfo(symbol) {
 
   return NIFTY_50_STOCKS.find(
-    function (stock) {
-
+    function(stock) {
       return stock.symbol === symbol;
-
     }
   ) || null;
 
@@ -124,18 +99,42 @@ function getStockInfo(symbol) {
 
 
 // ============================================
-// CALCULATE TOP 20
+// CALCULATE TOP 20 FROM LIVE DATA
 // ============================================
 
 function calculateTop20() {
 
   const rankings = [];
 
+  const liveData =
+    window.MARKET_DATA &&
+    window.MARKET_DATA.stocks
+      ? window.MARKET_DATA.stocks
+      : {};
+
+
   NIFTY_50_STOCKS.forEach(
-    function (stock) {
+    function(stock) {
 
       const data =
-        TEST_MARKET_DATA[stock.symbol] || {};
+        liveData[stock.symbol] || {};
+
+
+      const price =
+        Number(data.price) || 0;
+
+
+      const change =
+        Number(data.change) || 0;
+
+
+      // Only include stocks for which
+      // live quote data was received.
+
+      if (price <= 0) {
+        return;
+      }
+
 
       rankings.push({
 
@@ -149,13 +148,13 @@ function calculateTop20() {
           stock.sector,
 
         price:
-          Number(data.price) || 0,
+          price,
 
         change:
-          Number(data.change) || 0,
+          change,
 
         score:
-          Number(data.change) || 0
+          change
 
       });
 
@@ -164,20 +163,16 @@ function calculateTop20() {
 
 
   rankings.sort(
-    function (a, b) {
-
+    function(a, b) {
       return b.score - a.score;
-
     }
   );
 
 
   rankings.forEach(
-    function (stock, index) {
-
+    function(stock, index) {
       stock.rank =
         index + 1;
-
     }
   );
 
@@ -267,9 +262,18 @@ function analyzeInvestmentAmount(amount) {
 // MARKET DATA ACCESS
 // ============================================
 
-function getTestMarketData() {
+function getMarketData() {
 
-  return TEST_MARKET_DATA;
+  if (
+    window.MARKET_DATA &&
+    window.MARKET_DATA.stocks
+  ) {
+
+    return window.MARKET_DATA.stocks;
+
+  }
+
+  return {};
 
 }
 
@@ -296,6 +300,94 @@ function getAppStatus() {
 
 
 // ============================================
+// LOAD LIVE MARKET DATA
+// ============================================
+
+async function initializeLiveMarketData() {
+
+  console.log(
+    "Connecting to live market data..."
+  );
+
+
+  APP_STATE.marketDataStatus =
+    "LOADING";
+
+
+  if (
+    typeof window.fetchMarketData !==
+    "function"
+  ) {
+
+    console.error(
+      "fetchMarketData() not available."
+    );
+
+
+    APP_STATE.marketDataStatus =
+      "ERROR";
+
+
+    return false;
+
+  }
+
+
+  const success =
+    await window.fetchMarketData();
+
+
+  if (!success) {
+
+    APP_STATE.marketDataStatus =
+      "ERROR";
+
+
+    return false;
+
+  }
+
+
+  const status =
+    window.getMarketStatus
+      ? window.getMarketStatus()
+      : null;
+
+
+  if (
+    status &&
+    status.stockCount > 0
+  ) {
+
+    APP_STATE.marketDataStatus =
+      "LIVE";
+
+
+    calculateTop20();
+
+
+    console.log(
+      "LIVE market data connected:",
+      status.stockCount,
+      "stocks"
+    );
+
+
+    return true;
+
+  }
+
+
+  APP_STATE.marketDataStatus =
+    "NO_DATA";
+
+
+  return false;
+
+}
+
+
+// ============================================
 // BROWSER ACCESS
 // ============================================
 
@@ -303,9 +395,6 @@ if (typeof window !== "undefined") {
 
   window.NIFTY_50_STOCKS =
     NIFTY_50_STOCKS;
-
-  window.TEST_MARKET_DATA =
-    TEST_MARKET_DATA;
 
   window.APP_STATE =
     APP_STATE;
@@ -319,11 +408,14 @@ if (typeof window !== "undefined") {
   window.analyzeInvestmentAmount =
     analyzeInvestmentAmount;
 
-  window.getTestMarketData =
-    getTestMarketData;
+  window.getMarketData =
+    getMarketData;
 
   window.getAppStatus =
     getAppStatus;
+
+  window.initializeLiveMarketData =
+    initializeLiveMarketData;
 
 }
 
