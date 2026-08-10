@@ -9,7 +9,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // Get today's Scripmaster file paths from Neo
+    // Today's Kotak Neo Scripmaster
     const pathResponse = await fetch(
       "https://mis.kotaksecurities.com/script-details/1.0/masterscrip/file-paths",
       {
@@ -19,50 +19,40 @@ export default async function handler(req, res) {
       }
     );
 
-    if (!pathResponse.ok) {
-      return res.status(pathResponse.status).json({
-        success: false,
-        error: "Neo Scripmaster API failed"
-      });
-    }
-
     const pathData = await pathResponse.json();
 
-    const files = pathData?.data?.filesPaths || [];
-
-    const nseFile = files.find(
-      (url) => url.includes("nse_cm-v1.csv")
+    const nseFile = pathData?.data?.filesPaths?.find(
+      url => url.includes("nse_cm-v1.csv")
     );
 
     if (!nseFile) {
       return res.status(500).json({
         success: false,
-        error: "NSE CM scripmaster file not found"
+        error: "NSE CM scripmaster not found"
       });
     }
 
-    // Download NSE Cash Scripmaster
     const csvResponse = await fetch(nseFile);
+    const csv = await csvResponse.text();
 
-    if (!csvResponse.ok) {
-      return res.status(csvResponse.status).json({
-        success: false,
-        error: "Unable to download NSE scripmaster"
-      });
-    }
+    const lines = csv.split(/\r?\n/).filter(Boolean);
 
-    const csvText = await csvResponse.text();
+    const headers = lines[0].split(",");
 
-    // Return only basic information for the first test.
-    const lines = csvText.split(/\r?\n/).filter(Boolean);
+    const symbolIndex = headers.indexOf("pSymbol");
+    const nameIndex = headers.indexOf("pSymbolName");
+    const exchangeIndex = headers.indexOf("pExchSeg");
 
     return res.status(200).json({
       success: true,
-      project: "Prototype-1",
       source: "Kotak Neo Scripmaster",
-      file: nseFile,
-      totalRows: lines.length,
-      firstRows: lines.slice(0, 3)
+      totalRows: lines.length - 1,
+      columns: {
+        pSymbol: symbolIndex,
+        pSymbolName: nameIndex,
+        pExchSeg: exchangeIndex
+      },
+      sample: lines.slice(1, 6)
     });
 
   } catch (error) {
