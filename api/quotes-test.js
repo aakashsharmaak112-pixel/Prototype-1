@@ -10,26 +10,115 @@ export default async function handler(req, res) {
       });
     }
 
-    // HDFCBANK from Kotak Neo NSE scripmaster
-    // pSymbol = 1333
-    const neoSymbol = "nse_cm|1333";
+    // 50 Nifty stocks from Kotak Neo Scripmaster
+    const stocks = [
+      ["MARUTI", "10999"],
+      ["ULTRACEMCO", "11532"],
+      ["TCS", "11536"],
+      ["GRASIM", "1232"],
+      ["JSWSTEEL", "11723"],
+      ["LT", "11483"],
+      ["BHARTIARTL", "10604"],
+      ["HEROMOTOCO", "1348"],
+      ["NTPC", "11630"],
+      ["HINDALCO", "1363"],
 
-    const url =
-      `${baseUrl}/script-details/1.0/quotes/neosymbol/${encodeURIComponent(neoSymbol)}/all`;
+      ["HINDUNILVR", "1394"],
+      ["HDFCBANK", "1333"],
+      ["TECHM", "13538"],
+      ["BAJAJFINSV", "16675"],
+      ["TITAN", "3506"],
+      ["RELIANCE", "2885"],
+      ["SBIN", "3045"],
+      ["ONGC", "2475"],
+      ["MAXHEALTH", "22377"],
+      ["TRENT", "1964"],
 
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": accessToken
+      ["COALINDIA", "20374"],
+      ["NESTLEIND", "17963"],
+      ["APOLLOHOSP", "157"],
+      ["ADANIPORTS", "15083"],
+      ["POWERGRID", "14977"],
+      ["ASIANPAINT", "236"],
+      ["INFY", "1594"],
+      ["M&M", "2031"],
+      ["KOTAKBANK", "1922"],
+      ["ADANIENT", "25"],
+
+      ["ITC", "1660"],
+      ["TATACONSUM", "3432"],
+      ["BAJAJ-AUTO", "16669"],
+      ["SBILIFE", "21808"],
+      ["SUNPHARMA", "3351"],
+      ["TATASTEEL", "3499"],
+      ["BAJFINANCE", "317"],
+      ["SHRIRAMFIN", "4306"],
+      ["BEL", "383"],
+      ["ICICIBANK", "4963"],
+
+      ["HDFCLIFE", "467"],
+      ["WIPRO", "3787"],
+      ["INDUSINDBK", "5258"],
+      ["ETERNAL", "5097"],
+      ["AXISBANK", "5900"],
+      ["HCLTECH", "7229"],
+      ["JINDALSTEL", "6733"],
+      ["CIPLA", "694"],
+      ["EICHERMOT", "910"],
+      ["DRREDDY", "881"]
+    ];
+
+    const batchSize = 10;
+    const results = [];
+    const errors = [];
+
+    for (let i = 0; i < stocks.length; i += batchSize) {
+      const batch = stocks.slice(i, i + batchSize);
+
+      const query = batch
+        .map(([, pSymbol]) => `nse_cm|${pSymbol}`)
+        .join(",");
+
+      const url =
+        `${baseUrl}/script-details/1.0/quotes/neosymbol/${encodeURIComponent(query)}/all`;
+
+      try {
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": accessToken
+          }
+        });
+
+        const data = await response.json();
+
+        if (response.ok && Array.isArray(data)) {
+          results.push(...data);
+        } else if (response.ok && Array.isArray(data?.data)) {
+          results.push(...data.data);
+        } else {
+          errors.push({
+            batch: i / batchSize + 1,
+            status: response.status,
+            response: data
+          });
+        }
+      } catch (error) {
+        errors.push({
+          batch: i / batchSize + 1,
+          error: error.message
+        });
       }
-    });
+    }
 
-    const data = await response.json();
-
-    return res.status(response.status).json({
-      success: response.ok,
-      neoResponse: data
+    return res.status(200).json({
+      success: errors.length === 0,
+      totalRequested: stocks.length,
+      totalReceived: results.length,
+      totalErrors: errors.length,
+      stocks: results,
+      errors
     });
 
   } catch (error) {
