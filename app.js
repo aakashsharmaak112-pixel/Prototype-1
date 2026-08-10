@@ -64,11 +64,10 @@ const NIFTY_50_STOCKS = [
   { symbol: "TRENT", name: "Trent", sector: "Consumer Services" },
   { symbol: "ULTRACEMCO", name: "UltraTech Cement", sector: "Construction Materials" },
   { symbol: "WIPRO", name: "Wipro", sector: "Information Technology" },
+  { symbol: "HINDZINC", name: "Hindustan Zinc", sector: "Metals & Mining" },
 
-  // Current frontend universe is kept at 50 entries.
-  // This entry is retained until the backend/Nifty constituent
-  // synchronization is completed.
-  { symbol: "HINDZINC", name: "Hindustan Zinc", sector: "Metals & Mining" }
+  // 50th stock
+  { symbol: "TATAMOTORS", name: "Tata Motors", sector: "Automobile" }
 
 ];
 
@@ -82,9 +81,6 @@ const APP_STATE = {
   stockCount:
     NIFTY_50_STOCKS.length,
 
-  liveStockCount:
-    0,
-
   marketDataStatus:
     "CONNECTING",
 
@@ -94,22 +90,6 @@ const APP_STATE = {
     10000
 
 };
-
-
-// ============================================
-// SAFE NUMBER
-// ============================================
-
-function safeNumber(value) {
-
-  const number =
-    Number(value);
-
-  return Number.isFinite(number)
-    ? number
-    : 0;
-
-}
 
 
 // ============================================
@@ -130,72 +110,12 @@ function getStockInfo(symbol) {
 
 
 // ============================================
-// NORMALIZE LIVE QUOTE
-// ============================================
-//
-// Backend may return different field names.
-// This function tries multiple common fields.
-//
-// ============================================
-
-function normalizeQuote(data) {
-
-  if (!data || typeof data !== "object") {
-
-    return null;
-
-  }
-
-
-  const price =
-    safeNumber(
-      data.price ??
-      data.ltp ??
-      data.last_price ??
-      data.lastTradedPrice ??
-      data.last_traded_price
-    );
-
-
-  const change =
-    safeNumber(
-      data.change ??
-      data.percentage_change ??
-      data.percent_change ??
-      data.change_percent ??
-      data.change_percentage ??
-      data.pChange
-    );
-
-
-  if (price <= 0) {
-
-    return null;
-
-  }
-
-
-  return {
-
-    price:
-      price,
-
-    change:
-      change
-
-  };
-
-}
-
-
-// ============================================
 // CALCULATE TOP 20 FROM LIVE DATA
 // ============================================
 
 function calculateTop20() {
 
   const rankings = [];
-
 
   const liveData =
     window.MARKET_DATA &&
@@ -207,69 +127,19 @@ function calculateTop20() {
   NIFTY_50_STOCKS.forEach(
     function(stock) {
 
-
-      let data =
-        liveData[
-          stock.symbol
-        ];
+      const data =
+        liveData[stock.symbol] || {};
 
 
-      // --------------------------------------
-      // If data is not directly keyed by
-      // symbol, search through returned quotes.
-      // --------------------------------------
-
-      if (!data) {
-
-        const keys =
-          Object.keys(liveData);
+      const price =
+        Number(data.price) || 0;
 
 
-        for (
-          let i = 0;
-          i < keys.length;
-          i++
-        ) {
-
-          const item =
-            liveData[keys[i]];
+      const change =
+        Number(data.change) || 0;
 
 
-          const returnedSymbol =
-            String(
-              item?.display_symbol ??
-              item?.symbol ??
-              item?.trading_symbol ??
-              ""
-            )
-            .replace(
-              "-EQ",
-              ""
-            );
-
-
-          if (
-            returnedSymbol ===
-            stock.symbol
-          ) {
-
-            data =
-              item;
-
-            break;
-
-          }
-
-        }
-
-      }
-
-
-      const quote =
-        normalizeQuote(data);
-
-
-      if (!quote) {
+      if (price <= 0) {
 
         return;
 
@@ -288,13 +158,13 @@ function calculateTop20() {
           stock.sector,
 
         price:
-          quote.price,
+          price,
 
         change:
-          quote.change,
+          change,
 
         score:
-          quote.change
+          change
 
       });
 
@@ -302,25 +172,14 @@ function calculateTop20() {
   );
 
 
-  // ------------------------------------------
-  // SORT
-  // ------------------------------------------
-
   rankings.sort(
     function(a, b) {
 
-      return (
-        b.score -
-        a.score
-      );
+      return b.score - a.score;
 
     }
   );
 
-
-  // ------------------------------------------
-  // RANK
-  // ------------------------------------------
 
   rankings.forEach(
     function(stock, index) {
@@ -332,15 +191,8 @@ function calculateTop20() {
   );
 
 
-  APP_STATE.liveStockCount =
-    rankings.length;
-
-
   APP_STATE.top20 =
-    rankings.slice(
-      0,
-      20
-    );
+    rankings.slice(0, 20);
 
 
   return APP_STATE.top20;
@@ -358,15 +210,11 @@ function analyzeInvestmentAmount(amount) {
     Number(amount);
 
 
-  if (
-    !amount ||
-    amount <= 0
-  ) {
+  if (!amount || amount <= 0) {
 
     return {
 
-      success:
-        false,
+      success: false,
 
       message:
         "Please valid investment amount enter karein."
@@ -383,9 +231,7 @@ function analyzeInvestmentAmount(amount) {
   let message;
 
 
-  if (
-    amount < 5000
-  ) {
+  if (amount < 5000) {
 
     message =
       "₹" +
@@ -394,9 +240,7 @@ function analyzeInvestmentAmount(amount) {
 
   }
 
-  else if (
-    amount < 25000
-  ) {
+  else if (amount < 25000) {
 
     message =
       "₹" +
@@ -443,7 +287,6 @@ function getMarketData() {
 
   }
 
-
   return {};
 
 }
@@ -459,9 +302,6 @@ function getAppStatus() {
 
     stockCount:
       NIFTY_50_STOCKS.length,
-
-    liveStockCount:
-      APP_STATE.liveStockCount,
 
     marketData:
       APP_STATE.marketDataStatus,
@@ -547,13 +387,7 @@ async function initializeLiveMarketData() {
     console.log(
       "LIVE market data connected:",
       status.stockCount,
-      "quotes received"
-    );
-
-
-    console.log(
-      "Matched Nifty stocks:",
-      APP_STATE.liveStockCount
+      "stocks"
     );
 
 
@@ -575,41 +409,28 @@ async function initializeLiveMarketData() {
 // BROWSER ACCESS
 // ============================================
 
-if (
-  typeof window !== "undefined"
-) {
+if (typeof window !== "undefined") {
 
   window.NIFTY_50_STOCKS =
     NIFTY_50_STOCKS;
 
-
   window.APP_STATE =
     APP_STATE;
-
 
   window.calculateTop20 =
     calculateTop20;
 
-
   window.getStockInfo =
     getStockInfo;
-
 
   window.analyzeInvestmentAmount =
     analyzeInvestmentAmount;
 
-
   window.getMarketData =
     getMarketData;
 
-
   window.getAppStatus =
     getAppStatus;
-
-
-  window.normalizeQuote =
-    normalizeQuote;
-
 
   window.initializeLiveMarketData =
     initializeLiveMarketData;
@@ -630,7 +451,7 @@ console.log(
 );
 
 console.log(
-  "Nifty 50 configured:",
+  "Nifty 50:",
   NIFTY_50_STOCKS.length
 );
 
