@@ -10,7 +10,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // 50 Nifty stocks from Kotak Neo Scripmaster
     const stocks = [
       ["MARUTI", "10999"],
       ["ULTRACEMCO", "11532"],
@@ -72,59 +71,227 @@ export default async function handler(req, res) {
     const results = [];
     const errors = [];
 
-    for (let i = 0; i < stocks.length; i += batchSize) {
-      const batch = stocks.slice(i, i + batchSize);
+    function num(value) {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : 0;
+    }
 
-      const query = batch
-        .map(([, pSymbol]) => `nse_cm|${pSymbol}`)
-        .join(",");
+    function normalizeQuote(q, fallbackSymbol) {
+      if (!q || typeof q !== "object") return null;
+
+      const price = num(
+        q.ltp ??
+        q.last_price ??
+        q.lastPrice ??
+        q.lp
+      );
+
+      const previousClose = num(
+        q.previous_close ??
+        q.prev_close ??
+        q.previousClose ??
+        q.prevClose ??
+        q.close_price ??
+        q.close
+      );
+
+      let rupeeChange = num(
+        q.net_change ??
+        q.netChange ??
+        q.change ??
+        q.chg
+      );
+
+      let changePercent = num(
+        q.percentage_change ??
+        q.percent_change ??
+        q.percentChange ??
+        q.change_percent ??
+        q.changePercent ??
+        q.pChange
+      );
+
+      /*
+       * IMPORTANT:
+       * If Neo gives previous close,
+       * calculate percentage ourselves.
+       */
+
+      if (
+        previousClose > 0 &&
+        price > 0
+      ) {
+        rupeeChange =
+          price - previousClose;
+
+        changePercent =
+          (
+            (price - previousClose) /
+            previousClose
+          ) * 100;
+      }
+
+      return {
+        symbol:
+          q.display_symbol ||
+          q.symbol ||
+          fallbackSymbol,
+
+        exchange_token:
+          q.exchange_token ||
+          null,
+
+        display_symbol:
+          q.display_symbol ||
+          null,
+
+        ltp:
+          price,
+
+        previous_close:
+          previousClose,
+
+        change:
+          Number(rupeeChange.toFixed(2)),
+
+        changePercent:
+          Number(changePercent.toFixed(2))
+      };
+    }
+
+    for (
+      let i = 0;
+      i < stocks.length;
+      i += batchSize
+    ) {
+      const batch =
+        stocks.slice(i, i + batchSize);
+
+      const query =
+        batch
+          .map(
+            ([, pSymbol]) =>
+              `nse_cm|${pSymbol}`
+          )
+          .join(",");
 
       const url =
         `${baseUrl}/script-details/1.0/quotes/neosymbol/${encodeURIComponent(query)}/all`;
 
       try {
-        const response = await fetch(url, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": accessToken
-          }
-        });
-
-        const data = await response.json();
-
-        if (response.ok && Array.isArray(data)) {
-          results.push(...data);
-        } else if (response.ok && Array.isArray(data?.data)) {
-          results.push(...data.data);
-        } else {
-          errors.push({
-            batch: i / batchSize + 1,
-            status: response.status,
-            response: data
+        const response =
+          await fetch(url, {
+            method: "GET",
+            headers: {
+              "Content-Type":
+                "application/json",
+              "Authorization":
+                accessToken
+            }
           });
+
+        const data =
+          await response.json();
+
+        let batchResults = [];
+
+        if (
+          response.ok &&
+          Array.isArray(data)
+        ) {
+          batchResults = data;
         }
-      } catch (error) {
+
+        else if (
+          response.ok &&
+          Array.isArray(data?.data)
+        ) {
+          batchResults = data.data;
+        }
+
+        else {
+          errors.push({
+            batch:
+              i / batchSize + 1,
+
+            status:
+              response.status,
+
+            response:
+              data
+          });
+
+          continue;
+        }
+
+        batchResults.forEach(
+          (quote) => {
+
+            const normalized =
+              normalizeQuote(
+                quote,
+                ""
+              );
+
+            if (normalized) {
+              results.push(
+                normalized
+              );
+            }
+
+          }
+        );
+
+      }
+
+      catch (error) {
+
         errors.push({
-          batch: i / batchSize + 1,
-          error: error.message
+          batch:
+            i / batchSize + 1,
+
+          error:
+            error.message
         });
+
       }
     }
 
     return res.status(200).json({
-      success: errors.length === 0,
-      totalRequested: stocks.length,
-      totalReceived: results.length,
-      totalErrors: errors.length,
-      stocks: results,
-      errors
+
+      success:
+        errors.length === 0,
+
+      totalRequested:
+        stocks.length,
+
+      totalReceived:
+        results.length,
+
+      totalErrors:
+        errors.length,
+
+      stocks:
+        results,
+
+      errors:
+        errors
+
     });
 
-  } catch (error) {
+  }
+
+  catch (error) {
+
     return res.status(500).json({
-      success: false,
-      error: error.message
+
+      success:
+        false,
+
+      error:
+        error.message
+
     });
+
   }
 }
