@@ -16,8 +16,6 @@ const MARKET_DATA = {
 // API CONFIGURATION
 // ============================================
 
-// IMPORTANT:
-// Vercel file = api/quotes.js
 const MARKET_API_URL = "/api/quotes";
 
 
@@ -38,7 +36,7 @@ function normalizeSymbol(symbol) {
 
 
 // ============================================
-// NUMBER HELPER
+// NUMBER CONVERTER
 // ============================================
 
 function toNumber(value) {
@@ -51,17 +49,20 @@ function toNumber(value) {
     return 0;
   }
 
-  const n = Number(
-    String(value).replace(/,/g, "")
-  );
+  const number =
+    Number(
+      String(value).replace(/,/g, "")
+    );
 
-  return Number.isFinite(n) ? n : 0;
+  return Number.isFinite(number)
+    ? number
+    : 0;
 
 }
 
 
 // ============================================
-// NORMALIZE NEO QUOTE
+// NORMALIZE KOTAK NEO QUOTE
 // ============================================
 
 function normalizeNeoQuote(quote) {
@@ -71,15 +72,13 @@ function normalizeNeoQuote(quote) {
   }
 
 
-  // SYMBOL
-
-  const symbol = normalizeSymbol(
-    quote.display_symbol ||
-    quote.displaySymbol ||
-    quote.symbol ||
-    quote.trading_symbol ||
-    quote.tradingSymbol
-  );
+  const symbol =
+    normalizeSymbol(
+      quote.display_symbol ||
+      quote.symbol ||
+      quote.trading_symbol ||
+      quote.neo_symbol
+    );
 
 
   if (!symbol) {
@@ -87,16 +86,14 @@ function normalizeNeoQuote(quote) {
   }
 
 
-  // LIVE PRICE
-
-  const price = toNumber(
-    quote.price ??
-    quote.ltp ??
-    quote.LTP ??
-    quote.last_price ??
-    quote.lastPrice ??
-    quote.last_traded_price
-  );
+  const price =
+    toNumber(
+      quote.ltp ??
+      quote.last_price ??
+      quote.lastPrice ??
+      quote.close_price ??
+      quote.close
+    );
 
 
   if (price <= 0) {
@@ -104,58 +101,57 @@ function normalizeNeoQuote(quote) {
   }
 
 
-  // PREVIOUS CLOSE
-
-  const previousClose = toNumber(
-    quote.previous_close ??
-    quote.previousClose ??
-    quote.prev_close ??
-    quote.prevClose ??
-    quote.close_price ??
-    quote.close
-  );
-
-
-  // CHANGE %
-
-  let changePercent = toNumber(
-    quote.changePercent ??
-    quote.percentage_change ??
-    quote.percentageChange ??
-    quote.percent_change ??
-    quote.percentChange ??
-    quote.change_percent ??
-    quote.pChange
-  );
+  let percentChange =
+    toNumber(
+      quote.percentage_change ??
+      quote.percent_change ??
+      quote.percentChange ??
+      quote.change_percent ??
+      quote.changePercent ??
+      quote.pChange
+    );
 
 
-  // RUPEE CHANGE
+  const previousClose =
+    toNumber(
+      quote.previous_close ??
+      quote.prev_close ??
+      quote.prevClose ??
+      quote.previousClose ??
+      quote.pc
+    );
 
-  let rupeeChange = toNumber(
-    quote.change ??
-    quote.net_change ??
-    quote.netChange ??
-    quote.chg
-  );
-
-
-  // ==========================================
-  // CALCULATE FROM LTP + PREVIOUS CLOSE
-  // ==========================================
 
   if (
-    price > 0 &&
-    previousClose > 0
+    previousClose > 0 &&
+    price > 0
+  ) {
+
+    percentChange =
+      (
+        (price - previousClose) /
+        previousClose
+      ) * 100;
+
+  }
+
+
+  let rupeeChange =
+    toNumber(
+      quote.net_change ??
+      quote.netChange ??
+      quote.change ??
+      quote.chg
+    );
+
+
+  if (
+    previousClose > 0 &&
+    price > 0
   ) {
 
     rupeeChange =
       price - previousClose;
-
-    changePercent =
-      (
-        rupeeChange /
-        previousClose
-      ) * 100;
 
   }
 
@@ -164,14 +160,17 @@ function normalizeNeoQuote(quote) {
 
     symbol: symbol,
 
-    price:
-      Number(price.toFixed(2)),
+    price: price,
 
     change:
-      Number(changePercent.toFixed(2)),
+      Number(
+        percentChange.toFixed(2)
+      ),
 
     rupeeChange:
-      Number(rupeeChange.toFixed(2))
+      Number(
+        rupeeChange.toFixed(2)
+      )
 
   };
 
@@ -205,18 +204,18 @@ function saveMarketData(data) {
   }
 
   else if (
-    Array.isArray(data.stocks)
-  ) {
-
-    quotes = data.stocks;
-
-  }
-
-  else if (
     Array.isArray(data.data)
   ) {
 
     quotes = data.data;
+
+  }
+
+  else if (
+    Array.isArray(data.stocks)
+  ) {
+
+    quotes = data.stocks;
 
   }
 
@@ -313,6 +312,7 @@ function getMarketStock(symbol) {
   const key =
     normalizeSymbol(symbol);
 
+
   return (
     MARKET_DATA.stocks[key] ||
     null
@@ -393,12 +393,6 @@ async function fetchMarketData() {
 
     const data =
       await response.json();
-
-
-    console.log(
-      "Quotes API response:",
-      data
-    );
 
 
     const success =
@@ -484,8 +478,7 @@ console.log(
 );
 
 console.log(
-  "API:",
-  MARKET_API_URL
+  "API: /api/quotes"
 );
 
 console.log(
