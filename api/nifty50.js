@@ -9,7 +9,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Current Nifty 50 symbols
     const nifty50 = [
       "ADANIENT",
       "ADANIPORTS",
@@ -86,10 +85,10 @@ export default async function handler(req, res) {
     const csv = await csvResponse.text();
 
     const lines = csv.split(/\r?\n/).filter(Boolean);
-
     const headers = lines[0].split(",");
-    const symbolIndex = headers.indexOf("pSymbol");
-    const nameIndex = headers.indexOf("pSymbolName");
+
+    const pSymbolIndex = headers.indexOf("pSymbol");
+    const pSymbolNameIndex = headers.indexOf("pSymbolName");
     const exchangeIndex = headers.indexOf("pExchSeg");
 
     const result = [];
@@ -97,16 +96,15 @@ export default async function handler(req, res) {
     for (const line of lines.slice(1)) {
       const columns = line.split(",");
 
-      const symbol = columns[symbolIndex];
+      const tradingSymbol = columns[pSymbolNameIndex];
 
       if (
         columns[exchangeIndex] === "nse_cm" &&
-        nifty50.includes(symbol)
+        nifty50.includes(tradingSymbol)
       ) {
         result.push({
-          symbol,
-          pSymbol: columns[0],
-          name: columns[nameIndex]
+          symbol: tradingSymbol,
+          pSymbol: columns[pSymbolIndex]
         });
       }
     }
