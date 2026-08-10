@@ -1,7 +1,7 @@
 // ============================================
 // PROTOTYPE-1
 // AI STOCK ASSISTANT
-// APP ENGINE - SELF CONTAINED
+// APP ENGINE
 // ============================================
 
 
@@ -70,14 +70,17 @@ const TEST_MARKET_DATA = {};
 
 NIFTY_50_STOCKS.forEach(function (stock, index) {
 
+  const price =
+    500 + (index * 37);
+
+  const change =
+    Number(
+      ((((index * 7) % 15) - 5) * 0.45).toFixed(2)
+    );
+
   TEST_MARKET_DATA[stock.symbol] = {
-
-    price: 500 + (index * 37),
-
-    change: Number(
-      (((index * 7) % 15) - 5) * 0.45
-    .toFixed(2))
-
+    price: price,
+    change: change
   };
 
 });
@@ -89,50 +92,72 @@ NIFTY_50_STOCKS.forEach(function (stock, index) {
 
 const APP_STATE = {
 
-  stockCount: NIFTY_50_STOCKS.length,
+  stockCount:
+    NIFTY_50_STOCKS.length,
 
-  marketDataStatus: "TEST READY",
+  marketDataStatus:
+    "TEST READY",
 
   top20: [],
 
-  investmentAmount: 10000
+  investmentAmount:
+    10000
 
 };
 
 
 // ============================================
-// INTERNAL RANKING ENGINE
+// GET STOCK INFORMATION
+// ============================================
+
+function getStockInfo(symbol) {
+
+  return NIFTY_50_STOCKS.find(
+    function (stock) {
+
+      return stock.symbol === symbol;
+
+    }
+  ) || null;
+
+}
+
+
+// ============================================
+// CALCULATE TOP 20
 // ============================================
 
 function calculateTop20() {
 
-  const rankings = NIFTY_50_STOCKS.map(
+  const rankings = [];
+
+  NIFTY_50_STOCKS.forEach(
     function (stock) {
 
       const data =
         TEST_MARKET_DATA[stock.symbol] || {};
 
-      const change =
-        Number(data.change) || 0;
+      rankings.push({
 
-      const price =
-        Number(data.price) || 0;
+        symbol:
+          stock.symbol,
 
-      return {
+        name:
+          stock.name,
 
-        symbol: stock.symbol,
+        sector:
+          stock.sector,
 
-        name: stock.name,
+        price:
+          Number(data.price) || 0,
 
-        sector: stock.sector,
+        change:
+          Number(data.change) || 0,
 
-        price: price,
+        score:
+          Number(data.change) || 0
 
-        change: change,
-
-        score: change
-
-      };
+      });
 
     }
   );
@@ -150,7 +175,8 @@ function calculateTop20() {
   rankings.forEach(
     function (stock, index) {
 
-      stock.rank = index + 1;
+      stock.rank =
+        index + 1;
 
     }
   );
@@ -166,43 +192,31 @@ function calculateTop20() {
 
 
 // ============================================
-// GET STOCK
-// ============================================
-
-function getStockInfo(symbol) {
-
-  return NIFTY_50_STOCKS.find(
-    function (stock) {
-
-      return stock.symbol === symbol;
-
-    }
-  ) || null;
-
-}
-
-
-// ============================================
 // INVESTMENT ANALYSIS
 // ============================================
 
 function analyzeInvestmentAmount(amount) {
 
-  amount = Number(amount);
+  amount =
+    Number(amount);
 
 
   if (!amount || amount <= 0) {
 
     return {
+
       success: false,
+
       message:
         "Please valid investment amount enter karein."
+
     };
 
   }
 
 
-  APP_STATE.investmentAmount = amount;
+  APP_STATE.investmentAmount =
+    amount;
 
 
   let message;
@@ -238,9 +252,43 @@ function analyzeInvestmentAmount(amount) {
 
   return {
 
-    success: true,
+    success:
+      true,
 
-    message: message
+    message:
+      message
+
+  };
+
+}
+
+
+// ============================================
+// MARKET DATA ACCESS
+// ============================================
+
+function getTestMarketData() {
+
+  return TEST_MARKET_DATA;
+
+}
+
+
+function getAppStatus() {
+
+  return {
+
+    stockCount:
+      NIFTY_50_STOCKS.length,
+
+    marketData:
+      APP_STATE.marketDataStatus,
+
+    top20Count:
+      APP_STATE.top20.length,
+
+    investmentAmount:
+      APP_STATE.investmentAmount
 
   };
 
@@ -270,6 +318,12 @@ if (typeof window !== "undefined") {
 
   window.analyzeInvestmentAmount =
     analyzeInvestmentAmount;
+
+  window.getTestMarketData =
+    getTestMarketData;
+
+  window.getAppStatus =
+    getAppStatus;
 
 }
 
