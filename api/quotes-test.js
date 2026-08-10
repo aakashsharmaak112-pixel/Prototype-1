@@ -10,7 +10,7 @@ export default async function handler(req, res) {
     }
 
     const url =
-      "https://mis.kotaksecurities.com/script-details/1.0/quotes/neosymbol/nse_cm|Nifty 50,nse_cm|Nifty Bank/all";
+      "https://cis.kotaksecurities.com/script-details/1.0/quotes/neosymbol/nse_cm|12431/all";
 
     const response = await fetch(url, {
       method: "GET",
