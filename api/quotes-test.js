@@ -2,17 +2,16 @@ export default async function handler(req, res) {
   try {
     const baseUrl = process.env.NEO_BASE_URL;
     const accessToken = process.env.NEO_ACCESS_TOKEN;
-    const viewSid = process.env.NEO_VIEW_SID;
-    const viewToken = process.env.NEO_VIEW_TOKEN;
 
-    if (!baseUrl || !accessToken || !viewSid || !viewToken) {
+    if (!baseUrl || !accessToken) {
       return res.status(500).json({
         success: false,
-        error: "Required Kotak Neo environment variables are missing"
+        error: "NEO_BASE_URL or NEO_ACCESS_TOKEN is not configured"
       });
     }
 
-    // HDFCBANK pSymbol from NSE scripmaster
+    // HDFCBANK from Kotak Neo NSE scripmaster
+    // pSymbol = 1333
     const neoSymbol = "nse_cm|1333";
 
     const url =
@@ -22,10 +21,7 @@ export default async function handler(req, res) {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": accessToken,
-        "neo-fin-key": "neotradeapi",
-        "sid": viewSid,
-        "Auth": viewToken
+        "Authorization": accessToken
       }
     });
 
