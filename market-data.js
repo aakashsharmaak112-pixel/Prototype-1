@@ -1,7 +1,6 @@
 // ============================================
 // PROTOTYPE-1
-// MARKET DATA ENGINE
-// LIVE KOTAK NEO QUOTES
+// LIVE MARKET DATA ENGINE
 // ============================================
 
 const MARKET_DATA = {
@@ -12,156 +11,25 @@ const MARKET_DATA = {
 };
 
 
-// --------------------------------------------
-// API CONFIGURATION
-// --------------------------------------------
+// ============================================
+// LIVE NEO API
+// ============================================
 
-const MARKET_API_URL = "/api/quotes-test";
-
-
-// --------------------------------------------
-// Normalize Neo quote
-// --------------------------------------------
-
-function normalizeQuote(quote) {
-
-  if (!quote || typeof quote !== "object") {
-    return null;
-  }
-
-  const displaySymbol =
-    quote.display_symbol ||
-    quote.symbol ||
-    "";
-
-  // Example:
-  // MARUTI-EQ -> MARUTI
-  const symbol =
-    displaySymbol
-      .replace("-EQ", "")
-      .trim();
-
-  if (!symbol) {
-    return null;
-  }
-
-  const price =
-    Number(
-      quote.ltp ||
-      quote.last_price ||
-      quote.price ||
-      0
-    );
-
-  let change =
-    Number(
-      quote.change_percentage ??
-      quote.percent_change ??
-      quote.changePercent ??
-      quote.change ??
-      0
-    );
-
-  // Some APIs may return absolute change.
-  // If percent change is unavailable, keep the
-  // received value rather than inventing one.
-
-  if (!Number.isFinite(change)) {
-    change = 0;
-  }
-
-  return {
-    symbol: symbol,
-    displaySymbol: displaySymbol,
-    price: price,
-    change: change,
-
-    exchangeToken:
-      quote.exchange_token || null,
-
-    exchange:
-      quote.exchange || "nse_cm",
-
-    lastUpdated:
-      quote.lstup_time || null,
-
-    raw: quote
-  };
-
-}
+const MARKET_API_URL =
+  "/api/quotes-test";
 
 
-// --------------------------------------------
-// Convert API response into app data
-// --------------------------------------------
-
-function parseMarketResponse(responseData) {
-
-  if (!responseData || typeof responseData !== "object") {
-
-    console.error(
-      "Invalid market API response"
-    );
-
-    return {};
-
-  }
-
-
-  // Expected response:
-  //
-  // {
-  //   success: true,
-  //   totalRequested: 50,
-  //   totalReceived: 50,
-  //   totalErrors: 0,
-  //   stocks: [...]
-  // }
-
-  const quotes =
-    Array.isArray(responseData.stocks)
-      ? responseData.stocks
-      : [];
-
-
-  const marketStocks = {};
-
-
-  quotes.forEach(
-    function(quote) {
-
-      const normalized =
-        normalizeQuote(quote);
-
-
-      if (!normalized) {
-        return;
-      }
-
-
-      marketStocks[
-        normalized.symbol
-      ] = normalized;
-
-    }
-  );
-
-
-  return marketStocks;
-
-}
-
-
-// --------------------------------------------
-// Save received market data
-// --------------------------------------------
+// ============================================
+// SAVE + NORMALIZE LIVE DATA
+// ============================================
 
 function saveMarketData(data) {
 
-  if (!data || typeof data !== "object") {
+  if (!Array.isArray(data)) {
 
     console.error(
-      "Invalid market data"
+      "Invalid Neo market data:",
+      data
     );
 
     return false;
@@ -169,29 +37,67 @@ function saveMarketData(data) {
   }
 
 
-  const parsedData =
-    parseMarketResponse(data);
+  const stocks = {};
 
 
-  if (
-    !parsedData ||
-    Object.keys(parsedData).length === 0
-  ) {
+  data.forEach(function(item) {
 
-    console.error(
-      "No valid quote data received."
-    );
+    if (!item) return;
 
-    MARKET_DATA.status =
-      "NO_DATA";
 
-    return false;
+    const displaySymbol =
+      String(
+        item.display_symbol || ""
+      )
+      .replace("-EQ", "")
+      .trim();
 
-  }
+
+    if (!displaySymbol) return;
+
+
+    const price =
+      Number(
+        item.ltp ||
+        item.last_traded_price ||
+        item.price ||
+        0
+      );
+
+
+    const change =
+      Number(
+        item.change ||
+        item.percentage_change ||
+        item.net_change_percentage ||
+        0
+      );
+
+
+    stocks[displaySymbol] = {
+
+      symbol:
+        displaySymbol,
+
+      price:
+        price,
+
+      change:
+        change,
+
+      exchangeToken:
+        item.exchange_token || null,
+
+      exchange:
+        item.exchange || "nse_cm"
+
+    };
+
+  });
 
 
   MARKET_DATA.stocks =
-    parsedData;
+    stocks;
 
 
   MARKET_DATA.lastUpdated =
@@ -203,10 +109,8 @@ function saveMarketData(data) {
 
 
   console.log(
-    "Live market data loaded:",
-    Object.keys(
-      parsedData
-    ).length,
+    "LIVE market data loaded:",
+    Object.keys(stocks).length,
     "stocks"
   );
 
@@ -216,29 +120,22 @@ function saveMarketData(data) {
 }
 
 
-// --------------------------------------------
-// Get single stock
-// --------------------------------------------
+// ============================================
+// GET SINGLE STOCK
+// ============================================
 
 function getMarketStock(symbol) {
 
-  if (!symbol) {
-    return null;
-  }
-
-
-  return (
-    MARKET_DATA.stocks[
-      symbol
-    ] || null
-  );
+  return MARKET_DATA.stocks[
+    symbol
+  ] || null;
 
 }
 
 
-// --------------------------------------------
-// Get all stocks
-// --------------------------------------------
+// ============================================
+// GET ALL STOCKS
+// ============================================
 
 function getAllMarketData() {
 
@@ -247,9 +144,9 @@ function getAllMarketData() {
 }
 
 
-// --------------------------------------------
-// Get market status
-// --------------------------------------------
+// ============================================
+// MARKET STATUS
+// ============================================
 
 function getMarketStatus() {
 
@@ -274,9 +171,9 @@ function getMarketStatus() {
 }
 
 
-// --------------------------------------------
-// Fetch real market data
-// --------------------------------------------
+// ============================================
+// FETCH LIVE MARKET DATA
+// ============================================
 
 async function fetchMarketData() {
 
@@ -286,20 +183,11 @@ async function fetchMarketData() {
       "LOADING";
 
 
-    console.log(
-      "Fetching live market data..."
-    );
-
-
     const response =
       await fetch(
         MARKET_API_URL,
         {
           method: "GET",
-          headers: {
-            "Accept":
-              "application/json"
-          },
           cache: "no-store"
         }
       );
@@ -315,46 +203,36 @@ async function fetchMarketData() {
     }
 
 
-    const data =
+    const result =
       await response.json();
 
 
-    // Verify backend result
+    console.log(
+      "Neo API response:",
+      result
+    );
+
 
     if (
-      data.success !== true
+      !result ||
+      result.success !== true ||
+      !Array.isArray(result.stocks)
     ) {
 
       throw new Error(
-        data.error ||
-        "Market API returned unsuccessful response"
+        "Invalid Neo API response"
       );
 
     }
 
 
-    // Safety check
-
-    if (
-      data.totalReceived !==
-      data.totalRequested
-    ) {
-
-      console.warn(
-        "Not all requested stocks received:",
-        data.totalReceived,
-        "/",
-        data.totalRequested
+    const success =
+      saveMarketData(
+        result.stocks
       );
 
-    }
 
-
-    const saved =
-      saveMarketData(data);
-
-
-    if (!saved) {
+    if (!success) {
 
       throw new Error(
         "Unable to save market data"
@@ -363,19 +241,15 @@ async function fetchMarketData() {
     }
 
 
-    console.log(
-      "Market data status:",
-      getMarketStatus()
-    );
-
-
     return true;
 
+  }
 
-  } catch (error) {
+
+  catch (error) {
 
     console.error(
-      "Market data error:",
+      "LIVE market data error:",
       error
     );
 
@@ -391,9 +265,9 @@ async function fetchMarketData() {
 }
 
 
-// --------------------------------------------
-// Make engine available to browser
-// --------------------------------------------
+// ============================================
+// BROWSER ACCESS
+// ============================================
 
 if (
   typeof window !== "undefined"
@@ -425,20 +299,16 @@ if (
 }
 
 
-// --------------------------------------------
-// Startup
-// --------------------------------------------
+// ============================================
+// STARTUP
+// ============================================
 
 console.log(
-  "--------------------------------"
+  "================================"
 );
 
 console.log(
-  "PROTOTYPE-1 MARKET DATA ENGINE"
-);
-
-console.log(
-  "Source: KOTAK NEO"
+  "PROTOTYPE-1 LIVE MARKET DATA ENGINE"
 );
 
 console.log(
@@ -447,10 +317,5 @@ console.log(
 );
 
 console.log(
-  "Status:",
-  MARKET_DATA.status
-);
-
-console.log(
-  "--------------------------------"
+  "================================"
 );
