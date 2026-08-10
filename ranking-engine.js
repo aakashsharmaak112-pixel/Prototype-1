@@ -12,7 +12,7 @@ const RANKING_ENGINE = {
 
 
 // --------------------------------------------
-// Calculate performance score
+// Calculate stock score
 // --------------------------------------------
 
 function calculateScore(stock) {
@@ -28,19 +28,18 @@ function calculateScore(stock) {
 
 
 // --------------------------------------------
-// Rank stocks
+// Rank all available stocks
 // --------------------------------------------
 
 function rankStocks(marketData) {
 
   if (!marketData || typeof marketData !== "object") {
 
-    console.warn("No market data available.");
+    RANKING_ENGINE.status = "NO_DATA";
 
     return [];
 
   }
-
 
   const rankings = Object.entries(marketData).map(
     function ([symbol, data]) {
@@ -61,6 +60,8 @@ function rankStocks(marketData) {
   );
 
 
+  // Highest score first
+
   rankings.sort(
     function (a, b) {
 
@@ -69,6 +70,8 @@ function rankStocks(marketData) {
     }
   );
 
+
+  // Add rank
 
   rankings.forEach(
     function (stock, index) {
@@ -79,13 +82,21 @@ function rankStocks(marketData) {
   );
 
 
-  RANKING_ENGINE.rankings = rankings;
+  // Save complete ranking
+
+  RANKING_ENGINE.rankings =
+    rankings;
+
+
+  // Select Top 20
 
   RANKING_ENGINE.top20 =
     rankings.slice(0, 20);
 
+
   RANKING_ENGINE.lastRun =
     new Date().toISOString();
+
 
   RANKING_ENGINE.status =
     "RANKING_READY";
@@ -119,14 +130,15 @@ function getRankings() {
 
 
 // --------------------------------------------
-// Get ranking status
+// Ranking status
 // --------------------------------------------
 
 function getRankingStatus() {
 
   return {
 
-    status: RANKING_ENGINE.status,
+    status:
+      RANKING_ENGINE.status,
 
     totalStocks:
       RANKING_ENGINE.rankings.length,
@@ -143,30 +155,26 @@ function getRankingStatus() {
 
 
 // --------------------------------------------
-// Run application ranking
+// Run ranking using app market data
 // --------------------------------------------
 
 function runAppRanking() {
 
-  if (
-    typeof window === "undefined"
-  ) {
+  if (typeof window === "undefined") {
 
     return [];
 
   }
 
 
-  // Use the 50-stock test data
-  // created by app.js
-
-  if (
-    !window.TEST_MARKET_DATA
-  ) {
+  if (!window.TEST_MARKET_DATA) {
 
     console.error(
       "TEST_MARKET_DATA not available."
     );
+
+    RANKING_ENGINE.status =
+      "NO_TEST_DATA";
 
     return [];
 
@@ -188,6 +196,9 @@ if (typeof window !== "undefined") {
 
   window.RANKING_ENGINE =
     RANKING_ENGINE;
+
+  window.calculateScore =
+    calculateScore;
 
   window.rankStocks =
     rankStocks;
