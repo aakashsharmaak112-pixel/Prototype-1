@@ -11,77 +11,75 @@ export default async function handler(req, res) {
     }
 
     const stocks = [
-      ["MARUTI", "10999"],
-      ["ULTRACEMCO", "11532"],
-      ["TCS", "11536"],
-      ["GRASIM", "1232"],
-      ["JSWSTEEL", "11723"],
-      ["LT", "11483"],
-      ["BHARTIARTL", "10604"],
-      ["HEROMOTOCO", "1348"],
-      ["NTPC", "11630"],
-      ["HINDALCO", "1363"],
-      ["HINDUNILVR", "1394"],
-      ["HDFCBANK", "1333"],
-      ["TECHM", "13538"],
-      ["BAJAJFINSV", "16675"],
-      ["TITAN", "3506"],
-      ["RELIANCE", "2885"],
-      ["SBIN", "3045"],
-      ["ONGC", "2475"],
-      ["MAXHEALTH", "22377"],
-      ["TRENT", "1964"],
-      ["COALINDIA", "20374"],
-      ["NESTLEIND", "17963"],
-      ["APOLLOHOSP", "157"],
-      ["ADANIPORTS", "15083"],
-      ["POWERGRID", "14977"],
-      ["ASIANPAINT", "236"],
-      ["INFY", "1594"],
-      ["M&M", "2031"],
-      ["KOTAKBANK", "1922"],
-      ["ADANIENT", "25"],
-      ["ITC", "1660"],
-      ["TATACONSUM", "3432"],
-      ["BAJAJ-AUTO", "16669"],
-      ["SBILIFE", "21808"],
-      ["SUNPHARMA", "3351"],
-      ["TATASTEEL", "3499"],
-      ["BAJFINANCE", "317"],
-      ["SHRIRAMFIN", "4306"],
-      ["BEL", "383"],
-      ["ICICIBANK", "4963"],
-      ["HDFCLIFE", "467"],
-      ["WIPRO", "3787"],
-      ["INDUSINDBK", "5258"],
-      ["ETERNAL", "5097"],
-      ["AXISBANK", "5900"],
-      ["HCLTECH", "7229"],
-      ["JINDALSTEL", "6733"],
-      ["CIPLA", "694"],
-      ["EICHERMOT", "910"],
-      ["DRREDDY", "881"]
+      ["MARUTI", "MARUTI-EQ", "10999"],
+      ["ULTRACEMCO", "ULTRACEMCO-EQ", "11532"],
+      ["TCS", "TCS-EQ", "11536"],
+      ["GRASIM", "GRASIM-EQ", "1232"],
+      ["JSWSTEEL", "JSWSTEEL-EQ", "11723"],
+      ["LT", "LT-EQ", "11483"],
+      ["BHARTIARTL", "BHARTIARTL-EQ", "10604"],
+      ["HEROMOTOCO", "HEROMOTOCO-EQ", "1348"],
+      ["NTPC", "NTPC-EQ", "11630"],
+      ["HINDALCO", "HINDALCO-EQ", "1363"],
+      ["HINDUNILVR", "HINDUNILVR-EQ", "1394"],
+      ["HDFCBANK", "HDFCBANK-EQ", "1333"],
+      ["TECHM", "TECHM-EQ", "13538"],
+      ["BAJAJFINSV", "BAJAJFINSV-EQ", "16675"],
+      ["TITAN", "TITAN-EQ", "3506"],
+      ["RELIANCE", "RELIANCE-EQ", "2885"],
+      ["SBIN", "SBIN-EQ", "3045"],
+      ["ONGC", "ONGC-EQ", "2475"],
+      ["MAXHEALTH", "MAXHEALTH-EQ", "22377"],
+      ["TRENT", "TRENT-EQ", "1964"],
+      ["COALINDIA", "COALINDIA-EQ", "20374"],
+      ["NESTLEIND", "NESTLEIND-EQ", "17963"],
+      ["APOLLOHOSP", "APOLLOHOSP-EQ", "157"],
+      ["ADANIPORTS", "ADANIPORTS-EQ", "15083"],
+      ["POWERGRID", "POWERGRID-EQ", "14977"],
+      ["ASIANPAINT", "ASIANPAINT-EQ", "236"],
+      ["INFY", "INFY-EQ", "1594"],
+      ["M&M", "M&M-EQ", "2031"],
+      ["KOTAKBANK", "KOTAKBANK-EQ", "1922"],
+      ["ADANIENT", "ADANIENT-EQ", "25"],
+      ["ITC", "ITC-EQ", "1660"],
+      ["TATACONSUM", "TATACONSUM-EQ", "3432"],
+      ["BAJAJ-AUTO", "BAJAJ-AUTO-EQ", "16669"],
+      ["SBILIFE", "SBILIFE-EQ", "21808"],
+      ["SUNPHARMA", "SUNPHARMA-EQ", "3351"],
+      ["TATASTEEL", "TATASTEEL-EQ", "3499"],
+      ["BAJFINANCE", "BAJFINANCE-EQ", "317"],
+      ["SHRIRAMFIN", "SHRIRAMFIN-EQ", "4306"],
+      ["BEL", "BEL-EQ", "383"],
+      ["ICICIBANK", "ICICIBANK-EQ", "4963"],
+      ["HDFCLIFE", "HDFCLIFE-EQ", "467"],
+      ["WIPRO", "WIPRO-EQ", "3787"],
+      ["INDUSINDBK", "INDUSINDBK-EQ", "5258"],
+      ["ETERNAL", "ETERNAL-EQ", "5097"],
+      ["AXISBANK", "AXISBANK-EQ", "5900"],
+      ["HCLTECH", "HCLTECH-EQ", "7229"],
+      ["JINDALSTEL", "JINDALSTEL-EQ", "6733"],
+      ["CIPLA", "CIPLA-EQ", "694"],
+      ["EICHERMOT", "EICHERMOT-EQ", "910"],
+      ["DRREDDY", "DRREDDY-EQ", "881"]
     ];
+
+    const exchange = "nse_cm";
 
     const results = [];
     const errors = [];
 
-    let diagnosticResponse = null;
-
-    for (const [symbol, token] of stocks) {
+    for (const [symbol, neoSymbol, token] of stocks) {
       try {
-        const neoSymbol = `${symbol}-EQ`;
-
         const url =
-          `${baseUrl.replace(/\/$/, "")}` +
-          `/script-details/1.0/quotes/neosymbol/` +
-          `${encodeURIComponent(neoSymbol)}/all`;
+          `${baseUrl.replace(/\/$/, "")}/quote` +
+          `?exchange_segment=${encodeURIComponent(exchange)}` +
+          `&neo_symbol=${encodeURIComponent(neoSymbol)}`;
 
         const response = await fetch(url, {
           method: "GET",
           headers: {
             Accept: "application/json",
-            Authorization: accessToken
+            Authorization: `Bearer ${accessToken}`
           }
         });
 
@@ -94,79 +92,75 @@ export default async function handler(req, res) {
         } catch (parseError) {
           errors.push({
             symbol,
+            token,
+            neoSymbol,
             status: response.status,
             error: parseError.message,
-            rawResponse: rawText.substring(0, 300)
+            rawResponse: rawText.substring(0, 500)
           });
+
           continue;
         }
 
         if (!response.ok) {
           errors.push({
             symbol,
+            token,
+            neoSymbol,
             status: response.status,
             response: data
           });
+
           continue;
         }
 
-        // Capture ONLY the first successful raw response
-        // so we can identify Kotak Neo's actual field structure.
-        if (!diagnosticResponse) {
-          diagnosticResponse = {
-            symbol,
-            token,
-            response: data
-          };
-        }
-
-        // Keep current mapping temporarily.
         const quote =
           data?.data ||
           data?.result ||
           data?.quote ||
           data;
 
-        const actualQuote =
-          Array.isArray(quote)
-            ? quote[0]
-            : quote;
-
         results.push({
           display_symbol: `${symbol}-EQ`,
           symbol,
-          exchange: "nse_cm",
+          exchange,
           instrument_token: token,
+          neo_symbol: neoSymbol,
 
           ltp:
-            actualQuote?.ltp ??
-            actualQuote?.last_price ??
-            actualQuote?.lastPrice ??
+            quote?.ltp ??
+            quote?.last_price ??
+            quote?.lastPrice ??
+            quote?.LTP ??
             null,
 
           previous_close:
-            actualQuote?.previous_close ??
-            actualQuote?.prev_close ??
-            actualQuote?.prevClose ??
+            quote?.previous_close ??
+            quote?.prev_close ??
+            quote?.prevClose ??
+            quote?.previousClose ??
             null,
 
           percentage_change:
-            actualQuote?.percentage_change ??
-            actualQuote?.percent_change ??
-            actualQuote?.pChange ??
+            quote?.percentage_change ??
+            quote?.percent_change ??
+            quote?.pChange ??
+            quote?.percentageChange ??
             null,
 
           net_change:
-            actualQuote?.net_change ??
-            actualQuote?.netChange ??
-            actualQuote?.change ??
-            actualQuote?.chg ??
+            quote?.net_change ??
+            quote?.netChange ??
+            quote?.change ??
+            quote?.chg ??
             null
         });
 
       } catch (error) {
         errors.push({
           symbol,
+          token,
+          neoSymbol,
           error: error.message
         });
       }
@@ -179,9 +173,6 @@ export default async function handler(req, res) {
       totalRequested: stocks.length,
       totalReceived: results.length,
       totalErrors: errors.length,
-
-      diagnostic: diagnosticResponse,
-
       quotes: results,
       errors
     });
