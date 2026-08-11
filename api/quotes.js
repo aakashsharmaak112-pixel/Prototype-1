@@ -63,9 +63,10 @@ export default async function handler(req, res) {
       ["DRREDDY", "881"]
     ];
 
-    const exchange = "nse_cm";
     const results = [];
     const errors = [];
+
+    let diagnosticResponse = null;
 
     for (const [symbol, token] of stocks) {
       try {
@@ -109,6 +110,17 @@ export default async function handler(req, res) {
           continue;
         }
 
+        // Capture ONLY the first successful raw response
+        // so we can identify Kotak Neo's actual field structure.
+        if (!diagnosticResponse) {
+          diagnosticResponse = {
+            symbol,
+            token,
+            response: data
+          };
+        }
+
+        // Keep current mapping temporarily.
         const quote =
           data?.data ||
           data?.result ||
@@ -116,12 +128,14 @@ export default async function handler(req, res) {
           data;
 
         const actualQuote =
-          Array.isArray(quote) ? quote[0] : quote;
+          Array.isArray(quote)
+            ? quote[0]
+            : quote;
 
         results.push({
           display_symbol: `${symbol}-EQ`,
           symbol,
-          exchange,
+          exchange: "nse_cm",
           instrument_token: token,
 
           ltp:
@@ -144,6 +158,7 @@ export default async function handler(req, res) {
 
           net_change:
             actualQuote?.net_change ??
+            actualQuote?.netChange ??
             actualQuote?.change ??
             actualQuote?.chg ??
             null
@@ -164,6 +179,9 @@ export default async function handler(req, res) {
       totalRequested: stocks.length,
       totalReceived: results.length,
       totalErrors: errors.length,
+
+      diagnostic: diagnosticResponse,
+
       quotes: results,
       errors
     });
