@@ -28,7 +28,7 @@ function normalizeSymbol(symbol) {
   if (!symbol) return "";
 
   return String(symbol)
-    .replace("-EQ", "")
+    .replace(/-EQ$/i, "")
     .trim()
     .toUpperCase();
 
@@ -49,15 +49,55 @@ function toNumber(value) {
     return 0;
   }
 
-  const number =
-    Number(
-      String(value).replace(/,/g, "")
-    );
+  const number = Number(
+    String(value)
+      .replace(/,/g, "")
+      .replace(/%/g, "")
+      .trim()
+  );
 
   return Number.isFinite(number)
     ? number
     : 0;
 
+}
+
+
+// ============================================
+// FIND QUOTES ARRAY
+// ============================================
+
+function extractQuotes(data) {
+
+  if (!data) {
+    return [];
+  }
+
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (Array.isArray(data.quotes)) {
+    return data.quotes;
+  }
+
+  if (Array.isArray(data.data)) {
+    return data.data;
+  }
+
+  if (Array.isArray(data.stocks)) {
+    return data.stocks;
+  }
+
+  if (Array.isArray(data.results)) {
+    return data.results;
+  }
+
+  if (Array.isArray(data.result)) {
+    return data.result;
+  }
+
+  return [];
 }
 
 
@@ -72,13 +112,12 @@ function normalizeNeoQuote(quote) {
   }
 
 
-  const symbol =
-    normalizeSymbol(
-      quote.display_symbol ||
-      quote.symbol ||
-      quote.trading_symbol ||
-      quote.neo_symbol
-    );
+  const symbol = normalizeSymbol(
+    quote.display_symbol ||
+    quote.symbol ||
+    quote.trading_symbol ||
+    quote.neo_symbol
+  );
 
 
   if (!symbol) {
@@ -86,14 +125,14 @@ function normalizeNeoQuote(quote) {
   }
 
 
-  const price =
-    toNumber(
-      quote.ltp ??
-      quote.last_price ??
-      quote.lastPrice ??
-      quote.close_price ??
-      quote.close
-    );
+  const price = toNumber(
+    quote.ltp ??
+    quote.last_price ??
+    quote.lastPrice ??
+    quote.close_price ??
+    quote.close ??
+    quote.LTP
+  );
 
 
   if (price <= 0) {
@@ -101,25 +140,25 @@ function normalizeNeoQuote(quote) {
   }
 
 
-  let percentChange =
-    toNumber(
-      quote.percentage_change ??
-      quote.percent_change ??
-      quote.percentChange ??
-      quote.change_percent ??
-      quote.changePercent ??
-      quote.pChange
-    );
+  const previousClose = toNumber(
+    quote.previous_close ??
+    quote.prev_close ??
+    quote.prevClose ??
+    quote.previousClose ??
+    quote.pc ??
+    quote.PREVIOUS_CLOSE
+  );
 
 
-  const previousClose =
-    toNumber(
-      quote.previous_close ??
-      quote.prev_close ??
-      quote.prevClose ??
-      quote.previousClose ??
-      quote.pc
-    );
+  let percentChange = toNumber(
+    quote.percentage_change ??
+    quote.percent_change ??
+    quote.percentChange ??
+    quote.change_percent ??
+    quote.changePercent ??
+    quote.pChange ??
+    quote.PERCENTAGE_CHANGE
+  );
 
 
   if (
@@ -128,21 +167,18 @@ function normalizeNeoQuote(quote) {
   ) {
 
     percentChange =
-      (
-        (price - previousClose) /
-        previousClose
-      ) * 100;
+      ((price - previousClose) / previousClose) * 100;
 
   }
 
 
-  let rupeeChange =
-    toNumber(
-      quote.net_change ??
-      quote.netChange ??
-      quote.change ??
-      quote.chg
-    );
+  let rupeeChange = toNumber(
+    quote.net_change ??
+    quote.netChange ??
+    quote.change ??
+    quote.chg ??
+    quote.NET_CHANGE
+  );
 
 
   if (
@@ -160,17 +196,17 @@ function normalizeNeoQuote(quote) {
 
     symbol: symbol,
 
-    price: price,
+    price: Number(
+      price.toFixed(2)
+    ),
 
-    change:
-      Number(
-        percentChange.toFixed(2)
-      ),
+    change: Number(
+      percentChange.toFixed(2)
+    ),
 
-    rupeeChange:
-      Number(
-        rupeeChange.toFixed(2)
-      )
+    rupeeChange: Number(
+      rupeeChange.toFixed(2)
+    )
 
   };
 
@@ -186,44 +222,29 @@ function saveMarketData(data) {
   if (!data) {
 
     console.error(
-      "Invalid market data"
+      "Invalid market data response."
     );
+
+    MARKET_DATA.status = "ERROR";
 
     return false;
 
   }
 
 
-  let quotes = [];
+  const quotes = extractQuotes(data);
 
 
-  if (Array.isArray(data)) {
+  if (!quotes.length) {
 
-    quotes = data;
+    console.error(
+      "No quotes array found in API response.",
+      data
+    );
 
-  }
+    MARKET_DATA.status = "ERROR";
 
-  else if (
-    Array.isArray(data.data)
-  ) {
-
-    quotes = data.data;
-
-  }
-
-  else if (
-    Array.isArray(data.stocks)
-  ) {
-
-    quotes = data.stocks;
-
-  }
-
-  else if (
-    Array.isArray(data.quotes)
-  ) {
-
-    quotes = data.quotes;
+    return false;
 
   }
 
@@ -231,48 +252,42 @@ function saveMarketData(data) {
   const normalized = {};
 
 
-  quotes.forEach(
-    function(quote) {
+  quotes.forEach(function(quote) {
 
-      const result =
-        normalizeNeoQuote(quote);
-
-
-      if (!result) {
-        return;
-      }
+    const result =
+      normalizeNeoQuote(quote);
 
 
-      normalized[
-        result.symbol
-      ] = {
-
-        price:
-          result.price,
-
-        change:
-          result.change,
-
-        rupeeChange:
-          result.rupeeChange
-
-      };
-
+    if (!result) {
+      return;
     }
-  );
 
 
-  if (
-    Object.keys(normalized).length === 0
-  ) {
+    normalized[result.symbol] = {
+
+      price: result.price,
+
+      change: result.change,
+
+      rupeeChange: result.rupeeChange
+
+    };
+
+  });
+
+
+  const stockCount =
+    Object.keys(normalized).length;
+
+
+  if (stockCount === 0) {
 
     console.error(
-      "No valid Neo quotes found.",
-      data
+      "Quotes received but no valid stock prices found.",
+      quotes
     );
 
-    MARKET_DATA.status =
-      "ERROR";
+    MARKET_DATA.status = "ERROR";
 
     return false;
 
@@ -293,7 +308,7 @@ function saveMarketData(data) {
 
   console.log(
     "LIVE market data loaded:",
-    Object.keys(normalized).length,
+    stockCount,
     "stocks"
   );
 
@@ -376,7 +391,10 @@ async function fetchMarketData() {
         MARKET_API_URL,
         {
           method: "GET",
-          cache: "no-store"
+          cache: "no-store",
+          headers: {
+            Accept: "application/json"
+          }
         }
       );
 
@@ -393,6 +411,25 @@ async function fetchMarketData() {
 
     const data =
       await response.json();
+
+
+    console.log(
+      "Quotes API response:",
+      data
+    );
+
+
+    if (
+      data &&
+      data.success === false
+    ) {
+
+      throw new Error(
+        data.error ||
+        "Quotes API returned success=false"
+      );
+
+    }
 
 
     const success =
