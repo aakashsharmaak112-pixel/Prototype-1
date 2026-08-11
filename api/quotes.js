@@ -64,22 +64,23 @@ export default async function handler(req, res) {
     ];
 
     const exchange = "nse_cm";
-
     const results = [];
     const errors = [];
 
     for (const [symbol, token] of stocks) {
       try {
+        const neoSymbol = `${symbol}-EQ`;
+
         const url =
-          `${baseUrl.replace(/\/$/, "")}/quote` +
-          `?exchange_segment=${encodeURIComponent(exchange)}` +
-          `&instrument_token=${encodeURIComponent(token)}`;
+          `${baseUrl.replace(/\/$/, "")}` +
+          `/script-details/1.0/quotes/neosymbol/` +
+          `${encodeURIComponent(neoSymbol)}/all`;
 
         const response = await fetch(url, {
           method: "GET",
           headers: {
             Accept: "application/json",
-            Authorization: `Bearer ${accessToken}`
+            Authorization: accessToken
           }
         });
 
@@ -92,6 +93,7 @@ export default async function handler(req, res) {
         } catch (parseError) {
           errors.push({
             symbol,
+            status: response.status,
             error: parseError.message,
             rawResponse: rawText.substring(0, 300)
           });
@@ -113,31 +115,40 @@ export default async function handler(req, res) {
           data?.quote ||
           data;
 
+        const actualQuote =
+          Array.isArray(quote) ? quote[0] : quote;
+
         results.push({
           display_symbol: `${symbol}-EQ`,
           symbol,
-          exchange: exchange,
+          exchange,
+          instrument_token: token,
+
           ltp:
-            quote?.ltp ??
-            quote?.last_price ??
-            quote?.lastPrice ??
+            actualQuote?.ltp ??
+            actualQuote?.last_price ??
+            actualQuote?.lastPrice ??
             null,
+
           previous_close:
-            quote?.previous_close ??
-            quote?.prev_close ??
-            quote?.prevClose ??
+            actualQuote?.previous_close ??
+            actualQuote?.prev_close ??
+            actualQuote?.prevClose ??
             null,
+
           percentage_change:
-            quote?.percentage_change ??
-            quote?.percent_change ??
-            quote?.pChange ??
+            actualQuote?.percentage_change ??
+            actualQuote?.percent_change ??
+            actualQuote?.pChange ??
             null,
+
           net_change:
-            quote?.net_change ??
-            quote?.change ??
-            quote?.chg ??
+            actualQuote?.net_change ??
+            actualQuote?.change ??
+            actualQuote?.chg ??
             null
         });
+
       } catch (error) {
         errors.push({
           symbol,
