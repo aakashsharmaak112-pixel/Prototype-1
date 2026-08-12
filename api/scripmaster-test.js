@@ -28,6 +28,7 @@ export default async function handler(req, res) {
     const csvText = await response.text();
 
     if (!response.ok) {
+
       return res.status(response.status).json({
         success: false,
         source: "KOTAK NEO",
@@ -35,6 +36,7 @@ export default async function handler(req, res) {
         status: response.status,
         rawResponse: csvText.substring(0, 3000)
       });
+
     }
 
     const lines =
@@ -45,44 +47,45 @@ export default async function handler(req, res) {
         });
 
     if (lines.length === 0) {
+
       return res.status(502).json({
         success: false,
-        error: "CSV is empty."
+        source: "KOTAK NEO",
+        error: "Scrip Master CSV is empty."
       });
+
     }
 
     return res.status(200).json({
 
       success: true,
 
-      source:
-        "KOTAK NEO",
+      source: "KOTAK NEO",
 
-      marketData:
-        "SCRIPMASTER",
+      marketData: "SCRIPMASTER",
 
-      file:
-        "nse_cm-v1.csv",
+      file: "nse_cm-v1.csv",
 
-      totalCsvLines:
-        lines.length,
+      totalCsvLines: lines.length,
 
-      header:
-        lines[0],
+      header: lines[0],
 
-      firstFiveRows:
-        lines.slice(1, 6)
+      firstFiveRows: lines.slice(1, 6)
 
     });
 
   } catch (error) {
 
+    console.error(
+      "Scrip Master Inspector Error:",
+      error
+    );
+
     return res.status(500).json({
 
       success: false,
 
-      source:
-        "KOTAK NEO",
+      source: "KOTAK NEO",
 
       error:
         error.message ||
