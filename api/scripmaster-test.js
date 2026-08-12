@@ -66,6 +66,9 @@ export default async function handler(req, res) {
       source:
         "KOTAK NEO",
 
+      debug:
+        true,
+
       kotakHttpStatus:
         response.status,
 
