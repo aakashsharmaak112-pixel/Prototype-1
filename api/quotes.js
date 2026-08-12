@@ -92,7 +92,7 @@ export default async function handler(req, res) {
 
   const quoteUrl =
     BASE_URL.replace(/\/+$/, "") +
-    "/script-details/1.0/quotes";
+    "/script-details/1.0/quotes/";
 
   const headers = {
     "Authorization": ACCESS_TOKEN,
