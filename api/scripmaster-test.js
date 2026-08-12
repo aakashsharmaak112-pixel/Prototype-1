@@ -1,6 +1,6 @@
 // ============================================
 // PROTOTYPE-1
-// KOTAK NEO SCRIP MASTER NSE CM TEST
+// KOTAK NEO SCRIP MASTER INSPECTOR
 // api/scripmaster-test.js
 // ============================================
 
@@ -18,11 +18,6 @@ export default async function handler(req, res) {
 
   try {
 
-    // ----------------------------------------
-    // DOWNLOAD SCRIP MASTER
-    // NO AUTHORIZATION HEADER
-    // ----------------------------------------
-
     const response = await fetch(masterUrl, {
       method: "GET",
       headers: {
@@ -30,15 +25,9 @@ export default async function handler(req, res) {
       }
     });
 
-    const csvText =
-      await response.text();
-
-    // ----------------------------------------
-    // DOWNLOAD ERROR
-    // ----------------------------------------
+    const csvText = await response.text();
 
     if (!response.ok) {
-
       return res.status(response.status).json({
         success: false,
         source: "KOTAK NEO",
@@ -46,12 +35,7 @@ export default async function handler(req, res) {
         status: response.status,
         rawResponse: csvText.substring(0, 3000)
       });
-
     }
-
-    // ----------------------------------------
-    // CHECK CSV
-    // ----------------------------------------
 
     const lines =
       csvText
@@ -61,241 +45,11 @@ export default async function handler(req, res) {
         });
 
     if (lines.length === 0) {
-
       return res.status(502).json({
         success: false,
-        source: "KOTAK NEO",
-        error: "Scrip Master CSV is empty."
+        error: "CSV is empty."
       });
-
     }
-
-    // ----------------------------------------
-    // CSV PARSER
-    // ----------------------------------------
-
-    function parseCsvLine(line) {
-
-      const values = [];
-      let current = "";
-      let insideQuotes = false;
-
-      for (
-        let i = 0;
-        i < line.length;
-        i++
-      ) {
-
-        const char = line[i];
-
-        if (char === '"') {
-
-          if (
-            insideQuotes &&
-            line[i + 1] === '"'
-          ) {
-            current += '"';
-            i++;
-          } else {
-            insideQuotes =
-              !insideQuotes;
-          }
-
-          continue;
-        }
-
-        if (
-          char === "," &&
-          !insideQuotes
-        ) {
-
-          values.push(
-            current.trim()
-          );
-
-          current = "";
-
-        } else {
-
-          current += char;
-
-        }
-      }
-
-      values.push(
-        current.trim()
-      );
-
-      return values;
-    }
-
-    // ----------------------------------------
-    // HEADER
-    // ----------------------------------------
-
-    const header =
-      parseCsvLine(lines[0]);
-
-    const symbolIndex =
-      header.indexOf("pSymbol");
-
-    const exchangeIndex =
-      header.indexOf("pExchSeg");
-
-    const tradingSymbolIndex =
-      header.indexOf("pTrdSymbol");
-
-    const tokenIndex =
-      header.indexOf("pToken");
-
-    // ----------------------------------------
-    // CHECK REQUIRED COLUMNS
-    // ----------------------------------------
-
-    if (
-      symbolIndex === -1 ||
-      exchangeIndex === -1
-    ) {
-
-      return res.status(502).json({
-        success: false,
-        source: "KOTAK NEO",
-        error:
-          "Required Scrip Master columns were not found.",
-        header: header
-      });
-
-    }
-
-    // ----------------------------------------
-    // NIFTY 50 SYMBOLS
-    // ----------------------------------------
-
-    const searchSymbols = [
-
-      "MARUTI",
-      "ULTRACEMCO",
-      "TCS",
-      "GRASIM",
-      "JSWSTEEL",
-      "LT",
-      "BHARTIARTL",
-      "HEROMOTOCO",
-      "NTPC",
-      "HINDALCO",
-      "HINDUNILVR",
-      "HDFCBANK",
-      "TECHM",
-      "BAJAJFINSV",
-      "TITAN",
-      "RELIANCE",
-      "SBIN",
-      "ONGC",
-      "MAXHEALTH",
-      "TRENT",
-      "COALINDIA",
-      "NESTLEIND",
-      "APOLLOHOSP",
-      "ADANIPORTS",
-      "POWERGRID",
-      "ASIANPAINT",
-      "INFY",
-      "M&M",
-      "KOTAKBANK",
-      "ADANIENT",
-      "ITC",
-      "TATACONSUM",
-      "BAJAJ-AUTO",
-      "SBILIFE",
-      "SUNPHARMA",
-      "TATASTEEL",
-      "BAJFINANCE",
-      "SHRIRAMFIN",
-      "BEL",
-      "ICICIBANK",
-      "HDFCLIFE",
-      "WIPRO",
-      "INDUSINDBK",
-      "ETERNAL",
-      "AXISBANK",
-      "HCLTECH",
-      "JINDALSTEL",
-      "CIPLA",
-      "EICHERMOT",
-      "DRREDDY"
-
-    ];
-
-    // ----------------------------------------
-    // FIND STOCKS
-    // ----------------------------------------
-
-    const results = [];
-
-    for (
-      let i = 1;
-      i < lines.length;
-      i++
-    ) {
-
-      const row =
-        parseCsvLine(lines[i]);
-
-      const symbol =
-        row[symbolIndex] || "";
-
-      const exchange =
-        row[exchangeIndex] || "";
-
-      if (
-        exchange === "nse_cm" &&
-        searchSymbols.includes(symbol)
-      ) {
-
-        results.push({
-
-          pSymbol:
-            symbol,
-
-          pExchSeg:
-            exchange,
-
-          pTrdSymbol:
-            tradingSymbolIndex >= 0
-              ? row[tradingSymbolIndex]
-              : "",
-
-          pToken:
-            tokenIndex >= 0
-              ? row[tokenIndex]
-              : ""
-
-        });
-
-      }
-
-    }
-
-    // ----------------------------------------
-    // MISSING
-    // ----------------------------------------
-
-    const missing =
-      searchSymbols.filter(
-        function(symbol) {
-
-          return !results.some(
-            function(item) {
-              return item.pSymbol === symbol;
-            }
-          );
-
-        }
-      );
-
-    // ----------------------------------------
-    // RESPONSE
-    // ----------------------------------------
 
     return res.status(200).json({
 
@@ -310,26 +64,18 @@ export default async function handler(req, res) {
       file:
         "nse_cm-v1.csv",
 
-      totalStocksRequested:
-        searchSymbols.length,
+      totalCsvLines:
+        lines.length,
 
-      totalMatches:
-        results.length,
+      header:
+        lines[0],
 
-      missing:
-        missing,
-
-      stocks:
-        results
+      firstFiveRows:
+        lines.slice(1, 6)
 
     });
 
   } catch (error) {
-
-    console.error(
-      "Kotak Neo Scrip Master Error:",
-      error
-    );
 
     return res.status(500).json({
 
