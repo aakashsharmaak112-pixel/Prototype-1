@@ -1,14 +1,10 @@
 // ============================================
 // PROTOTYPE-1
-// KOTAK NEO LIVE QUOTES - VERIFIED 4 STOCK TEST
+// KOTAK NEO LIVE QUOTES - TOKEN TEST
 // api/quotes.js
 // ============================================
 
 export default async function handler(req, res) {
-
-  // ------------------------------------------
-  // ONLY GET
-  // ------------------------------------------
 
   if (req.method !== "GET") {
     return res.status(405).json({
@@ -16,10 +12,6 @@ export default async function handler(req, res) {
       error: "Only GET method is allowed."
     });
   }
-
-  // ------------------------------------------
-  // ENVIRONMENT VARIABLES
-  // ------------------------------------------
 
   const ACCESS_TOKEN =
     process.env.NEO_ACCESS_TOKEN;
@@ -42,49 +34,47 @@ export default async function handler(req, res) {
   }
 
   // ------------------------------------------
-  // VERIFIED KOTAK NEO SYMBOLS
-  // FROM SCRIP MASTER
+  // VERIFIED SCRIP MASTER IDs
   // ------------------------------------------
 
   const stocks = [
     {
       symbol: "HDFCBANK",
-      neosymbol: "HDFCBANK"
+      token: "1333"
     },
     {
       symbol: "TCS",
-      neosymbol: "TCS"
+      token: "11536"
     },
     {
       symbol: "RELIANCE",
-      neosymbol: "RELIANCE"
+      token: "2885"
     },
     {
       symbol: "INFY",
-      neosymbol: "INFY"
+      token: "1594"
     }
   ];
 
   // ------------------------------------------
-  // BUILD SYMBOL STRING
+  // INSTRUMENT TOKENS
   // ------------------------------------------
 
-  const symbolString =
-    stocks
-      .map(function(stock) {
-        return stock.neosymbol;
-      })
-      .join(",");
+  const instrumentTokens =
+    stocks.map(function(stock) {
+      return {
+        instrument_token: stock.token,
+        exchange_segment: "nse_cm"
+      };
+    });
 
   // ------------------------------------------
-  // BUILD QUOTES URL
+  // QUOTES ENDPOINT
   // ------------------------------------------
 
   const quoteUrl =
     BASE_URL.replace(/\/+$/, "") +
-    "/script-details/1.0/quotes/neosymbol/" +
-    encodeURIComponent(symbolString) +
-    "/all";
+    "/script-details/1.0/quotes/";
 
   // ------------------------------------------
   // HEADERS
@@ -92,21 +82,31 @@ export default async function handler(req, res) {
 
   const headers = {
     "Authorization": ACCESS_TOKEN,
+    "Content-Type": "application/json",
     "Accept": "application/json"
   };
 
   try {
 
     // ----------------------------------------
-    // REQUEST
+    // KOTAK REQUEST
     // ----------------------------------------
 
     const response =
       await fetch(
         quoteUrl,
         {
-          method: "GET",
-          headers: headers
+          method: "POST",
+
+          headers: headers,
+
+          body: JSON.stringify({
+            instrument_tokens:
+              instrumentTokens,
+
+            quote_type:
+              "all"
+          })
         }
       );
 
@@ -116,10 +116,6 @@ export default async function handler(req, res) {
 
     const rawText =
       await response.text();
-
-    // ----------------------------------------
-    // JSON PARSE
-    // ----------------------------------------
 
     let data = null;
 
@@ -146,7 +142,7 @@ export default async function handler(req, res) {
           response.status,
 
         requestMethod:
-          "GET",
+          "POST",
 
         requestUrl:
           quoteUrl,
@@ -180,13 +176,13 @@ export default async function handler(req, res) {
         response.status,
 
       requestMethod:
-        "GET",
+        "POST",
 
       requestedStocks:
         stocks,
 
-      symbolString:
-        symbolString,
+      instrumentTokens:
+        instrumentTokens,
 
       requestUrl:
         quoteUrl,
