@@ -1,6 +1,6 @@
 // ============================================
 // PROTOTYPE-1
-// KOTAK NEO LIVE QUOTES DEBUG
+// KOTAK NEO LIVE QUOTES - VERIFIED 4 STOCK TEST
 // api/quotes.js
 // ============================================
 
@@ -42,60 +42,27 @@ export default async function handler(req, res) {
   }
 
   // ------------------------------------------
-  // NIFTY 50 STOCK SYMBOLS
+  // VERIFIED KOTAK NEO SYMBOLS
+  // FROM SCRIP MASTER
   // ------------------------------------------
 
   const stocks = [
-    "MARUTI",
-    "ULTRACEMCO",
-    "TCS",
-    "GRASIM",
-    "JSWSTEEL",
-    "LT",
-    "BHARTIARTL",
-    "HEROMOTOCO",
-    "NTPC",
-    "HINDALCO",
-    "HINDUNILVR",
-    "HDFCBANK",
-    "TECHM",
-    "BAJAJFINSV",
-    "TITAN",
-    "RELIANCE",
-    "SBIN",
-    "ONGC",
-    "MAXHEALTH",
-    "TRENT",
-    "COALINDIA",
-    "NESTLEIND",
-    "APOLLOHOSP",
-    "ADANIPORTS",
-    "POWERGRID",
-    "ASIANPAINT",
-    "INFY",
-    "M&M",
-    "KOTAKBANK",
-    "ADANIENT",
-    "ITC",
-    "TATACONSUM",
-    "BAJAJ-AUTO",
-    "SBILIFE",
-    "SUNPHARMA",
-    "TATASTEEL",
-    "BAJFINANCE",
-    "SHRIRAMFIN",
-    "BEL",
-    "ICICIBANK",
-    "HDFCLIFE",
-    "WIPRO",
-    "INDUSINDBK",
-    "ETERNAL",
-    "AXISBANK",
-    "HCLTECH",
-    "JINDALSTEL",
-    "CIPLA",
-    "EICHERMOT",
-    "DRREDDY"
+    {
+      symbol: "HDFCBANK",
+      neosymbol: "HDFCBANK"
+    },
+    {
+      symbol: "TCS",
+      neosymbol: "TCS"
+    },
+    {
+      symbol: "RELIANCE",
+      neosymbol: "RELIANCE"
+    },
+    {
+      symbol: "INFY",
+      neosymbol: "INFY"
+    }
   ];
 
   // ------------------------------------------
@@ -103,7 +70,11 @@ export default async function handler(req, res) {
   // ------------------------------------------
 
   const symbolString =
-    stocks.join(",");
+    stocks
+      .map(function(stock) {
+        return stock.neosymbol;
+      })
+      .join(",");
 
   // ------------------------------------------
   // BUILD QUOTES URL
@@ -147,7 +118,7 @@ export default async function handler(req, res) {
       await response.text();
 
     // ----------------------------------------
-    // TRY JSON PARSE
+    // JSON PARSE
     // ----------------------------------------
 
     let data = null;
@@ -168,7 +139,7 @@ export default async function handler(req, res) {
         source:
           "KOTAK NEO",
 
-        message:
+        error:
           "Kotak returned non-JSON response.",
 
         kotakHttpStatus:
@@ -188,13 +159,7 @@ export default async function handler(req, res) {
     }
 
     // ----------------------------------------
-    // TEMPORARY DEBUG RESPONSE
-    // ----------------------------------------
-    //
-    // IMPORTANT:
-    // This is temporary.
-    // We need to see EXACTLY what Kotak returns.
-    //
+    // DEBUG RESPONSE
     // ----------------------------------------
 
     return res.status(200).json({
@@ -205,6 +170,9 @@ export default async function handler(req, res) {
       source:
         "KOTAK NEO",
 
+      marketData:
+        "LIVE",
+
       debug:
         true,
 
@@ -213,6 +181,12 @@ export default async function handler(req, res) {
 
       requestMethod:
         "GET",
+
+      requestedStocks:
+        stocks,
+
+      symbolString:
+        symbolString,
 
       requestUrl:
         quoteUrl,
@@ -230,7 +204,7 @@ export default async function handler(req, res) {
   } catch (error) {
 
     console.error(
-      "Kotak Neo Quotes Debug Error:",
+      "Kotak Neo Quotes Error:",
       error
     );
 
