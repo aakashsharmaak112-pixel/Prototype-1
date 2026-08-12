@@ -1,59 +1,49 @@
 // ============================================
 // PROTOTYPE-1
-// KOTAK NEO V2 AUTH / BASE URL TEST
+// KOTAK NEO V2 BASE URL CHECK
+// api/neo-test.js
 // ============================================
 
 export default async function handler(req, res) {
 
+  if (req.method !== "GET") {
+    return res.status(405).json({
+      success: false,
+      error: "Only GET method is allowed."
+    });
+  }
+
+  const ACCESS_TOKEN =
+    process.env.NEO_ACCESS_TOKEN;
+
+  const UCC =
+    process.env.NEO_UCC;
+
+  const MPIN =
+    process.env.NEO_MPIN;
+
+  if (!ACCESS_TOKEN) {
+    return res.status(500).json({
+      success: false,
+      error: "NEO_ACCESS_TOKEN environment variable missing."
+    });
+  }
+
+  if (!UCC) {
+    return res.status(500).json({
+      success: false,
+      error: "NEO_UCC environment variable missing."
+    });
+  }
+
+  if (!MPIN) {
+    return res.status(500).json({
+      success: false,
+      error: "NEO_MPIN environment variable missing."
+    });
+  }
+
   try {
-
-    // ------------------------------------------
-    // ENVIRONMENT VARIABLES
-    // ------------------------------------------
-
-    const ACCESS_TOKEN =
-      process.env.NEO_ACCESS_TOKEN;
-
-    const UCC =
-      process.env.NEO_UCC;
-
-    const MPIN =
-      process.env.NEO_MPIN;
-
-    // ------------------------------------------
-    // BASIC CHECK
-    // ------------------------------------------
-
-    if (!ACCESS_TOKEN) {
-
-      return res.status(500).json({
-        success: false,
-        error: "NEO_ACCESS_TOKEN environment variable missing."
-      });
-
-    }
-
-    if (!UCC) {
-
-      return res.status(500).json({
-        success: false,
-        error: "NEO_UCC environment variable missing."
-      });
-
-    }
-
-    if (!MPIN) {
-
-      return res.status(500).json({
-        success: false,
-        error: "NEO_MPIN environment variable missing."
-      });
-
-    }
-
-    // ------------------------------------------
-    // KOTAK NEO V2 MPIN VALIDATION
-    // ------------------------------------------
 
     const response = await fetch(
       "https://mis.kotaksecurities.com/login/1.0/tradeApiValidate",
@@ -63,9 +53,6 @@ export default async function handler(req, res) {
         headers: {
           "Content-Type": "application/json",
           "Accept": "application/json",
-
-          // Neo v2 uses the plain token.
-          // DO NOT add "Bearer ".
           "Authorization": ACCESS_TOKEN
         },
 
@@ -76,80 +63,70 @@ export default async function handler(req, res) {
       }
     );
 
-    // ------------------------------------------
-    // READ RESPONSE SAFELY
-    // ------------------------------------------
-
     const rawText =
       await response.text();
 
     let data = null;
 
     try {
-
       data =
-        JSON.parse(rawText);
-
-    } catch (parseError) {
+        rawText
+          ? JSON.parse(rawText)
+          : null;
+    } catch (error) {
 
       return res.status(502).json({
         success: false,
+        source: "KOTAK NEO V2",
         status: response.status,
-        error: "Kotak Neo returned a non-JSON response.",
-        rawResponse: rawText.slice(0, 1000)
+        error: "Kotak returned non-JSON response.",
+        rawResponse: rawText.substring(0, 1000)
       });
 
     }
 
-    // ------------------------------------------
-    // FIND BASE URL
-    // ------------------------------------------
-
     const baseUrl =
       data?.baseUrl ||
       data?.data?.baseUrl ||
+      data?.data?.baseURL ||
       null;
 
-    // ------------------------------------------
-    // SUCCESS RESPONSE
-    // ------------------------------------------
-
-    return res.status(response.status).json({
+    return res.status(200).json({
 
       success:
         response.ok,
 
-      status:
-        response.status,
-
       source:
         "KOTAK NEO V2",
 
-      message:
-        response.ok
-          ? "Neo MPIN validation completed."
-          : "Neo MPIN validation failed.",
+      kotakHttpStatus:
+        response.status,
 
       baseUrl:
         baseUrl,
 
-      neoResponse:
-        data
+      baseUrlFound:
+        Boolean(baseUrl),
+
+      message:
+        baseUrl
+          ? "Actual Kotak Neo baseUrl received."
+          : "baseUrl was not found in validation response."
 
     });
 
   } catch (error) {
 
-    // ------------------------------------------
-    // SERVER ERROR
-    // ------------------------------------------
-
     return res.status(500).json({
 
       success: false,
 
+      source:
+        "KOTAK NEO V2",
+
       error:
-        error.message
+        error.message ||
+        "Unexpected server error."
 
     });
 
