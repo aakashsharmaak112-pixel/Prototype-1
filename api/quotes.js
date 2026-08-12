@@ -1,6 +1,6 @@
 // ============================================
 // PROTOTYPE-1
-// KOTAK NEO LIVE QUOTES - TOKEN TEST
+// KOTAK NEO BASE URL DEBUG
 // api/quotes.js
 // ============================================
 
@@ -33,190 +33,35 @@ export default async function handler(req, res) {
     });
   }
 
-  // ------------------------------------------
-  // VERIFIED SCRIP MASTER IDs
-  // ------------------------------------------
-
-  const stocks = [
-    {
-      symbol: "HDFCBANK",
-      token: "1333"
-    },
-    {
-      symbol: "TCS",
-      token: "11536"
-    },
-    {
-      symbol: "RELIANCE",
-      token: "2885"
-    },
-    {
-      symbol: "INFY",
-      token: "1594"
-    }
-  ];
-
-  // ------------------------------------------
-  // INSTRUMENT TOKENS
-  // ------------------------------------------
-
-  const instrumentTokens =
-    stocks.map(function(stock) {
-      return {
-        instrument_token: stock.token,
-        exchange_segment: "nse_cm"
-      };
-    });
-
-  // ------------------------------------------
-  // QUOTES ENDPOINT
-  // ------------------------------------------
+  const cleanBaseUrl =
+    BASE_URL.replace(/\/+$/, "");
 
   const quoteUrl =
-    BASE_URL.replace(/\/+$/, "") +
+    cleanBaseUrl +
     "/script-details/1.0/quotes/";
 
-  // ------------------------------------------
-  // HEADERS
-  // ------------------------------------------
+  return res.status(200).json({
 
-  const headers = {
-    "Authorization": ACCESS_TOKEN,
-    "Content-Type": "application/json",
-    "Accept": "application/json"
-  };
+    success: true,
 
-  try {
+    source:
+      "KOTAK NEO",
 
-    // ----------------------------------------
-    // KOTAK REQUEST
-    // ----------------------------------------
+    debug:
+      true,
 
-    const response =
-      await fetch(
-        quoteUrl,
-        {
-          method: "POST",
+    configuredBaseUrl:
+      cleanBaseUrl,
 
-          headers: headers,
+    quotesEndpoint:
+      quoteUrl,
 
-          body: JSON.stringify({
-            instrument_tokens:
-              instrumentTokens,
+    note:
+      "Base URL configuration check only. No Kotak API request was made.",
 
-            quote_type:
-              "all"
-          })
-        }
-      );
+    tokenConfigured:
+      true
 
-    // ----------------------------------------
-    // RAW RESPONSE
-    // ----------------------------------------
-
-    const rawText =
-      await response.text();
-
-    let data = null;
-
-    try {
-
-      data =
-        rawText
-          ? JSON.parse(rawText)
-          : null;
-
-    } catch (error) {
-
-      return res.status(502).json({
-
-        success: false,
-
-        source:
-          "KOTAK NEO",
-
-        error:
-          "Kotak returned non-JSON response.",
-
-        kotakHttpStatus:
-          response.status,
-
-        requestMethod:
-          "POST",
-
-        requestUrl:
-          quoteUrl,
-
-        rawResponse:
-          rawText.substring(0, 5000)
-
-      });
-
-    }
-
-    // ----------------------------------------
-    // DEBUG RESPONSE
-    // ----------------------------------------
-
-    return res.status(200).json({
-
-      success:
-        response.ok,
-
-      source:
-        "KOTAK NEO",
-
-      marketData:
-        "LIVE",
-
-      debug:
-        true,
-
-      kotakHttpStatus:
-        response.status,
-
-      requestMethod:
-        "POST",
-
-      requestedStocks:
-        stocks,
-
-      instrumentTokens:
-        instrumentTokens,
-
-      requestUrl:
-        quoteUrl,
-
-      responseType:
-        Array.isArray(data)
-          ? "ARRAY"
-          : typeof data,
-
-      rawKotakResponse:
-        data
-
-    });
-
-  } catch (error) {
-
-    console.error(
-      "Kotak Neo Quotes Error:",
-      error
-    );
-
-    return res.status(500).json({
-
-      success: false,
-
-      source:
-        "KOTAK NEO",
-
-      error:
-        error.message ||
-        "Unexpected server error."
-
-    });
-
-  }
+  });
 
 }
