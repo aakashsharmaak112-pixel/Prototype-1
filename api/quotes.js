@@ -6,61 +6,31 @@
 
 export default async function handler(req, res) {
 
-  // ==========================================
-  // METHOD CHECK
-  // ==========================================
-
   if (req.method !== "GET") {
-
     return res.status(405).json({
       success: false,
       error: "Only GET method is allowed."
     });
-
   }
 
-
-  // ==========================================
-  // ENVIRONMENT VARIABLES
-  // ==========================================
-
-  const ACCESS_TOKEN =
-    process.env.NEO_ACCESS_TOKEN;
-
-  const BASE_URL =
-    process.env.NEO_BASE_URL;
-
-
-  // ==========================================
-  // CONFIG CHECK
-  // ==========================================
+  const ACCESS_TOKEN = process.env.NEO_ACCESS_TOKEN;
+  const BASE_URL = process.env.NEO_BASE_URL;
 
   if (!ACCESS_TOKEN) {
-
     return res.status(500).json({
       success: false,
       error: "NEO_ACCESS_TOKEN is not configured."
     });
-
   }
 
-
   if (!BASE_URL) {
-
     return res.status(500).json({
       success: false,
       error: "NEO_BASE_URL is not configured."
     });
-
   }
 
-
-  // ==========================================
-  // NIFTY 50 INSTRUMENT TOKENS
-  // ==========================================
-
   const stocks = [
-
     { symbol: "MARUTI", token: "10999" },
     { symbol: "ULTRACEMCO", token: "11532" },
     { symbol: "TCS", token: "11536" },
@@ -111,530 +81,241 @@ export default async function handler(req, res) {
     { symbol: "CIPLA", token: "694" },
     { symbol: "EICHERMOT", token: "910" },
     { symbol: "DRREDDY", token: "881" }
-
   ];
 
-
-  // ==========================================
-  // KOTAK NEO QUOTES REQUEST
-  // ==========================================
-
-  const instrumentTokens =
-    stocks.map(function(stock) {
-
-      return {
-        instrument_token: stock.token,
-        exchange_segment: "nse_cm"
-      };
-
-    });
-
-
-  // ==========================================
-  // QUOTES ENDPOINT
-  // ==========================================
+  const instrumentTokens = stocks.map(function(stock) {
+    return {
+      instrument_token: stock.token,
+      exchange_segment: "nse_cm"
+    };
+  });
 
   const quoteUrl =
     BASE_URL.replace(/\/+$/, "") +
     "/script-details/1.0/quotes";
 
-
-  // ==========================================
-  // REQUEST HEADERS
-  // ==========================================
-
   const headers = {
-
-    "Authorization":
-  ACCESS_TOKEN,,
-
-    "Content-Type":
-      "application/json",
-
-    "Accept":
-      "application/json"
-
+    "Authorization": ACCESS_TOKEN,
+    "Content-Type": "application/json",
+    "Accept": "application/json"
   };
-
 
   try {
 
-    console.log(
-      "================================"
+    const response = await fetch(
+      quoteUrl,
+      {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify({
+          instrument_tokens: instrumentTokens,
+          quote_type: "all"
+        })
+      }
     );
 
-    console.log(
-      "PROTOTYPE-1 KOTAK NEO QUOTES"
-    );
+    const rawText = await response.text();
 
     console.log(
-      "Requesting:",
-      stocks.length,
-      "stocks"
-    );
-
-    console.log(
-      "Quote URL:",
-      quoteUrl
-    );
-
-    console.log(
-      "================================"
-    );
-
-
-    // ========================================
-    // SEND QUOTE REQUEST
-    // ========================================
-
-    const response =
-      await fetch(
-        quoteUrl,
-        {
-          method: "POST",
-
-          headers: headers,
-
-          body: JSON.stringify({
-
-            instrument_tokens:
-              instrumentTokens,
-
-            quote_type:
-              "all"
-
-          })
-
-        }
-      );
-
-
-    // ========================================
-    // READ RAW RESPONSE
-    // ========================================
-
-    const rawText =
-      await response.text();
-
-
-    console.log(
-      "Kotak Neo HTTP status:",
+      "Kotak Neo Quotes HTTP status:",
       response.status
     );
 
-
-    // ========================================
-    // PARSE RESPONSE
-    // ========================================
-
     let data = null;
 
-
     try {
-
-      data =
-        rawText
-          ? JSON.parse(rawText)
-          : null;
-
-    }
-
-    catch (parseError) {
+      data = rawText ? JSON.parse(rawText) : null;
+    } catch (parseError) {
 
       return res.status(502).json({
-
         success: false,
-
-        source:
-          "KOTAK NEO",
-
-        error:
-          "Kotak Neo returned a non-JSON response.",
-
-        status:
-          response.status,
-
-        rawResponse:
-          rawText.substring(0, 500)
-
+        source: "KOTAK NEO",
+        error: "Kotak Neo returned a non-JSON response.",
+        status: response.status,
+        rawResponse: rawText.substring(0, 500)
       });
 
     }
-
-
-    // ========================================
-    // HTTP ERROR
-    // ========================================
 
     if (!response.ok) {
 
-      return res.status(
-        response.status
-      ).json({
-
+      return res.status(response.status).json({
         success: false,
-
-        source:
-          "KOTAK NEO",
-
-        error:
-          "Kotak Neo Quotes API request failed.",
-
-        status:
-          response.status,
-
-        kotakResponse:
-          data
-
+        source: "KOTAK NEO",
+        error: "Kotak Neo Quotes API request failed.",
+        status: response.status,
+        kotakResponse: data
       });
 
     }
 
-
-    // ========================================
-    // FIND QUOTES ARRAY
-    // ========================================
-
     let quotes = [];
 
-
-    if (
-      Array.isArray(data)
-    ) {
-
-      quotes =
-        data;
-
+    if (Array.isArray(data)) {
+      quotes = data;
+    } else if (data && Array.isArray(data.quotes)) {
+      quotes = data.quotes;
+    } else if (data && Array.isArray(data.data)) {
+      quotes = data.data;
+    } else if (data && Array.isArray(data.result)) {
+      quotes = data.result;
+    } else if (data && Array.isArray(data.results)) {
+      quotes = data.results;
     }
-
-    else if (
-      data &&
-      Array.isArray(data.quotes)
-    ) {
-
-      quotes =
-        data.quotes;
-
-    }
-
-    else if (
-      data &&
-      Array.isArray(data.data)
-    ) {
-
-      quotes =
-        data.data;
-
-    }
-
-    else if (
-      data &&
-      Array.isArray(data.result)
-    ) {
-
-      quotes =
-        data.result;
-
-    }
-
-    else if (
-      data &&
-      Array.isArray(data.results)
-    ) {
-
-      quotes =
-        data.results;
-
-    }
-
-
-    // ========================================
-    // STOCK LOOKUP
-    // ========================================
 
     const stockMap = {};
 
-
-    stocks.forEach(
-      function(stock) {
-
-        stockMap[
-          stock.token
-        ] = stock;
-
-      }
-    );
-
-
-    // ========================================
-    // NORMALIZE QUOTES
-    // ========================================
+    stocks.forEach(function(stock) {
+      stockMap[stock.token] = stock;
+    });
 
     const normalizedQuotes = [];
-
     const errors = [];
 
+    quotes.forEach(function(quote) {
 
-    quotes.forEach(
-      function(quote) {
+      if (!quote || typeof quote !== "object") {
+        return;
+      }
 
-        if (
-          !quote ||
-          typeof quote !== "object"
-        ) {
+      const token = String(
+        quote.instrument_token ??
+        quote.instrumentToken ??
+        quote.token ??
+        ""
+      );
 
-          return;
+      const stock = stockMap[token];
 
-        }
-
-
-        const token =
-          String(
-            quote.instrument_token ??
-            quote.instrumentToken ??
-            quote.token ??
+      const symbol = stock
+        ? stock.symbol
+        : (
+            quote.symbol ||
+            quote.display_symbol ||
             ""
           );
 
+      const displaySymbol = stock
+        ? stock.symbol + "-EQ"
+        : (
+            quote.display_symbol ||
+            (symbol ? symbol + "-EQ" : "")
+          );
 
-        const stock =
-          stockMap[token];
+      const ltp =
+        quote.ltp ??
+        quote.last_traded_price ??
+        quote.lastTradedPrice ??
+        quote.last_price ??
+        quote.lastPrice ??
+        quote.LTP ??
+        null;
 
+      const previousClose =
+        quote.previous_close ??
+        quote.previousClose ??
+        quote.prev_close ??
+        quote.prevClose ??
+        quote.close_price ??
+        quote.close ??
+        null;
 
-        const symbol =
-          stock
-            ? stock.symbol
-            : (
-                quote.symbol ||
-                quote.display_symbol ||
-                ""
-              );
+      let percentageChange =
+        quote.percentage_change ??
+        quote.percentageChange ??
+        quote.percent_change ??
+        quote.percentChange ??
+        quote.pChange ??
+        null;
 
+      let netChange =
+        quote.net_change ??
+        quote.netChange ??
+        quote.change ??
+        quote.chg ??
+        null;
 
-        const displaySymbol =
-          stock
-            ? stock.symbol + "-EQ"
-            : (
-                quote.display_symbol ||
-                (
-                  symbol
-                    ? symbol + "-EQ"
-                    : ""
-                )
-              );
+      const priceNumber = Number(ltp);
+      const previousNumber = Number(previousClose);
 
+      if (
+        Number.isFinite(priceNumber) &&
+        Number.isFinite(previousNumber) &&
+        previousNumber > 0
+      ) {
 
-        // ------------------------------------
-        // LTP
-        // ------------------------------------
+        netChange =
+          priceNumber -
+          previousNumber;
 
-        const ltp =
-          quote.ltp ??
-          quote.last_traded_price ??
-          quote.lastTradedPrice ??
-          quote.last_price ??
-          quote.lastPrice ??
-          quote.LTP ??
-          null;
-
-
-        // ------------------------------------
-        // PREVIOUS CLOSE
-        // ------------------------------------
-
-        const previousClose =
-          quote.previous_close ??
-          quote.previousClose ??
-          quote.prev_close ??
-          quote.prevClose ??
-          quote.close_price ??
-          quote.close ??
-          null;
-
-
-        // ------------------------------------
-        // CHANGE
-        // ------------------------------------
-
-        let percentageChange =
-          quote.percentage_change ??
-          quote.percentageChange ??
-          quote.percent_change ??
-          quote.percentChange ??
-          quote.pChange ??
-          null;
-
-
-        let netChange =
-          quote.net_change ??
-          quote.netChange ??
-          quote.change ??
-          quote.chg ??
-          null;
-
-
-        const priceNumber =
-          Number(ltp);
-
-
-        const previousNumber =
-          Number(previousClose);
-
-
-        // ------------------------------------
-        // CALCULATE CHANGE IF NEEDED
-        // ------------------------------------
-
-        if (
-          Number.isFinite(
-            priceNumber
-          ) &&
-          Number.isFinite(
-            previousNumber
-          ) &&
-          previousNumber > 0
-        ) {
-
-          netChange =
-            priceNumber -
-            previousNumber;
-
-
-          percentageChange =
-            (
-              netChange /
-              previousNumber
-            ) *
-            100;
-
-        }
-
-
-        normalizedQuotes.push({
-
-          display_symbol:
-            displaySymbol,
-
-          symbol:
-            symbol,
-
-          exchange:
-            quote.exchange ||
-            "nse_cm",
-
-          instrument_token:
-            token,
-
-          ltp:
-            Number.isFinite(
-              priceNumber
-            )
-              ? priceNumber
-              : null,
-
-          previous_close:
-            Number.isFinite(
-              previousNumber
-            )
-              ? previousNumber
-              : null,
-
-          percentage_change:
-            Number.isFinite(
-              Number(
-                percentageChange
-              )
-            )
-              ? Number(
-                  Number(
-                    percentageChange
-                  ).toFixed(2)
-                )
-              : null,
-
-          net_change:
-            Number.isFinite(
-              Number(netChange)
-            )
-              ? Number(
-                  Number(
-                    netChange
-                  ).toFixed(2)
-                )
-              : null
-
-        });
+        percentageChange =
+          (netChange / previousNumber) * 100;
 
       }
-    );
 
+      normalizedQuotes.push({
+        display_symbol: displaySymbol,
+        symbol: symbol,
+        exchange: quote.exchange || "nse_cm",
+        instrument_token: token,
 
-    // ========================================
-    // BUILD RESPONSE
-    // ========================================
+        ltp: Number.isFinite(priceNumber)
+          ? priceNumber
+          : null,
 
-    const totalReceived =
-      normalizedQuotes.length;
+        previous_close: Number.isFinite(previousNumber)
+          ? previousNumber
+          : null,
 
+        percentage_change:
+          Number.isFinite(Number(percentageChange))
+            ? Number(Number(percentageChange).toFixed(2))
+            : null,
 
-    const totalRequested =
-      stocks.length;
-
-
-    const totalErrors =
-      totalRequested -
-      totalReceived;
-
-
-    // ========================================
-    // SUCCESS RESPONSE
-    // ========================================
-
-    return res.status(200).json({
-
-      success:
-        true,
-
-      source:
-        "KOTAK NEO",
-
-      marketData:
-        "LIVE",
-
-      totalRequested:
-        totalRequested,
-
-      totalReceived:
-        totalReceived,
-
-      totalErrors:
-        totalErrors,
-
-      quotes:
-        normalizedQuotes,
-
-      errors:
-        errors
+        net_change:
+          Number.isFinite(Number(netChange))
+            ? Number(Number(netChange).toFixed(2))
+            : null
+      });
 
     });
 
-  }
+    const totalReceived = normalizedQuotes.length;
+    const totalRequested = stocks.length;
+    const totalErrors = totalRequested - totalReceived;
 
-  catch (error) {
+    return res.status(200).json({
+
+      success: true,
+
+      source: "KOTAK NEO",
+
+      marketData: "LIVE",
+
+      totalRequested: totalRequested,
+
+      totalReceived: totalReceived,
+
+      totalErrors: totalErrors,
+
+      quotes: normalizedQuotes,
+
+      errors: errors
+
+    });
+
+  } catch (error) {
 
     console.error(
       "Kotak Neo Quotes Error:",
       error
     );
 
-
     return res.status(500).json({
 
-      success:
-        false,
+      success: false,
 
-      source:
-        "KOTAK NEO",
+      source: "KOTAK NEO",
 
       error:
         error.message ||
