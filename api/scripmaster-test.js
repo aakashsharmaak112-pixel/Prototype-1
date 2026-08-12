@@ -1,6 +1,7 @@
+
 // ============================================
 // PROTOTYPE-1
-// KOTAK NEO SCRIP MASTER SYMBOL CHECK
+// KOTAK NEO SCRIP MASTER SEARCH
 // api/scripmaster-test.js
 // ============================================
 
@@ -43,17 +44,6 @@ export default async function handler(req, res) {
         return line.trim() !== "";
       });
 
-    if (lines.length < 2) {
-      return res.status(502).json({
-        success: false,
-        error: "Scrip Master CSV is empty."
-      });
-    }
-
-    // ----------------------------------------
-    // CSV PARSER
-    // ----------------------------------------
-
     function parseCsvLine(line) {
 
       const values = [];
@@ -65,24 +55,11 @@ export default async function handler(req, res) {
         const char = line[i];
 
         if (char === '"') {
-
-          if (
-            insideQuotes &&
-            line[i + 1] === '"'
-          ) {
-            current += '"';
-            i++;
-          } else {
-            insideQuotes = !insideQuotes;
-          }
-
+          insideQuotes = !insideQuotes;
           continue;
         }
 
-        if (
-          char === "," &&
-          !insideQuotes
-        ) {
+        if (char === "," && !insideQuotes) {
           values.push(current.trim());
           current = "";
         } else {
@@ -94,10 +71,6 @@ export default async function handler(req, res) {
 
       return values;
     }
-
-    // ----------------------------------------
-    // HEADER
-    // ----------------------------------------
 
     const header =
       parseCsvLine(lines[0]);
@@ -117,24 +90,7 @@ export default async function handler(req, res) {
     const tokenIndex =
       header.indexOf("pToken");
 
-    if (
-      symbolIndex === -1 ||
-      exchangeIndex === -1 ||
-      tradingSymbolIndex === -1 ||
-      refKeyIndex === -1
-    ) {
-      return res.status(502).json({
-        success: false,
-        error: "Required columns not found.",
-        header: header
-      });
-    }
-
-    // ----------------------------------------
-    // TEST SYMBOLS
-    // ----------------------------------------
-
-    const testSymbols = [
+    const searchSymbols = [
       "HDFCBANK",
       "TCS",
       "RELIANCE",
@@ -143,69 +99,70 @@ export default async function handler(req, res) {
 
     const results = [];
 
-    // ----------------------------------------
-    // SEARCH
-    // ----------------------------------------
-
     for (let i = 1; i < lines.length; i++) {
 
       const row =
         parseCsvLine(lines[i]);
 
-      const symbol =
-        row[symbolIndex] || "";
-
       const exchange =
         row[exchangeIndex] || "";
 
-      if (
-        exchange === "nse_cm" &&
-        testSymbols.includes(symbol)
-      ) {
+      if (exchange !== "nse_cm") {
+        continue;
+      }
 
-        results.push({
+      const symbol =
+        row[symbolIndex] || "";
 
-          pSymbol:
-            symbol,
+      const tradingSymbol =
+        row[tradingSymbolIndex] || "";
 
-          pExchSeg:
-            exchange,
+      const refKey =
+        row[refKeyIndex] || "";
 
-          pTrdSymbol:
-            row[tradingSymbolIndex] || "",
+      const combinedText =
+        (
+          symbol +
+          " " +
+          tradingSymbol +
+          " " +
+          refKey
+        ).toUpperCase();
 
-          pScripRefKey:
-            row[refKeyIndex] || "",
+      for (const search of searchSymbols) {
 
-          pToken:
-            tokenIndex >= 0
-              ? row[tokenIndex] || ""
-              : "",
+        if (
+          combinedText.includes(search)
+        ) {
 
-          rawRow:
-            row
+          results.push({
 
-        });
+            searchedFor:
+              search,
 
+            pSymbol:
+              symbol,
+
+            pTrdSymbol:
+              tradingSymbol,
+
+            pScripRefKey:
+              refKey,
+
+            pToken:
+              tokenIndex >= 0
+                ? row[tokenIndex] || ""
+                : "",
+
+            pExchSeg:
+              exchange
+
+          });
+
+          break;
+        }
       }
     }
-
-    // ----------------------------------------
-    // MISSING
-    // ----------------------------------------
-
-    const missing =
-      testSymbols.filter(function(symbol) {
-
-        return !results.some(function(item) {
-          return item.pSymbol === symbol;
-        });
-
-      });
-
-    // ----------------------------------------
-    // RESPONSE
-    // ----------------------------------------
 
     return res.status(200).json({
 
@@ -217,20 +174,14 @@ export default async function handler(req, res) {
       marketData:
         "SCRIPMASTER",
 
-      file:
-        "nse_cm-v1.csv",
-
       totalCsvLines:
         lines.length,
 
-      symbolsRequested:
-        testSymbols,
+      searchedSymbols:
+        searchSymbols,
 
       totalMatches:
         results.length,
-
-      missing:
-        missing,
 
       stocks:
         results
@@ -238,11 +189,6 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-
-    console.error(
-      "Scrip Master Symbol Check Error:",
-      error
-    );
 
     return res.status(500).json({
 
