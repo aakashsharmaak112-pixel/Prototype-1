@@ -23,15 +23,24 @@ export default async function handler(req, res) {
     });
   }
 
+  // ------------------------------------------
+  // KOTAK SCRIP MASTER FILE
+  // ------------------------------------------
+
   const masterUrl =
     "https://lapi.kotaksecurities.com/wso2-scripmaster/v1/prod/2026-08-12/transformed-v1/nse_cm-v1.csv";
 
   try {
 
+    // ----------------------------------------
+    // DOWNLOAD SCRIP MASTER
+    // ----------------------------------------
+
     const response = await fetch(masterUrl, {
       method: "GET",
+
       headers: {
-        "Authorization": ACCESS_TOKEN,
+        "Authorization": `Bearer ${ACCESS_TOKEN}`,
         "Accept": "text/csv"
       }
     });
@@ -39,19 +48,35 @@ export default async function handler(req, res) {
     const csvText =
       await response.text();
 
+    // ----------------------------------------
+    // DOWNLOAD ERROR
+    // ----------------------------------------
+
     if (!response.ok) {
+
       return res.status(response.status).json({
+
         success: false,
-        source: "KOTAK NEO",
-        error: "Scrip Master download failed.",
-        status: response.status,
-        rawResponse: csvText.substring(0, 2000)
+
+        source:
+          "KOTAK NEO",
+
+        error:
+          "Scrip Master download failed.",
+
+        status:
+          response.status,
+
+        rawResponse:
+          csvText.substring(0, 3000)
+
       });
+
     }
 
-    // ------------------------------------------
-    // FIND HEADER
-    // ------------------------------------------
+    // ----------------------------------------
+    // CHECK CSV
+    // ----------------------------------------
 
     const lines =
       csvText
@@ -61,26 +86,141 @@ export default async function handler(req, res) {
         });
 
     if (lines.length === 0) {
+
       return res.status(502).json({
+
         success: false,
-        error: "Scrip Master CSV is empty."
+
+        source:
+          "KOTAK NEO",
+
+        error:
+          "Scrip Master CSV is empty."
+
       });
+
     }
 
-    const header =
-      lines[0]
-        .split(",")
-        .map(function(value) {
-          return value
-            .replace(/^"|"$/g, "")
-            .trim();
-        });
+    // ----------------------------------------
+    // CSV LINE PARSER
+    // ----------------------------------------
 
-    // ------------------------------------------
-    // NIFTY STOCKS TO SEARCH
-    // ------------------------------------------
+    function parseCsvLine(line) {
+
+      const values = [];
+
+      let current = "";
+
+      let insideQuotes = false;
+
+      for (
+        let i = 0;
+        i < line.length;
+        i++
+      ) {
+
+        const char =
+          line[i];
+
+        if (char === '"') {
+
+          if (
+            insideQuotes &&
+            line[i + 1] === '"'
+          ) {
+
+            current += '"';
+
+            i++;
+
+          } else {
+
+            insideQuotes =
+              !insideQuotes;
+
+          }
+
+          continue;
+        }
+
+        if (
+          char === "," &&
+          !insideQuotes
+        ) {
+
+          values.push(
+            current.trim()
+          );
+
+          current = "";
+
+        } else {
+
+          current += char;
+
+        }
+
+      }
+
+      values.push(
+        current.trim()
+      );
+
+      return values;
+
+    }
+
+    // ----------------------------------------
+    // HEADER
+    // ----------------------------------------
+
+    const header =
+      parseCsvLine(lines[0]);
+
+    const symbolIndex =
+      header.indexOf("pSymbol");
+
+    const exchangeIndex =
+      header.indexOf("pExchSeg");
+
+    const tradingSymbolIndex =
+      header.indexOf("pTrdSymbol");
+
+    const tokenIndex =
+      header.indexOf("pToken");
+
+    // ----------------------------------------
+    // CHECK REQUIRED COLUMNS
+    // ----------------------------------------
+
+    if (
+      symbolIndex === -1 ||
+      exchangeIndex === -1
+    ) {
+
+      return res.status(502).json({
+
+        success: false,
+
+        source:
+          "KOTAK NEO",
+
+        error:
+          "Required Scrip Master columns were not found.",
+
+        header:
+          header
+
+      });
+
+    }
+
+    // ----------------------------------------
+    // NIFTY 50 SYMBOLS
+    // ----------------------------------------
 
     const searchSymbols = [
+
       "MARUTI",
       "ULTRACEMCO",
       "TCS",
@@ -131,86 +271,29 @@ export default async function handler(req, res) {
       "CIPLA",
       "EICHERMOT",
       "DRREDDY"
+
     ];
 
-    // ------------------------------------------
-    // SIMPLE CSV PARSER
-    // ------------------------------------------
-
-    function parseCsvLine(line) {
-
-      const values = [];
-      let current = "";
-      let insideQuotes = false;
-
-      for (let i = 0; i < line.length; i++) {
-
-        const char = line[i];
-
-        if (char === '"') {
-          insideQuotes = !insideQuotes;
-          continue;
-        }
-
-        if (char === "," && !insideQuotes) {
-          values.push(current.trim());
-          current = "";
-        } else {
-          current += char;
-        }
-      }
-
-      values.push(current.trim());
-
-      return values;
-    }
-
-    // ------------------------------------------
-    // COLUMN INDEXES
-    // ------------------------------------------
-
-    const symbolIndex =
-      header.indexOf("pSymbol");
-
-    const exchangeIndex =
-      header.indexOf("pExchSeg");
-
-    const tradingSymbolIndex =
-      header.indexOf("pTrdSymbol");
-
-    const instrumentTokenIndex =
-      header.indexOf("pToken");
-
-    // ------------------------------------------
-    // PARSE MATCHING STOCKS
-    // ------------------------------------------
+    // ----------------------------------------
+    // FIND STOCKS
+    // ----------------------------------------
 
     const results = [];
 
-    for (let i = 1; i < lines.length; i++) {
+    for (
+      let i = 1;
+      i < lines.length;
+      i++
+    ) {
 
       const row =
         parseCsvLine(lines[i]);
 
       const symbol =
-        symbolIndex >= 0
-          ? row[symbolIndex]
-          : "";
+        row[symbolIndex] || "";
 
       const exchange =
-        exchangeIndex >= 0
-          ? row[exchangeIndex]
-          : "";
-
-      const tradingSymbol =
-        tradingSymbolIndex >= 0
-          ? row[tradingSymbolIndex]
-          : "";
-
-      const instrumentToken =
-        instrumentTokenIndex >= 0
-          ? row[instrumentTokenIndex]
-          : "";
+        row[exchangeIndex] || "";
 
       if (
         exchange === "nse_cm" &&
@@ -218,27 +301,61 @@ export default async function handler(req, res) {
       ) {
 
         results.push({
-          pSymbol: symbol,
-          pExchSeg: exchange,
-          pTrdSymbol: tradingSymbol,
-          pToken: instrumentToken
+
+          pSymbol:
+            symbol,
+
+          pExchSeg:
+            exchange,
+
+          pTrdSymbol:
+            tradingSymbolIndex >= 0
+              ? row[tradingSymbolIndex]
+              : "",
+
+          pToken:
+            tokenIndex >= 0
+              ? row[tokenIndex]
+              : ""
+
         });
 
       }
 
     }
 
-    // ------------------------------------------
-    // RESPONSE
-    // ------------------------------------------
+    // ----------------------------------------
+    // MISSING STOCKS
+    // ----------------------------------------
+
+    const missing =
+      searchSymbols.filter(
+        function(symbol) {
+
+          return !results.some(
+            function(item) {
+
+              return item.pSymbol === symbol;
+
+            }
+          );
+
+        }
+      );
+
+    // ----------------------------------------
+    // SUCCESS RESPONSE
+    // ----------------------------------------
 
     return res.status(200).json({
 
       success: true,
 
-      source: "KOTAK NEO",
+      source:
+        "KOTAK NEO",
 
-      marketData: "SCRIPMASTER",
+      marketData:
+        "SCRIPMASTER",
 
       file:
         "nse_cm-v1.csv",
@@ -250,13 +367,7 @@ export default async function handler(req, res) {
         results.length,
 
       missing:
-        searchSymbols.filter(function(symbol) {
-
-          return !results.some(function(item) {
-            return item.pSymbol === symbol;
-          });
-
-        }),
+        missing,
 
       stocks:
         results
@@ -265,11 +376,17 @@ export default async function handler(req, res) {
 
   } catch (error) {
 
+    console.error(
+      "Kotak Neo Scrip Master Error:",
+      error
+    );
+
     return res.status(500).json({
 
       success: false,
 
-      source: "KOTAK NEO",
+      source:
+        "KOTAK NEO",
 
       error:
         error.message ||
