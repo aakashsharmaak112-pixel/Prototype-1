@@ -13,20 +13,6 @@ export default async function handler(req, res) {
     });
   }
 
-  const ACCESS_TOKEN =
-    process.env.NEO_ACCESS_TOKEN;
-
-  if (!ACCESS_TOKEN) {
-    return res.status(500).json({
-      success: false,
-      error: "NEO_ACCESS_TOKEN is not configured."
-    });
-  }
-
-  // ------------------------------------------
-  // KOTAK SCRIP MASTER FILE
-  // ------------------------------------------
-
   const masterUrl =
     "https://lapi.kotaksecurities.com/wso2-scripmaster/v1/prod/2026-08-12/transformed-v1/nse_cm-v1.csv";
 
@@ -34,13 +20,12 @@ export default async function handler(req, res) {
 
     // ----------------------------------------
     // DOWNLOAD SCRIP MASTER
+    // NO AUTHORIZATION HEADER
     // ----------------------------------------
 
     const response = await fetch(masterUrl, {
       method: "GET",
-
       headers: {
-        "Authorization": `Bearer ${ACCESS_TOKEN}`,
         "Accept": "text/csv"
       }
     });
@@ -55,21 +40,11 @@ export default async function handler(req, res) {
     if (!response.ok) {
 
       return res.status(response.status).json({
-
         success: false,
-
-        source:
-          "KOTAK NEO",
-
-        error:
-          "Scrip Master download failed.",
-
-        status:
-          response.status,
-
-        rawResponse:
-          csvText.substring(0, 3000)
-
+        source: "KOTAK NEO",
+        error: "Scrip Master download failed.",
+        status: response.status,
+        rawResponse: csvText.substring(0, 3000)
       });
 
     }
@@ -88,29 +63,21 @@ export default async function handler(req, res) {
     if (lines.length === 0) {
 
       return res.status(502).json({
-
         success: false,
-
-        source:
-          "KOTAK NEO",
-
-        error:
-          "Scrip Master CSV is empty."
-
+        source: "KOTAK NEO",
+        error: "Scrip Master CSV is empty."
       });
 
     }
 
     // ----------------------------------------
-    // CSV LINE PARSER
+    // CSV PARSER
     // ----------------------------------------
 
     function parseCsvLine(line) {
 
       const values = [];
-
       let current = "";
-
       let insideQuotes = false;
 
       for (
@@ -119,8 +86,7 @@ export default async function handler(req, res) {
         i++
       ) {
 
-        const char =
-          line[i];
+        const char = line[i];
 
         if (char === '"') {
 
@@ -128,16 +94,11 @@ export default async function handler(req, res) {
             insideQuotes &&
             line[i + 1] === '"'
           ) {
-
             current += '"';
-
             i++;
-
           } else {
-
             insideQuotes =
               !insideQuotes;
-
           }
 
           continue;
@@ -159,7 +120,6 @@ export default async function handler(req, res) {
           current += char;
 
         }
-
       }
 
       values.push(
@@ -167,7 +127,6 @@ export default async function handler(req, res) {
       );
 
       return values;
-
     }
 
     // ----------------------------------------
@@ -199,18 +158,11 @@ export default async function handler(req, res) {
     ) {
 
       return res.status(502).json({
-
         success: false,
-
-        source:
-          "KOTAK NEO",
-
+        source: "KOTAK NEO",
         error:
           "Required Scrip Master columns were not found.",
-
-        header:
-          header
-
+        header: header
       });
 
     }
@@ -325,7 +277,7 @@ export default async function handler(req, res) {
     }
 
     // ----------------------------------------
-    // MISSING STOCKS
+    // MISSING
     // ----------------------------------------
 
     const missing =
@@ -334,9 +286,7 @@ export default async function handler(req, res) {
 
           return !results.some(
             function(item) {
-
               return item.pSymbol === symbol;
-
             }
           );
 
@@ -344,7 +294,7 @@ export default async function handler(req, res) {
       );
 
     // ----------------------------------------
-    // SUCCESS RESPONSE
+    // RESPONSE
     // ----------------------------------------
 
     return res.status(200).json({
