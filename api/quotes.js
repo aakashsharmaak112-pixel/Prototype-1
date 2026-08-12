@@ -146,7 +146,7 @@ export default async function handler(req, res) {
   const headers = {
 
     "Authorization":
-      "Bearer " + ACCESS_TOKEN,
+  ACCESS_TOKEN,,
 
     "Content-Type":
       "application/json",
