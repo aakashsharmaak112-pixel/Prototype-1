@@ -95,34 +95,42 @@ export default async function handler(req, res) {
     // HEADER
     // ========================================
 
-    const header = parseCsvLine(lines[0]);
+    const header =
+      parseCsvLine(lines[0]);
+
+    function getIndex(name) {
+      return header.indexOf(name);
+    }
 
     const symbolIndex =
-      header.indexOf("pSymbol");
+      getIndex("pSymbol");
 
     const exchangeIndex =
-      header.indexOf("pExchSeg");
+      getIndex("pExchSeg");
 
     const tradingSymbolIndex =
-      header.indexOf("pTrdSymbol");
+      getIndex("pTrdSymbol");
 
     const refKeyIndex =
-      header.indexOf("pScripRefKey");
+      getIndex("pScripRefKey");
 
-    const tokenIndex =
-      header.indexOf("pToken");
+    const combinedSymbolIndex =
+      getIndex("pCombinedSymbol");
+
+    const contractIdIndex =
+      getIndex("pContractId");
+
+    const instrumentTypeIndex =
+      getIndex("pInstType");
+
+    const symbolNameIndex =
+      getIndex("pSymbolName");
+
+    const exchangeNameIndex =
+      getIndex("pExchange");
 
     const seriesIndex =
-      header.indexOf("pSeries");
-
-    const instrumentNameIndex =
-      header.indexOf("pInstName");
-
-    const expiryIndex =
-      header.indexOf("pExpiryDate");
-
-    const strikeIndex =
-      header.indexOf("pStrikePrice");
+      getIndex("pSeries");
 
     // ========================================
     // REQUIRED FIELD CHECK
@@ -146,10 +154,6 @@ export default async function handler(req, res) {
       missingFields.push("pScripRefKey");
     }
 
-    if (tokenIndex < 0) {
-      missingFields.push("pToken");
-    }
-
     if (missingFields.length > 0) {
       return res.status(502).json({
         success: false,
@@ -161,7 +165,7 @@ export default async function handler(req, res) {
     }
 
     // ========================================
-    // STOCKS TO FIND
+    // STOCKS
     // ========================================
 
     const searchSymbols = [
@@ -174,12 +178,13 @@ export default async function handler(req, res) {
     const results = [];
 
     // ========================================
-    // SEARCH SCRIPMASTER
+    // SEARCH
     // ========================================
 
     for (let i = 1; i < lines.length; i++) {
 
-      const row = parseCsvLine(lines[i]);
+      const row =
+        parseCsvLine(lines[i]);
 
       const exchange =
         row[exchangeIndex] || "";
@@ -197,27 +202,34 @@ export default async function handler(req, res) {
       const refKey =
         row[refKeyIndex] || "";
 
-      const token =
-        row[tokenIndex] || "";
+      const combinedSymbol =
+        combinedSymbolIndex >= 0
+          ? row[combinedSymbolIndex] || ""
+          : "";
+
+      const contractId =
+        contractIdIndex >= 0
+          ? row[contractIdIndex] || ""
+          : "";
+
+      const instrumentType =
+        instrumentTypeIndex >= 0
+          ? row[instrumentTypeIndex] || ""
+          : "";
+
+      const symbolName =
+        symbolNameIndex >= 0
+          ? row[symbolNameIndex] || ""
+          : "";
+
+      const exchangeName =
+        exchangeNameIndex >= 0
+          ? row[exchangeNameIndex] || ""
+          : "";
 
       const series =
         seriesIndex >= 0
           ? row[seriesIndex] || ""
-          : "";
-
-      const instrumentName =
-        instrumentNameIndex >= 0
-          ? row[instrumentNameIndex] || ""
-          : "";
-
-      const expiry =
-        expiryIndex >= 0
-          ? row[expiryIndex] || ""
-          : "";
-
-      const strike =
-        strikeIndex >= 0
-          ? row[strikeIndex] || ""
           : "";
 
       const combinedText = (
@@ -225,14 +237,12 @@ export default async function handler(req, res) {
         " " +
         tradingSymbol +
         " " +
-        refKey
+        refKey +
+        " " +
+        combinedSymbol
       ).toUpperCase();
 
       for (const search of searchSymbols) {
-
-        // ====================================
-        // EXACT EQUITY PREFERENCE
-        // ====================================
 
         const exactSymbol =
           symbol.toUpperCase() === search;
@@ -241,12 +251,16 @@ export default async function handler(req, res) {
           tradingSymbol.toUpperCase() ===
           search + "-EQ";
 
+        const exactCombinedSymbol =
+          combinedSymbol.toUpperCase() === search;
+
         const containsSearch =
           combinedText.includes(search);
 
         if (
           exactSymbol ||
           exactTradingSymbol ||
+          exactCombinedSymbol ||
           containsSearch
         ) {
 
@@ -264,53 +278,69 @@ export default async function handler(req, res) {
             pScripRefKey:
               refKey,
 
-            pToken:
-              token,
+            pCombinedSymbol:
+              combinedSymbol,
+
+            pContractId:
+              contractId,
 
             pExchSeg:
               exchange,
 
+            pExchange:
+              exchangeName,
+
+            pSymbolName:
+              symbolName,
+
+            pInstType:
+              instrumentType,
+
             pSeries:
               series,
 
-            pInstName:
-              instrumentName,
-
-            pExpiryDate:
-              expiry,
-
-            pStrikePrice:
-              strike,
-
             // ==================================
-            // POSSIBLE VALUES TO VERIFY
+            // VALUES TO TEST WITH getQuote
             // ==================================
 
-            neoSymbolCandidates: {
+            neoSymbolCandidates: [
 
-              pSymbol:
-                symbol,
+              {
+                field:
+                  "pSymbol",
+                value:
+                  symbol
+              },
 
-              pTrdSymbol:
-                tradingSymbol,
+              {
+                field:
+                  "pTrdSymbol",
+                value:
+                  tradingSymbol
+              },
 
-              pScripRefKey:
-                refKey,
+              {
+                field:
+                  "pScripRefKey",
+                value:
+                  refKey
+              },
 
-              symbolWithEq:
-                symbol
-                  ? symbol + "-EQ"
-                  : "",
+              {
+                field:
+                  "pCombinedSymbol",
+                value:
+                  combinedSymbol
+              },
 
-              tradingSymbolWithoutEq:
-                tradingSymbol
-                  ? tradingSymbol.replace(
-                      /-EQ$/i,
-                      ""
-                    )
-                  : ""
+              {
+                field:
+                  "pContractId",
+                value:
+                  contractId
+              }
 
-            }
+            ]
 
           });
 
