@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Prototype-1 | Live Quotes Test</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 440px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+
+    h2 {
+      margin-bottom: 8px;
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 14px;
+      margin: 15px 0;
+      font-size: 22px;
+      text-align: center;
+      letter-spacing: 5px;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    pre {
+      margin-top: 20px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h2>Kotak Neo Live Quotes Test</h2>
+
+  <p>
+    Current Google Authenticator TOTP enter karo.
+  </p>
+
+  <input
+    id="totp"
+    type="text"
+    inputmode="numeric"
+    maxlength="6"
+    autocomplete="one-time-code"
+    placeholder="6-digit TOTP"
+  >
+
+  <button onclick="getQuotes()">
+    Test Live Quotes
+  </button>
+
+  <pre id="status"></pre>
+
+  <script>
+
+    async function getQuotes() {
+
+      const totp =
+        document.getElementById("totp").value.trim();
+
+      const status =
+        document.getElementById("status");
+
+      if (!/^\d{6}$/.test(totp)) {
+        status.textContent =
+          "Please enter the current 6-digit TOTP.";
+        return;
+      }
+
+      status.textContent =
+        "Creating fresh Kotak session and getting live quotes...";
+
+      try {
+
+        const response =
+          await fetch("/api/quotes", {
+
+            method: "POST",
+
+            headers: {
+              "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+              totp: totp
+            })
+
+          });
+
+        const data =
+          await response.json();
+
+        status.textContent =
+          JSON.stringify(data, null, 2);
+
+        document.getElementById("totp").value = "";
+
+      } catch (error) {
+
+        status.textContent =
+          "Request failed: " +
+          error.message;
+
+      }
+
+    }
+
+  </script>
+
+</body>
+</html>
