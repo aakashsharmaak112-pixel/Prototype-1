@@ -1,6 +1,6 @@
 // ============================================
 // PROTOTYPE-1
-// KOTAK NEO V2 AUTH RAW DEBUG
+// KOTAK NEO V2 TRADE API VALIDATION
 // api/neo-test.js
 // ============================================
 
@@ -13,18 +13,21 @@ export default async function handler(req, res) {
     });
   }
 
+  // ------------------------------------------
+  // ENVIRONMENT VARIABLES
+  // ------------------------------------------
+
   const ACCESS_TOKEN =
     process.env.NEO_ACCESS_TOKEN;
 
-  const UCC =
-    process.env.NEO_UCC;
+  const VIEW_SID =
+    process.env.NEO_VIEW_SID;
+
+  const VIEW_TOKEN =
+    process.env.NEO_VIEW_TOKEN;
 
   const MPIN =
     process.env.NEO_MPIN;
-
-  // ------------------------------------------
-  // ENV CHECK
-  // ------------------------------------------
 
   if (!ACCESS_TOKEN) {
     return res.status(500).json({
@@ -33,10 +36,17 @@ export default async function handler(req, res) {
     });
   }
 
-  if (!UCC) {
+  if (!VIEW_SID) {
     return res.status(500).json({
       success: false,
-      error: "NEO_UCC is missing."
+      error: "NEO_VIEW_SID is missing."
+    });
+  }
+
+  if (!VIEW_TOKEN) {
+    return res.status(500).json({
+      success: false,
+      error: "NEO_VIEW_TOKEN is missing."
     });
   }
 
@@ -50,7 +60,14 @@ export default async function handler(req, res) {
   try {
 
     // ----------------------------------------
-    // KOTAK NEO V2 AUTH
+    // KOTAK NEO V2 tradeApiValidate
+    // PDF FLOW:
+    //
+    // Authorization = access_token
+    // neo-fin-key   = neotradeapi
+    // sid           = viewSid
+    // Auth          = viewToken
+    // body          = mpin
     // ----------------------------------------
 
     const response = await fetch(
@@ -59,34 +76,32 @@ export default async function handler(req, res) {
         method: "POST",
 
         headers: {
+          "Authorization": ACCESS_TOKEN,
+          "neo-fin-key": "neotradeapi",
+          "sid": VIEW_SID,
+          "Auth": VIEW_TOKEN,
           "Content-Type": "application/json",
-          "Accept": "application/json",
-          "Authorization": ACCESS_TOKEN
+          "Accept": "application/json"
         },
 
         body: JSON.stringify({
-          ucc: UCC,
           mpin: MPIN
         })
       }
     );
 
     // ----------------------------------------
-    // RAW RESPONSE
+    // READ RESPONSE
     // ----------------------------------------
 
     const rawText =
       await response.text();
 
-    // ----------------------------------------
-    // TRY JSON
-    // ----------------------------------------
-
-    let parsed = null;
+    let data = null;
 
     try {
 
-      parsed =
+      data =
         rawText
           ? JSON.parse(rawText)
           : null;
@@ -94,67 +109,28 @@ export default async function handler(req, res) {
     } catch (error) {
 
       return res.status(200).json({
-
         success: false,
-
-        source:
-          "KOTAK NEO V2",
-
-        kotakHttpStatus:
-          response.status,
-
-        responseType:
-          "NON_JSON",
-
-        rawResponse:
-          rawText.substring(0, 5000)
-
+        source: "KOTAK NEO V2",
+        kotakHttpStatus: response.status,
+        responseType: "NON_JSON",
+        rawResponse: rawText.substring(0, 5000)
       });
 
     }
 
     // ----------------------------------------
-    // FIND BASE URL WITHOUT ASSUMING LOCATION
+    // FIND BASE URL
     // ----------------------------------------
 
-    let baseUrl = null;
-
-    function findBaseUrl(value) {
-
-      if (!value || typeof value !== "object") {
-        return null;
-      }
-
-      if (
-        typeof value.baseUrl === "string"
-      ) {
-        return value.baseUrl;
-      }
-
-      if (
-        typeof value.baseURL === "string"
-      ) {
-        return value.baseURL;
-      }
-
-      for (const key of Object.keys(value)) {
-
-        const result =
-          findBaseUrl(value[key]);
-
-        if (result) {
-          return result;
-        }
-      }
-
-      return null;
-    }
-
-    baseUrl =
-      findBaseUrl(parsed);
+    const baseUrl =
+      data?.baseUrl ||
+      data?.baseURL ||
+      data?.data?.baseUrl ||
+      data?.data?.baseURL ||
+      null;
 
     // ----------------------------------------
-    // RETURN KOTAK RESPONSE
+    // SAFE RESULT
     // ----------------------------------------
 
     return res.status(200).json({
@@ -174,15 +150,20 @@ export default async function handler(req, res) {
       baseUrlFound:
         Boolean(baseUrl),
 
+      message:
+        response.ok
+          ? "Neo MPIN validation completed."
+          : "Neo MPIN validation failed.",
+
       kotakResponse:
-        parsed
+        data
 
     });
 
   } catch (error) {
 
     console.error(
-      "Kotak Neo V2 Raw Debug Error:",
+      "Kotak Neo V2 Validation Error:",
       error
     );
 
