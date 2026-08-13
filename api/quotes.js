@@ -2,6 +2,7 @@
 // PROTOTYPE-1
 // KOTAK NEO LIVE QUOTES
 // FRESH TOTP + MPIN SESSION
+// VERIFIED SCRIPMASTER pSymbol TEST
 // api/quotes.js
 // ============================================
 
@@ -29,9 +30,9 @@ export default async function handler(req, res) {
   const TOTP =
     req.body?.totp;
 
-  // ------------------------------------------
+  // ==========================================
   // ENV CHECK
-  // ------------------------------------------
+  // ==========================================
 
   if (!ACCESS_TOKEN) {
     return res.status(500).json({
@@ -75,9 +76,9 @@ export default async function handler(req, res) {
     });
   }
 
-  // ------------------------------------------
+  // ==========================================
   // MOBILE
-  // ------------------------------------------
+  // ==========================================
 
   let mobile =
     String(MOBILE)
@@ -111,6 +112,7 @@ export default async function handler(req, res) {
         method: "POST",
 
         headers: {
+
           "Authorization":
             String(ACCESS_TOKEN).trim(),
 
@@ -144,30 +146,48 @@ export default async function handler(req, res) {
     let loginData;
 
     try {
+
       loginData =
         loginText
           ? JSON.parse(loginText)
           : null;
+
     } catch {
+
       return res.status(502).json({
+
         success: false,
-        step: "TOTP LOGIN",
+
+        step:
+          "TOTP LOGIN",
+
         kotakHttpStatus:
           loginResponse.status,
+
         error:
           "Kotak returned non-JSON response."
+
       });
+
     }
 
     if (!loginResponse.ok) {
+
       return res.status(loginResponse.status).json({
+
         success: false,
-        step: "TOTP LOGIN",
+
+        step:
+          "TOTP LOGIN",
+
         kotakHttpStatus:
           loginResponse.status,
+
         kotakResponse:
           loginData
+
       });
+
     }
 
     const loginSession =
@@ -184,12 +204,19 @@ export default async function handler(req, res) {
       loginSession?.auth;
 
     if (!viewSid || !viewToken) {
+
       return res.status(502).json({
+
         success: false,
-        step: "TOTP LOGIN",
+
+        step:
+          "TOTP LOGIN",
+
         error:
           "TOTP login succeeded but session credentials were not returned."
+
       });
+
     }
 
     // ========================================
@@ -224,6 +251,7 @@ export default async function handler(req, res) {
 
           "Accept":
             "application/json"
+
         },
 
         body: JSON.stringify({
@@ -232,6 +260,7 @@ export default async function handler(req, res) {
             String(MPIN).trim()
 
         })
+
       });
 
     const validateText =
@@ -240,30 +269,48 @@ export default async function handler(req, res) {
     let validateData;
 
     try {
+
       validateData =
         validateText
           ? JSON.parse(validateText)
           : null;
+
     } catch {
+
       return res.status(502).json({
+
         success: false,
-        step: "MPIN VALIDATION",
+
+        step:
+          "MPIN VALIDATION",
+
         kotakHttpStatus:
           validateResponse.status,
+
         error:
           "Kotak returned non-JSON response."
+
       });
+
     }
 
     if (!validateResponse.ok) {
+
       return res.status(validateResponse.status).json({
+
         success: false,
-        step: "MPIN VALIDATION",
+
+        step:
+          "MPIN VALIDATION",
+
         kotakHttpStatus:
           validateResponse.status,
+
         kotakResponse:
           validateData
+
       });
+
     }
 
     const tradeSession =
@@ -284,36 +331,134 @@ export default async function handler(req, res) {
       tradeSession?.auth;
 
     if (!baseUrl || !tradeSid || !tradeToken) {
+
       return res.status(502).json({
+
         success: false,
-        step: "MPIN VALIDATION",
+
+        step:
+          "MPIN VALIDATION",
+
         error:
           "Trade session credentials were not returned.",
+
         baseUrlFound:
           Boolean(baseUrl),
+
         tradeSidFound:
           Boolean(tradeSid),
+
         tradeTokenFound:
           Boolean(tradeToken)
+
       });
+
     }
 
     // ========================================
     // STEP 3
-    // LIVE QUOTES
+    // VERIFIED SCRIPMASTER EQUITY MAPPING
+    //
+    // HDFCBANK-EQ -> 1333
+    // TCS-EQ      -> 11536
+    // RELIANCE-EQ -> 2885
+    // INFY-EQ     -> 1594
     // ========================================
 
     const stocks = [
-      "HDFCBANK-EQ",
-      "TCS-EQ",
-      "RELIANCE-EQ",
-      "INFY-EQ"
+
+      {
+        symbol:
+          "HDFCBANK-EQ",
+
+        neoSymbol:
+          "1333",
+
+        pSymbol:
+          "1333",
+
+        pTrdSymbol:
+          "HDFCBANK-EQ",
+
+        pScripRefKey:
+          "HDFCBANK",
+
+        exchange:
+          "nse_cm"
+      },
+
+      {
+        symbol:
+          "TCS-EQ",
+
+        neoSymbol:
+          "11536",
+
+        pSymbol:
+          "11536",
+
+        pTrdSymbol:
+          "TCS-EQ",
+
+        pScripRefKey:
+          "TCS",
+
+        exchange:
+          "nse_cm"
+      },
+
+      {
+        symbol:
+          "RELIANCE-EQ",
+
+        neoSymbol:
+          "2885",
+
+        pSymbol:
+          "2885",
+
+        pTrdSymbol:
+          "RELIANCE-EQ",
+
+        pScripRefKey:
+          "RELIANCE",
+
+        exchange:
+          "nse_cm"
+      },
+
+      {
+        symbol:
+          "INFY-EQ",
+
+        neoSymbol:
+          "1594",
+
+        pSymbol:
+          "1594",
+
+        pTrdSymbol:
+          "INFY-EQ",
+
+        pScripRefKey:
+          "INFY",
+
+        exchange:
+          "nse_cm"
+      }
+
     ];
 
+    // ========================================
+    // STEP 4
+    // LIVE QUOTE REQUEST
+    // ========================================
+
     const quotes = [];
+
     const errors = [];
 
-    for (const symbol of stocks) {
+    for (const stock of stocks) {
 
       try {
 
@@ -321,13 +466,14 @@ export default async function handler(req, res) {
           `${String(baseUrl).replace(/\/+$/, "")}` +
           `/script-details/1.0/quotes/` +
           `neosymbol/` +
-          encodeURIComponent(symbol) +
+          encodeURIComponent(stock.neoSymbol) +
           `/all`;
 
         const quoteResponse =
           await fetch(quoteUrl, {
 
-            method: "GET",
+            method:
+              "GET",
 
             headers: {
 
@@ -345,7 +491,9 @@ export default async function handler(req, res) {
 
               "Accept":
                 "application/json"
+
             }
+
           });
 
         const quoteText =
@@ -354,46 +502,135 @@ export default async function handler(req, res) {
         let quoteData;
 
         try {
+
           quoteData =
             quoteText
               ? JSON.parse(quoteText)
               : null;
+
         } catch {
+
           quoteData = {
+
             rawResponse:
-              quoteText.substring(0, 1000)
+              quoteText.substring(
+                0,
+                1000
+              )
+
           };
+
         }
+
+        // ------------------------------------
+        // HTTP ERROR
+        // ------------------------------------
 
         if (!quoteResponse.ok) {
 
           errors.push({
-            symbol,
+
+            symbol:
+              stock.symbol,
+
+            neoSymbol:
+              stock.neoSymbol,
+
+            pSymbol:
+              stock.pSymbol,
+
             status:
               quoteResponse.status,
+
             response:
               quoteData
+
           });
 
           continue;
         }
 
+        // ------------------------------------
+        // KOTAK FAULT RESPONSE
+        // ------------------------------------
+
+        if (
+          quoteData?.fault
+        ) {
+
+          errors.push({
+
+            symbol:
+              stock.symbol,
+
+            neoSymbol:
+              stock.neoSymbol,
+
+            pSymbol:
+              stock.pSymbol,
+
+            status:
+              quoteData?.fault?.code ||
+              quoteResponse.status,
+
+            response:
+              quoteData
+
+          });
+
+          continue;
+        }
+
+        // ------------------------------------
+        // SUCCESS
+        // ------------------------------------
+
         quotes.push({
-          symbol,
+
+          symbol:
+            stock.symbol,
+
+          neoSymbol:
+            stock.neoSymbol,
+
+          pSymbol:
+            stock.pSymbol,
+
+          pTrdSymbol:
+            stock.pTrdSymbol,
+
+          pScripRefKey:
+            stock.pScripRefKey,
+
+          exchange:
+            stock.exchange,
+
           data:
             quoteData
+
         });
 
       } catch (error) {
 
         errors.push({
-          symbol,
+
+          symbol:
+            stock.symbol,
+
+          neoSymbol:
+            stock.neoSymbol,
+
+          pSymbol:
+            stock.pSymbol,
+
           error:
             error.message ||
             "Quote request failed."
+
         });
 
       }
+
     }
 
     // ========================================
@@ -414,6 +651,9 @@ export default async function handler(req, res) {
       authentication:
         "TOTP + MPIN",
 
+      mappingSource:
+        "KOTAK NEO SCRIPMASTER",
+
       totalRequested:
         stocks.length,
 
@@ -433,7 +673,8 @@ export default async function handler(req, res) {
 
     return res.status(500).json({
 
-      success: false,
+      success:
+        false,
 
       source:
         "KOTAK NEO LIVE",
@@ -443,5 +684,7 @@ export default async function handler(req, res) {
         "Unexpected server error."
 
     });
+
   }
+
 }
