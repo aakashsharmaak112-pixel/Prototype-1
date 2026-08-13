@@ -1,0 +1,195 @@
+// ============================================
+// PROTOTYPE-1
+// KOTAK NEO TOTP LOGIN TEST PAGE
+// api/neo-login-test.js
+// ============================================
+
+export default async function handler(req, res) {
+
+  // ------------------------------------------
+  // POST ONLY
+  // ------------------------------------------
+
+  if (req.method !== "POST") {
+    return res.status(405).json({
+      success: false,
+      error: "Use POST method."
+    });
+  }
+
+  // ------------------------------------------
+  // ENVIRONMENT
+  // ------------------------------------------
+
+  const ACCESS_TOKEN =
+    process.env.NEO_ACCESS_TOKEN;
+
+  const MOBILE =
+    process.env.NEO_MOBILE;
+
+  const UCC =
+    process.env.NEO_UCC;
+
+  const TOTP =
+    req.body?.totp;
+
+  // ------------------------------------------
+  // CHECK ENV
+  // ------------------------------------------
+
+  if (!ACCESS_TOKEN) {
+    return res.status(500).json({
+      success: false,
+      error: "NEO_ACCESS_TOKEN missing."
+    });
+  }
+
+  if (!MOBILE) {
+    return res.status(500).json({
+      success: false,
+      error: "NEO_MOBILE missing."
+    });
+  }
+
+  if (!UCC) {
+    return res.status(500).json({
+      success: false,
+      error: "NEO_UCC missing."
+    });
+  }
+
+  // ------------------------------------------
+  // CHECK TOTP
+  // ------------------------------------------
+
+  if (!/^\d{6}$/.test(String(TOTP || ""))) {
+    return res.status(400).json({
+      success: false,
+      error: "Enter the current 6-digit TOTP."
+    });
+  }
+
+  // ------------------------------------------
+  // KOTAK LOGIN
+  // ------------------------------------------
+
+  const loginUrl =
+    "https://mis.kotaksecurities.com/login/1.0/tradeApiLogin";
+
+  try {
+
+    const response = await fetch(
+      loginUrl,
+      {
+        method: "POST",
+
+        headers: {
+          "Authorization": String(ACCESS_TOKEN).trim(),
+          "neo-fin-key": "neotradeapi",
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+
+        body: JSON.stringify({
+          mobileNumber: String(MOBILE).trim(),
+          ucc: String(UCC).trim(),
+          totp: String(TOTP)
+        })
+      }
+    );
+
+    const rawText =
+      await response.text();
+
+    let data = null;
+
+    try {
+      data = rawText
+        ? JSON.parse(rawText)
+        : null;
+    } catch (error) {
+
+      return res.status(502).json({
+        success: false,
+        source: "KOTAK NEO V2",
+        step: "TOTP LOGIN",
+        kotakHttpStatus: response.status,
+        error: "Kotak returned non-JSON response."
+      });
+
+    }
+
+    const obj =
+      data?.data || data;
+
+    const sid =
+      obj?.sid ||
+      obj?.Sid ||
+      obj?.viewSid ||
+      null;
+
+    const token =
+      obj?.token ||
+      obj?.viewToken ||
+      obj?.Auth ||
+      obj?.auth ||
+      null;
+
+    // ------------------------------------------
+    // IMPORTANT
+    // DO NOT RETURN TOKEN/SID VALUES
+    // ------------------------------------------
+
+    return res.status(response.status).json({
+
+      success: response.ok,
+
+      source:
+        "KOTAK NEO V2",
+
+      step:
+        "TOTP LOGIN",
+
+      kotakHttpStatus:
+        response.status,
+
+      sidFound:
+        Boolean(sid),
+
+      tokenFound:
+        Boolean(token),
+
+      sidLength:
+        sid ? String(sid).length : 0,
+
+      tokenLength:
+        token ? String(token).length : 0,
+
+      message:
+        response.ok
+          ? "TOTP login successful."
+          : "TOTP login failed.",
+
+      kotakResponse:
+        data
+
+    });
+
+  } catch (error) {
+
+    return res.status(500).json({
+
+      success: false,
+
+      source:
+        "KOTAK NEO V2",
+
+      error:
+        error.message ||
+        "Unexpected server error."
+
+    });
+
+  }
+
+}
