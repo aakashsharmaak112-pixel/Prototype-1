@@ -1,14 +1,10 @@
 // ============================================
 // PROTOTYPE-1
-// KOTAK NEO V2 AUTH DEBUG
+// KOTAK NEO V2 AUTH RAW DEBUG
 // api/neo-test.js
 // ============================================
 
 export default async function handler(req, res) {
-
-  // ------------------------------------------
-  // ONLY GET
-  // ------------------------------------------
 
   if (req.method !== "GET") {
     return res.status(405).json({
@@ -16,10 +12,6 @@ export default async function handler(req, res) {
       error: "Only GET method is allowed."
     });
   }
-
-  // ------------------------------------------
-  // ENVIRONMENT VARIABLES
-  // ------------------------------------------
 
   const ACCESS_TOKEN =
     process.env.NEO_ACCESS_TOKEN;
@@ -31,7 +23,7 @@ export default async function handler(req, res) {
     process.env.NEO_MPIN;
 
   // ------------------------------------------
-  // BASIC CHECK
+  // ENV CHECK
   // ------------------------------------------
 
   if (!ACCESS_TOKEN) {
@@ -55,11 +47,11 @@ export default async function handler(req, res) {
     });
   }
 
-  // ------------------------------------------
-  // KOTAK NEO V2 VALIDATION
-  // ------------------------------------------
-
   try {
+
+    // ----------------------------------------
+    // KOTAK NEO V2 AUTH
+    // ----------------------------------------
 
     const response = await fetch(
       "https://mis.kotaksecurities.com/login/1.0/tradeApiValidate",
@@ -80,31 +72,30 @@ export default async function handler(req, res) {
     );
 
     // ----------------------------------------
-    // READ RAW RESPONSE
+    // RAW RESPONSE
     // ----------------------------------------
 
     const rawText =
       await response.text();
 
     // ----------------------------------------
-    // PARSE JSON
+    // TRY JSON
     // ----------------------------------------
 
-    let data = null;
+    let parsed = null;
 
     try {
 
-      data =
+      parsed =
         rawText
           ? JSON.parse(rawText)
           : null;
 
-    } catch (parseError) {
+    } catch (error) {
 
       return res.status(200).json({
 
-        success:
-          false,
+        success: false,
 
         source:
           "KOTAK NEO V2",
@@ -115,30 +106,55 @@ export default async function handler(req, res) {
         responseType:
           "NON_JSON",
 
-        error:
-          "Kotak returned a non-JSON response.",
-
         rawResponse:
-          rawText.substring(0, 3000)
+          rawText.substring(0, 5000)
 
       });
 
     }
 
     // ----------------------------------------
-    // SEARCH BASE URL
+    // FIND BASE URL WITHOUT ASSUMING LOCATION
     // ----------------------------------------
 
-    const baseUrl =
-      data?.baseUrl ||
-      data?.baseURL ||
-      data?.data?.baseUrl ||
-      data?.data?.baseURL ||
-      data?.data?.data?.baseUrl ||
-      null;
+    let baseUrl = null;
+
+    function findBaseUrl(value) {
+
+      if (!value || typeof value !== "object") {
+        return null;
+      }
+
+      if (
+        typeof value.baseUrl === "string"
+      ) {
+        return value.baseUrl;
+      }
+
+      if (
+        typeof value.baseURL === "string"
+      ) {
+        return value.baseURL;
+      }
+
+      for (const key of Object.keys(value)) {
+
+        const result =
+          findBaseUrl(value[key]);
+
+        if (result) {
+          return result;
+        }
+      }
+
+      return null;
+    }
+
+    baseUrl =
+      findBaseUrl(parsed);
 
     // ----------------------------------------
-    // SAFE RESPONSE
+    // RETURN KOTAK RESPONSE
     // ----------------------------------------
 
     return res.status(200).json({
@@ -158,20 +174,15 @@ export default async function handler(req, res) {
       baseUrlFound:
         Boolean(baseUrl),
 
-      responseType:
-        Array.isArray(data)
-          ? "ARRAY"
-          : typeof data,
-
       kotakResponse:
-        data
+        parsed
 
     });
 
   } catch (error) {
 
     console.error(
-      "Kotak Neo V2 Auth Debug Error:",
+      "Kotak Neo V2 Raw Debug Error:",
       error
     );
 
