@@ -1,6 +1,6 @@
 // ============================================
 // PROTOTYPE-1
-// KOTAK NEO V2 TRADE API VALIDATION
+// KOTAK NEO LOGIN + MPIN VALIDATION
 // api/neo-test.js
 // ============================================
 
@@ -13,21 +13,15 @@ export default async function handler(req, res) {
     });
   }
 
+  const ACCESS_TOKEN = process.env.NEO_ACCESS_TOKEN;
+  const MOBILE = process.env.NEO_MOBILE;
+  const UCC = process.env.NEO_UCC;
+  const MPIN = process.env.NEO_MPIN;
+  const TOTP = process.env.NEO_TOTP;
+
   // ------------------------------------------
-  // ENVIRONMENT VARIABLES
+  // CHECK ENVIRONMENT VARIABLES
   // ------------------------------------------
-
-  const ACCESS_TOKEN =
-    process.env.NEO_ACCESS_TOKEN;
-
-  const VIEW_SID =
-    process.env.NEO_VIEW_SID;
-
-  const VIEW_TOKEN =
-    process.env.NEO_VIEW_TOKEN;
-
-  const MPIN =
-    process.env.NEO_MPIN;
 
   if (!ACCESS_TOKEN) {
     return res.status(500).json({
@@ -36,17 +30,17 @@ export default async function handler(req, res) {
     });
   }
 
-  if (!VIEW_SID) {
+  if (!MOBILE) {
     return res.status(500).json({
       success: false,
-      error: "NEO_VIEW_SID is missing."
+      error: "NEO_MOBILE is missing."
     });
   }
 
-  if (!VIEW_TOKEN) {
+  if (!UCC) {
     return res.status(500).json({
       success: false,
-      error: "NEO_VIEW_TOKEN is missing."
+      error: "NEO_UCC is missing."
     });
   }
 
@@ -57,29 +51,120 @@ export default async function handler(req, res) {
     });
   }
 
+  if (!TOTP) {
+    return res.status(500).json({
+      success: false,
+      error: "NEO_TOTP is missing. Enter the current 6-digit TOTP."
+    });
+  }
+
+  // ------------------------------------------
+  // STEP 1 — LOGIN WITH TOTP
+  // ------------------------------------------
+
+  const loginUrl =
+    "https://mis.kotaksecurities.com/login/1.0/tradeApiLogin";
+
   try {
 
-    // ----------------------------------------
-    // KOTAK NEO V2 tradeApiValidate
-    // PDF FLOW:
-    //
-    // Authorization = access_token
-    // neo-fin-key   = neotradeapi
-    // sid           = viewSid
-    // Auth          = viewToken
-    // body          = mpin
-    // ----------------------------------------
-
-    const response = await fetch(
-      "https://mis.kotaksecurities.com/login/1.0/tradeApiValidate",
+    const loginResponse = await fetch(
+      loginUrl,
       {
         method: "POST",
 
         headers: {
           "Authorization": ACCESS_TOKEN,
           "neo-fin-key": "neotradeapi",
-          "sid": VIEW_SID,
-          "Auth": VIEW_TOKEN,
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+
+        body: JSON.stringify({
+          mobileNumber: MOBILE,
+          ucc: UCC,
+          totp: TOTP
+        })
+      }
+    );
+
+    const loginRaw = await loginResponse.text();
+
+    let loginData = null;
+
+    try {
+      loginData = loginRaw
+        ? JSON.parse(loginRaw)
+        : null;
+    } catch (error) {
+
+      return res.status(502).json({
+        success: false,
+        source: "KOTAK NEO V2",
+        step: "TOTP LOGIN",
+        kotakHttpStatus: loginResponse.status,
+        error: "Kotak returned non-JSON response."
+      });
+
+    }
+
+    if (!loginResponse.ok) {
+
+      return res.status(loginResponse.status).json({
+        success: false,
+        source: "KOTAK NEO V2",
+        step: "TOTP LOGIN",
+        kotakHttpStatus: loginResponse.status,
+        kotakResponse: loginData
+      });
+
+    }
+
+    // ------------------------------------------
+    // GET TOKEN + SID FROM LOGIN RESPONSE
+    // ------------------------------------------
+
+    const loginDataObject =
+      loginData?.data || loginData;
+
+    const viewToken =
+      loginDataObject?.token ||
+      loginDataObject?.viewToken ||
+      null;
+
+    const viewSid =
+      loginDataObject?.sid ||
+      loginDataObject?.viewSid ||
+      null;
+
+    if (!viewToken || !viewSid) {
+
+      return res.status(502).json({
+        success: false,
+        source: "KOTAK NEO V2",
+        step: "TOTP LOGIN",
+        error: "Login succeeded but token or sid was not found.",
+        kotakResponse: loginData
+      });
+
+    }
+
+    // ------------------------------------------
+    // STEP 2 — VALIDATE MPIN
+    // ------------------------------------------
+
+    const validateUrl =
+      "https://mis.kotaksecurities.com/login/1.0/tradeApiValidate";
+
+    const validateResponse = await fetch(
+      validateUrl,
+      {
+        method: "POST",
+
+        headers: {
+          "Authorization": ACCESS_TOKEN,
+          "neo-fin-key": "neotradeapi",
+          "sid": viewSid,
+          "Auth": viewToken,
           "Content-Type": "application/json",
           "Accept": "application/json"
         },
@@ -90,59 +175,53 @@ export default async function handler(req, res) {
       }
     );
 
-    // ----------------------------------------
-    // READ RESPONSE
-    // ----------------------------------------
+    const validateRaw =
+      await validateResponse.text();
 
-    const rawText =
-      await response.text();
-
-    let data = null;
+    let validateData = null;
 
     try {
-
-      data =
-        rawText
-          ? JSON.parse(rawText)
-          : null;
-
+      validateData = validateRaw
+        ? JSON.parse(validateRaw)
+        : null;
     } catch (error) {
 
-      return res.status(200).json({
+      return res.status(502).json({
         success: false,
         source: "KOTAK NEO V2",
-        kotakHttpStatus: response.status,
-        responseType: "NON_JSON",
-        rawResponse: rawText.substring(0, 5000)
+        step: "MPIN VALIDATION",
+        kotakHttpStatus: validateResponse.status,
+        error: "Kotak returned non-JSON response."
       });
 
     }
 
-    // ----------------------------------------
+    // ------------------------------------------
     // FIND BASE URL
-    // ----------------------------------------
+    // ------------------------------------------
 
     const baseUrl =
-      data?.baseUrl ||
-      data?.baseURL ||
-      data?.data?.baseUrl ||
-      data?.data?.baseURL ||
+      validateData?.baseUrl ||
+      validateData?.data?.baseUrl ||
       null;
 
-    // ----------------------------------------
-    // SAFE RESULT
-    // ----------------------------------------
+    // ------------------------------------------
+    // FINAL RESPONSE
+    // ------------------------------------------
 
-    return res.status(200).json({
+    return res.status(validateResponse.status).json({
 
-      success:
-        response.ok,
+      success: validateResponse.ok,
 
-      source:
-        "KOTAK NEO V2",
+      source: "KOTAK NEO V2",
+
+      step: "LOGIN + MPIN VALIDATION",
 
       kotakHttpStatus:
-        response.status,
+        validateResponse.status,
+
+      loginHttpStatus:
+        loginResponse.status,
 
       baseUrl:
         baseUrl,
@@ -151,19 +230,22 @@ export default async function handler(req, res) {
         Boolean(baseUrl),
 
       message:
-        response.ok
-          ? "Neo MPIN validation completed."
-          : "Neo MPIN validation failed.",
+        validateResponse.ok
+          ? "Kotak Neo authentication completed."
+          : "Kotak Neo MPIN validation failed.",
+
+      // SECURITY:
+      // token/sid values are NEVER returned.
 
       kotakResponse:
-        data
+        validateData
 
     });
 
   } catch (error) {
 
     console.error(
-      "Kotak Neo V2 Validation Error:",
+      "Kotak Neo Authentication Error:",
       error
     );
 
@@ -171,8 +253,7 @@ export default async function handler(req, res) {
 
       success: false,
 
-      source:
-        "KOTAK NEO V2",
+      source: "KOTAK NEO V2",
 
       error:
         error.message ||
