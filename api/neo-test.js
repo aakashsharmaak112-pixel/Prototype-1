@@ -1,29 +1,29 @@
 // ============================================
 // PROTOTYPE-1
-// KOTAK NEO V2 - TOTP LOGIN
+// KOTAK NEO TOTP LOGIN TEST
 // api/neo-test.js
 // ============================================
 
 export default async function handler(req, res) {
 
-  if (req.method !== "GET") {
+  if (req.method !== "POST") {
     return res.status(405).json({
       success: false,
-      error: "Only GET method is allowed."
+      error: "Use POST method."
     });
   }
 
-  const ACCESS_TOKEN =
-    process.env.NEO_ACCESS_TOKEN;
-
-  const MOBILE =
-    process.env.NEO_MOBILE;
-
-  const UCC =
-    process.env.NEO_UCC;
+  const ACCESS_TOKEN = process.env.NEO_ACCESS_TOKEN;
+  const MOBILE = process.env.NEO_MOBILE;
+  const UCC = process.env.NEO_UCC;
 
   const TOTP =
-    process.env.NEO_TOTP;
+    req.body?.totp ||
+    "";
+
+  // ------------------------------------------
+  // ENV CHECK
+  // ------------------------------------------
 
   if (!ACCESS_TOKEN) {
     return res.status(500).json({
@@ -46,36 +46,45 @@ export default async function handler(req, res) {
     });
   }
 
-  if (!TOTP) {
-    return res.status(500).json({
+  // ------------------------------------------
+  // TOTP CHECK
+  // ------------------------------------------
+
+  if (!/^\d{6}$/.test(String(TOTP))) {
+    return res.status(400).json({
       success: false,
-      error: "NEO_TOTP missing."
+      error: "TOTP must be the current 6-digit code."
     });
   }
+
+  // ------------------------------------------
+  // KOTAK TOTP LOGIN
+  // ------------------------------------------
 
   const loginUrl =
     "https://mis.kotaksecurities.com/login/1.0/tradeApiLogin";
 
   try {
 
-    const response = await fetch(loginUrl, {
+    const response = await fetch(
+      loginUrl,
+      {
+        method: "POST",
 
-      method: "POST",
+        headers: {
+          "Authorization": String(ACCESS_TOKEN).trim(),
+          "neo-fin-key": "neotradeapi",
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
 
-      headers: {
-        "Authorization": ACCESS_TOKEN,
-        "neo-fin-key": "neotradeapi",
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      },
-
-      body: JSON.stringify({
-        mobileNumber: MOBILE,
-        ucc: UCC,
-        totp: TOTP
-      })
-
-    });
+        body: JSON.stringify({
+          mobileNumber: String(MOBILE).trim(),
+          ucc: String(UCC).trim(),
+          totp: String(TOTP)
+        })
+      }
+    );
 
     const rawText =
       await response.text();
@@ -93,8 +102,7 @@ export default async function handler(req, res) {
         source: "KOTAK NEO V2",
         step: "TOTP LOGIN",
         kotakHttpStatus: response.status,
-        error: "Kotak returned non-JSON response.",
-        rawResponse: rawText.slice(0, 1000)
+        error: "Kotak returned non-JSON response."
       });
 
     }
@@ -108,20 +116,26 @@ export default async function handler(req, res) {
       obj?.viewSid ||
       null;
 
-    const auth =
+    const token =
       obj?.token ||
+      obj?.viewToken ||
       obj?.Auth ||
       obj?.auth ||
-      obj?.viewToken ||
       null;
+
+    // ------------------------------------------
+    // DO NOT RETURN ACTUAL CREDENTIALS
+    // ------------------------------------------
 
     return res.status(response.status).json({
 
       success: response.ok,
 
-      source: "KOTAK NEO V2",
+      source:
+        "KOTAK NEO V2",
 
-      step: "TOTP LOGIN",
+      step:
+        "TOTP LOGIN",
 
       kotakHttpStatus:
         response.status,
@@ -129,14 +143,14 @@ export default async function handler(req, res) {
       sidFound:
         Boolean(sid),
 
-      authFound:
-        Boolean(auth),
+      tokenFound:
+        Boolean(token),
 
       sidLength:
         sid ? String(sid).length : 0,
 
-      authLength:
-        auth ? String(auth).length : 0,
+      tokenLength:
+        token ? String(token).length : 0,
 
       message:
         response.ok
@@ -145,7 +159,6 @@ export default async function handler(req, res) {
 
       kotakResponse:
         data
-
     });
 
   } catch (error) {
@@ -154,7 +167,8 @@ export default async function handler(req, res) {
 
       success: false,
 
-      source: "KOTAK NEO V2",
+      source:
+        "KOTAK NEO V2",
 
       error:
         error.message ||
@@ -163,5 +177,4 @@ export default async function handler(req, res) {
     });
 
   }
-
 }
