@@ -1,4 +1,3 @@
-
 // ============================================
 // PROTOTYPE-1
 // KOTAK NEO SCRIP MASTER SEARCH
@@ -19,6 +18,10 @@ export default async function handler(req, res) {
 
   try {
 
+    // ========================================
+    // DOWNLOAD SCRIPMASTER
+    // ========================================
+
     const response = await fetch(masterUrl, {
       method: "GET",
       headers: {
@@ -38,11 +41,27 @@ export default async function handler(req, res) {
       });
     }
 
+    // ========================================
+    // CSV LINES
+    // ========================================
+
     const lines = csvText
       .split(/\r?\n/)
       .filter(function(line) {
         return line.trim() !== "";
       });
+
+    if (lines.length < 2) {
+      return res.status(502).json({
+        success: false,
+        source: "KOTAK NEO",
+        error: "Scrip Master CSV is empty or invalid."
+      });
+    }
+
+    // ========================================
+    // CSV PARSER
+    // ========================================
 
     function parseCsvLine(line) {
 
@@ -72,8 +91,11 @@ export default async function handler(req, res) {
       return values;
     }
 
-    const header =
-      parseCsvLine(lines[0]);
+    // ========================================
+    // HEADER
+    // ========================================
+
+    const header = parseCsvLine(lines[0]);
 
     const symbolIndex =
       header.indexOf("pSymbol");
@@ -90,6 +112,58 @@ export default async function handler(req, res) {
     const tokenIndex =
       header.indexOf("pToken");
 
+    const seriesIndex =
+      header.indexOf("pSeries");
+
+    const instrumentNameIndex =
+      header.indexOf("pInstName");
+
+    const expiryIndex =
+      header.indexOf("pExpiryDate");
+
+    const strikeIndex =
+      header.indexOf("pStrikePrice");
+
+    // ========================================
+    // REQUIRED FIELD CHECK
+    // ========================================
+
+    const missingFields = [];
+
+    if (symbolIndex < 0) {
+      missingFields.push("pSymbol");
+    }
+
+    if (exchangeIndex < 0) {
+      missingFields.push("pExchSeg");
+    }
+
+    if (tradingSymbolIndex < 0) {
+      missingFields.push("pTrdSymbol");
+    }
+
+    if (refKeyIndex < 0) {
+      missingFields.push("pScripRefKey");
+    }
+
+    if (tokenIndex < 0) {
+      missingFields.push("pToken");
+    }
+
+    if (missingFields.length > 0) {
+      return res.status(502).json({
+        success: false,
+        source: "KOTAK NEO",
+        error: "Required Scripmaster fields missing.",
+        missingFields,
+        availableHeaders: header
+      });
+    }
+
+    // ========================================
+    // STOCKS TO FIND
+    // ========================================
+
     const searchSymbols = [
       "HDFCBANK",
       "TCS",
@@ -99,10 +173,13 @@ export default async function handler(req, res) {
 
     const results = [];
 
+    // ========================================
+    // SEARCH SCRIPMASTER
+    // ========================================
+
     for (let i = 1; i < lines.length; i++) {
 
-      const row =
-        parseCsvLine(lines[i]);
+      const row = parseCsvLine(lines[i]);
 
       const exchange =
         row[exchangeIndex] || "";
@@ -120,19 +197,57 @@ export default async function handler(req, res) {
       const refKey =
         row[refKeyIndex] || "";
 
-      const combinedText =
-        (
-          symbol +
-          " " +
-          tradingSymbol +
-          " " +
-          refKey
-        ).toUpperCase();
+      const token =
+        row[tokenIndex] || "";
+
+      const series =
+        seriesIndex >= 0
+          ? row[seriesIndex] || ""
+          : "";
+
+      const instrumentName =
+        instrumentNameIndex >= 0
+          ? row[instrumentNameIndex] || ""
+          : "";
+
+      const expiry =
+        expiryIndex >= 0
+          ? row[expiryIndex] || ""
+          : "";
+
+      const strike =
+        strikeIndex >= 0
+          ? row[strikeIndex] || ""
+          : "";
+
+      const combinedText = (
+        symbol +
+        " " +
+        tradingSymbol +
+        " " +
+        refKey
+      ).toUpperCase();
 
       for (const search of searchSymbols) {
 
+        // ====================================
+        // EXACT EQUITY PREFERENCE
+        // ====================================
+
+        const exactSymbol =
+          symbol.toUpperCase() === search;
+
+        const exactTradingSymbol =
+          tradingSymbol.toUpperCase() ===
+          search + "-EQ";
+
+        const containsSearch =
+          combinedText.includes(search);
+
         if (
-          combinedText.includes(search)
+          exactSymbol ||
+          exactTradingSymbol ||
+          containsSearch
         ) {
 
           results.push({
@@ -150,12 +265,52 @@ export default async function handler(req, res) {
               refKey,
 
             pToken:
-              tokenIndex >= 0
-                ? row[tokenIndex] || ""
-                : "",
+              token,
 
             pExchSeg:
-              exchange
+              exchange,
+
+            pSeries:
+              series,
+
+            pInstName:
+              instrumentName,
+
+            pExpiryDate:
+              expiry,
+
+            pStrikePrice:
+              strike,
+
+            // ==================================
+            // POSSIBLE VALUES TO VERIFY
+            // ==================================
+
+            neoSymbolCandidates: {
+
+              pSymbol:
+                symbol,
+
+              pTrdSymbol:
+                tradingSymbol,
+
+              pScripRefKey:
+                refKey,
+
+              symbolWithEq:
+                symbol
+                  ? symbol + "-EQ"
+                  : "",
+
+              tradingSymbolWithoutEq:
+                tradingSymbol
+                  ? tradingSymbol.replace(
+                      /-EQ$/i,
+                      ""
+                    )
+                  : ""
+
+            }
 
           });
 
@@ -164,9 +319,14 @@ export default async function handler(req, res) {
       }
     }
 
+    // ========================================
+    // FINAL RESPONSE
+    // ========================================
+
     return res.status(200).json({
 
-      success: true,
+      success:
+        true,
 
       source:
         "KOTAK NEO",
@@ -192,7 +352,8 @@ export default async function handler(req, res) {
 
     return res.status(500).json({
 
-      success: false,
+      success:
+        false,
 
       source:
         "KOTAK NEO",
