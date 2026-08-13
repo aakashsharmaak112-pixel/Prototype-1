@@ -14,7 +14,17 @@
     }
 
     h2 {
-      margin-bottom: 10px;
+      margin-bottom: 8px;
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 14px;
+      margin: 15px 0;
+      font-size: 22px;
+      text-align: center;
+      letter-spacing: 5px;
     }
 
     button {
@@ -37,34 +47,63 @@
   <h2>Kotak Neo MPIN Test</h2>
 
   <p>
-    Vercel environment se configured MPIN use hoga.
+    Google Authenticator ka current 6-digit TOTP enter karo.
   </p>
 
-  <button onclick="testMpin()">
-    Test MPIN Validation
+  <input
+    id="totp"
+    type="text"
+    inputmode="numeric"
+    maxlength="6"
+    autocomplete="one-time-code"
+    placeholder="000000"
+  >
+
+  <button onclick="testLogin()">
+    Test TOTP + MPIN
   </button>
 
   <div id="status"></div>
 
   <script>
 
-    async function testMpin() {
+    async function testLogin() {
+
+      const input =
+        document.getElementById("totp");
 
       const status =
         document.getElementById("status");
 
+      const totp =
+        input.value.trim();
+
+      if (!/^\d{6}$/.test(totp)) {
+
+        status.textContent =
+          "Enter the current 6-digit TOTP.";
+
+        return;
+      }
+
       status.textContent =
-        "Validating MPIN with Kotak Neo...";
+        "TOTP login + MPIN validation running...";
 
       try {
 
         const response =
           await fetch("/api/neo-mpin-test", {
+
             method: "POST",
+
             headers: {
               "Content-Type": "application/json"
             },
-            body: JSON.stringify({})
+
+            body: JSON.stringify({
+              totp: totp
+            })
+
           });
 
         const data =
@@ -72,6 +111,8 @@
 
         status.textContent =
           JSON.stringify(data, null, 2);
+
+        input.value = "";
 
       } catch (error) {
 
