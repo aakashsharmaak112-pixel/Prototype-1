@@ -1,14 +1,10 @@
 // ============================================
 // PROTOTYPE-1
-// KOTAK NEO TOTP LOGIN TEST PAGE
+// KOTAK NEO TOTP LOGIN TEST
 // api/neo-login-test.js
 // ============================================
 
 export default async function handler(req, res) {
-
-  // ------------------------------------------
-  // POST ONLY
-  // ------------------------------------------
 
   if (req.method !== "POST") {
     return res.status(405).json({
@@ -16,10 +12,6 @@ export default async function handler(req, res) {
       error: "Use POST method."
     });
   }
-
-  // ------------------------------------------
-  // ENVIRONMENT
-  // ------------------------------------------
 
   const ACCESS_TOKEN =
     process.env.NEO_ACCESS_TOKEN;
@@ -32,10 +24,6 @@ export default async function handler(req, res) {
 
   const TOTP =
     req.body?.totp;
-
-  // ------------------------------------------
-  // CHECK ENV
-  // ------------------------------------------
 
   if (!ACCESS_TOKEN) {
     return res.status(500).json({
@@ -58,10 +46,6 @@ export default async function handler(req, res) {
     });
   }
 
-  // ------------------------------------------
-  // CHECK TOTP
-  // ------------------------------------------
-
   if (!/^\d{6}$/.test(String(TOTP || ""))) {
     return res.status(400).json({
       success: false,
@@ -70,7 +54,32 @@ export default async function handler(req, res) {
   }
 
   // ------------------------------------------
-  // KOTAK LOGIN
+  // MOBILE FORMAT
+  // Kotak Neo expects country code
+  // Example: +919876543210
+  // ------------------------------------------
+
+  const cleanMobile =
+    String(MOBILE)
+      .trim()
+      .replace(/[\s-]/g, "");
+
+  let mobileNumber = cleanMobile;
+
+  if (/^\d{10}$/.test(cleanMobile)) {
+    mobileNumber = "+91" + cleanMobile;
+  }
+
+  if (!/^\+91\d{10}$/.test(mobileNumber)) {
+    return res.status(400).json({
+      success: false,
+      error:
+        "NEO_MOBILE must be a valid Indian mobile number. Use +91 followed by 10 digits."
+    });
+  }
+
+  // ------------------------------------------
+  // KOTAK NEO TOTP LOGIN
   // ------------------------------------------
 
   const loginUrl =
@@ -91,7 +100,7 @@ export default async function handler(req, res) {
         },
 
         body: JSON.stringify({
-          mobileNumber: String(MOBILE).trim(),
+          mobileNumber: mobileNumber,
           ucc: String(UCC).trim(),
           totp: String(TOTP)
         })
@@ -135,10 +144,10 @@ export default async function handler(req, res) {
       obj?.auth ||
       null;
 
-    // ------------------------------------------
-    // IMPORTANT
-    // DO NOT RETURN TOKEN/SID VALUES
-    // ------------------------------------------
+    const baseUrl =
+      obj?.baseUrl ||
+      obj?.base_url ||
+      null;
 
     return res.status(response.status).json({
 
@@ -153,11 +162,17 @@ export default async function handler(req, res) {
       kotakHttpStatus:
         response.status,
 
+      mobileFormat:
+        "+91XXXXXXXXXX",
+
       sidFound:
         Boolean(sid),
 
       tokenFound:
         Boolean(token),
+
+      baseUrlFound:
+        Boolean(baseUrl),
 
       sidLength:
         sid ? String(sid).length : 0,
@@ -172,7 +187,6 @@ export default async function handler(req, res) {
 
       kotakResponse:
         data
-
     });
 
   } catch (error) {
@@ -191,5 +205,4 @@ export default async function handler(req, res) {
     });
 
   }
-
 }
