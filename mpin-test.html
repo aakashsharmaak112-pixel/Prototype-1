@@ -4,106 +4,58 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Prototype-1 | Kotak MPIN Test</title>
-
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 420px;
-      margin: 40px auto;
-      padding: 20px;
-    }
-
-    h2 {
-      margin-bottom: 8px;
-    }
-
-    input {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 14px;
-      margin: 15px 0;
-      font-size: 22px;
-      text-align: center;
-      letter-spacing: 5px;
-    }
-
-    button {
-      width: 100%;
-      padding: 14px;
-      font-size: 18px;
-      cursor: pointer;
-    }
-
-    #status {
-      margin-top: 20px;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-  </style>
 </head>
 
 <body>
 
   <h2>Kotak Neo MPIN Test</h2>
 
-  <p>
-    Google Authenticator ka current 6-digit TOTP enter karo.
-  </p>
+  <p>Current Google Authenticator TOTP enter karo:</p>
 
   <input
     id="totp"
     type="text"
     inputmode="numeric"
     maxlength="6"
-    autocomplete="one-time-code"
-    placeholder="000000"
+    placeholder="6-digit TOTP"
   >
 
   <button onclick="testLogin()">
     Test TOTP + MPIN
   </button>
 
-  <div id="status"></div>
+  <pre id="status"></pre>
 
   <script>
 
     async function testLogin() {
 
-      const input =
-        document.getElementById("totp");
+      const totp =
+        document.getElementById("totp").value.trim();
 
       const status =
         document.getElementById("status");
 
-      const totp =
-        input.value.trim();
-
       if (!/^\d{6}$/.test(totp)) {
-
         status.textContent =
-          "Enter the current 6-digit TOTP.";
-
+          "Please enter current 6-digit TOTP.";
         return;
       }
 
       status.textContent =
-        "TOTP login + MPIN validation running...";
+        "Testing...";
 
       try {
 
         const response =
           await fetch("/api/neo-mpin-test", {
-
             method: "POST",
-
             headers: {
               "Content-Type": "application/json"
             },
-
             body: JSON.stringify({
               totp: totp
             })
-
           });
 
         const data =
@@ -112,13 +64,10 @@
         status.textContent =
           JSON.stringify(data, null, 2);
 
-        input.value = "";
-
       } catch (error) {
 
         status.textContent =
-          "Request failed: " +
-          error.message;
+          "Request failed: " + error.message;
 
       }
     }
