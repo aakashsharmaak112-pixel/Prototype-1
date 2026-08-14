@@ -1,483 +1,364 @@
 // ============================================
 // PROTOTYPE-1
-// KOTAK NEO QUOTES DIAGNOSTIC
-// api/quotes.js
-//
-// PURPOSE:
-// Find the exact neosymbol format accepted by
-// Kotak Neo before scaling to NIFTY 50.
+// KOTAK NEO QUOTES API
+// LIVE MARKET DATA - READ ONLY
 // ============================================
 
-const ACCESS_TOKEN = process.env.NEO_ACCESS_TOKEN;
-const MOBILE = process.env.NEO_MOBILE;
-const UCC = process.env.NEO_UCC;
-const MPIN = process.env.NEO_MPIN;
+const BASE_URL =
+  process.env.NEO_BASE_URL ||
+  "https://cis.kotaksecurities.com";
 
-const TEST_STOCKS = [
-  {
-    symbol: "HDFCBANK-EQ",
-    pSymbol: "1333",
-    pTrdSymbol: "HDFCBANK-EQ",
-    pScripRefKey: "HDFCBANK",
-    pExchSeg: "nse_cm"
-  }
+const ACCESS_TOKEN =
+  process.env.NEO_ACCESS_TOKEN;
+
+
+// ============================================
+// NIFTY 50 KOTAK SYMBOL IDs
+// ============================================
+
+const NEO_SYMBOLS = [
+  "1333",
+  "4963",
+  "2885",
+  "10604",
+  "11483",
+  "3045",
+  "1594",
+  "5900",
+  "317",
+  "2031",
+  "25",
+  "15083",
+  "157",
+  "236",
+  "16669",
+  "16675",
+  "383",
+  "694",
+  "20374",
+  "881",
+  "910",
+  "5097",
+  "1232",
+  "7229",
+  "467",
+  "1363",
+  "1394",
+  "1660",
+  "11195",
+  "11723",
+  "18143",
+  "1922",
+  "10999",
+  "22377",
+  "11630",
+  "17963",
+  "2475",
+  "14977",
+  "4306",
+  "3351",
+  "3432",
+  "3499",
+  "11536",
+  "13538",
+  "3506",
+  "1964",
+  "11532",
+  "3787",
+  "1424"
 ];
 
-function json(res, status, body) {
-  return res.status(status).json(body);
+
+// ============================================
+// JSON HELPER
+// ============================================
+
+function sendJson(res, statusCode, body) {
+
+  return res.status(statusCode).json(body);
+
 }
 
-async function readResponse(response) {
-  const text = await response.text();
 
-  try {
-    return {
-      parsed: true,
-      data: text ? JSON.parse(text) : null,
-      raw: text
-    };
-  } catch {
-    return {
-      parsed: false,
-      data: null,
-      raw: text
-    };
+// ============================================
+// EXTRACT QUOTES
+// ============================================
+
+function extractQuotes(data) {
+
+  if (Array.isArray(data)) {
+    return data;
   }
+
+  if (!data || typeof data !== "object") {
+    return [];
+  }
+
+  if (Array.isArray(data.data)) {
+    return data.data;
+  }
+
+  if (Array.isArray(data.quotes)) {
+    return data.quotes;
+  }
+
+  if (Array.isArray(data.result)) {
+    return data.result;
+  }
+
+  if (Array.isArray(data.results)) {
+    return data.results;
+  }
+
+  return [];
+
 }
 
-async function loginWithTotp(totp) {
-  const response = await fetch(
-    "https://mis.kotaksecurities.com/login/1.0/tradeApiLogin",
-    {
-      method: "POST",
-      headers: {
-        Authorization: String(ACCESS_TOKEN).trim(),
-        "neo-fin-key": "neotradeapi",
-        "Content-Type": "application/json",
-        Accept: "application/json"
-      },
-      body: JSON.stringify({
-        mobileNumber: String(MOBILE).trim(),
-        ucc: String(UCC).trim(),
-        totp: String(totp)
-      })
-    }
-  );
 
-  const result = await readResponse(response);
+// ============================================
+// API HANDLER
+// ============================================
 
-  if (!response.ok) {
-    return {
+export default async function handler(req, res) {
+
+  if (req.method !== "GET") {
+
+    return sendJson(res, 405, {
       success: false,
-      step: "TOTP LOGIN",
-      status: response.status,
-      response: result.data || result.raw
-    };
+      error: "Method not allowed"
+    });
+
   }
 
-  const session =
-    result.data?.data ||
-    result.data;
 
-  const sid =
-    session?.sid ||
-    session?.Sid;
+  if (!ACCESS_TOKEN) {
 
-  const token =
-    session?.token ||
-    session?.Auth ||
-    session?.auth;
-
-  if (!sid || !token) {
-    return {
+    return sendJson(res, 500, {
       success: false,
-      step: "TOTP LOGIN",
-      error:
-        "Login succeeded but Sid/Auth was not returned."
-    };
+      error: "NEO_ACCESS_TOKEN is not configured"
+    });
+
   }
 
-  return {
-    success: true,
-    sid,
-    token
-  };
-}
 
-async function validateMpin(sid, auth) {
-  const response = await fetch(
-    "https://mis.kotaksecurities.com/login/1.0/tradeApiValidate",
-    {
-      method: "POST",
-      headers: {
-        Authorization: String(ACCESS_TOKEN).trim(),
-        "neo-fin-key": "neotradeapi",
-        Sid: String(sid).trim(),
-        Auth: String(auth).trim(),
-        "Content-Type": "application/json",
-        Accept: "application/json"
-      },
-      body: JSON.stringify({
-        mpin: String(MPIN).trim()
-      })
-    }
-  );
+  // ==========================================
+  // KOTAK QUOTES URL
+  // ==========================================
 
-  const result = await readResponse(response);
-
-  if (!response.ok) {
-    return {
-      success: false,
-      step: "MPIN VALIDATION",
-      status: response.status,
-      response: result.data || result.raw
-    };
-  }
-
-  const session =
-    result.data?.data ||
-    result.data;
-
-  const baseUrl =
-    session?.baseUrl ||
-    session?.base_url;
-
-  if (!baseUrl) {
-    return {
-      success: false,
-      step: "MPIN VALIDATION",
-      error:
-        "baseUrl was not returned by Kotak."
-    };
-  }
-
-  return {
-    success: true,
-    baseUrl
-  };
-}
-
-async function tryQuote(baseUrl, candidate) {
-
-  const url =
-    `${String(baseUrl).replace(/\/+$/, "")}` +
-    `/script-details/1.0/quotes/neosymbol/` +
-    encodeURIComponent(candidate) +
-    `/all`;
-
-  const response = await fetch(
-    url,
-    {
-      method: "GET",
-
-      headers: {
-        Authorization:
-          String(ACCESS_TOKEN).trim(),
-
-        Accept:
-          "application/json",
-
-        "Content-Type":
-          "application/x-www-form-urlencoded"
-      },
-
-      cache:
-        "no-store"
-    }
-  );
-
-  const result =
-    await readResponse(response);
-
-  const fault =
-    result.data?.fault;
-
-  return {
-
-    candidate,
-
-    httpStatus:
-      response.status,
-
-    accepted:
-      response.ok &&
-      !fault,
-
-    response:
-      result.data ||
-      (
-        result.raw
-          ? result.raw.slice(
-              0,
-              1000
-            )
-          : null
-      )
-
-  };
-}
-
-export default async function handler(
-  req,
-  res
-) {
-
-  if (req.method !== "POST") {
-
-    return json(
-      res,
-      405,
-      {
-        success: false,
-        error:
-          "Use POST with current 6-digit TOTP."
-      }
+  const symbols =
+    encodeURIComponent(
+      NEO_SYMBOLS.join(",")
     );
 
-  }
+  const quotesUrl =
+    BASE_URL.replace(/\/+$/, "") +
+    "/script-details/1.0/quotes/" +
+    symbols +
+    "/all";
 
-  if (
-    !ACCESS_TOKEN ||
-    !MOBILE ||
-    !UCC ||
-    !MPIN
-  ) {
-
-    return json(
-      res,
-      500,
-      {
-        success: false,
-        error:
-          "Kotak Neo environment variables are incomplete."
-      }
-    );
-
-  }
-
-  const totp =
-    String(
-      req.body?.totp || ""
-    ).trim();
-
-  if (
-    !/^\d{6}$/.test(
-      totp
-    )
-  ) {
-
-    return json(
-      res,
-      400,
-      {
-        success: false,
-        error:
-          "Current 6-digit TOTP required."
-      }
-    );
-
-  }
 
   try {
 
-    // ========================================
-    // TOTP LOGIN
-    // ========================================
-
-    const login =
-      await loginWithTotp(
-        totp
-      );
-
-    if (!login.success) {
-      return json(
-        res,
-        502,
-        login
-      );
-    }
+    console.log(
+      "Kotak Neo Quotes:",
+      quotesUrl
+    );
 
 
-    // ========================================
-    // MPIN VALIDATION
-    // ========================================
+    const response =
+      await fetch(
+        quotesUrl,
+        {
+          method: "GET",
 
-    const validation =
-      await validateMpin(
-        login.sid,
-        login.token
-      );
+          headers: {
 
-    if (
-      !validation.success
-    ) {
+            "Authorization":
+              ACCESS_TOKEN,
 
-      return json(
-        res,
-        502,
-        validation
-      );
+            "neo-fin-key":
+              "neotradeapi",
 
-    }
+            "Accept":
+              "application/json"
 
+          },
 
-    // ========================================
-    // TEST HDFCBANK ONLY
-    // ========================================
+          cache:
+            "no-store"
 
-    const stock =
-      TEST_STOCKS[0];
-
-
-    // ========================================
-    // CANDIDATE FORMATS
-    // ========================================
-
-    const candidates = [
-
-      stock.pSymbol,
-
-      stock.pTrdSymbol,
-
-      stock.pScripRefKey,
-
-      `${stock.pExchSeg}|${stock.pSymbol}`,
-
-      `${stock.pExchSeg}:${stock.pSymbol}`,
-
-      `${stock.pExchSeg}/${stock.pSymbol}`,
-
-      `${stock.pExchSeg}-${stock.pSymbol}`,
-
-      `${stock.pExchSeg}|${stock.pTrdSymbol}`,
-
-      `${stock.pExchSeg}:${stock.pTrdSymbol}`,
-
-      `${stock.pExchSeg}/${stock.pTrdSymbol}`,
-
-      `${stock.pExchSeg}-${stock.pTrdSymbol}`,
-
-      `${stock.pExchSeg}|${stock.pScripRefKey}`,
-
-      `${stock.pExchSeg}:${stock.pScripRefKey}`,
-
-      `${stock.pExchSeg}/${stock.pScripRefKey}`,
-
-      `${stock.pExchSeg}-${stock.pScripRefKey}`
-
-    ];
-
-
-    const tests = [];
-
-
-    // ========================================
-    // TEST ONE-BY-ONE
-    // ========================================
-
-    for (
-      const candidate
-      of candidates
-    ) {
-
-      const result =
-        await tryQuote(
-          validation.baseUrl,
-          candidate
-        );
-
-      tests.push(
-        result
+        }
       );
 
 
-      // FIRST ACCEPTED VALUE
-      if (
-        result.accepted
-      ) {
+    const rawText =
+      await response.text();
 
-        return json(
-          res,
-          200,
-          {
 
-            success:
-              true,
+    // ========================================
+    // PARSE RESPONSE
+    // ========================================
 
-            source:
-              "KOTAK NEO",
+    let kotakData;
 
-            test:
-              "NEOSYMBOL FORMAT DIAGNOSTIC",
+    try {
 
-            symbol:
-              stock.symbol,
-
-            acceptedCandidate:
-              result,
-
-            tests:
-              tests
-
-          }
-        );
-
-      }
+      kotakData =
+        JSON.parse(rawText);
 
     }
 
+    catch {
 
-    // ========================================
-    // NOTHING ACCEPTED
-    // ========================================
+      return sendJson(res, 502, {
 
-    return json(
-      res,
-      200,
-      {
-
-        success:
-          true,
+        success: false,
 
         source:
           "KOTAK NEO",
 
-        test:
-          "NEOSYMBOL FORMAT DIAGNOSTIC",
+        error:
+          "Kotak Neo returned non-JSON response.",
 
-        symbol:
-          stock.symbol,
+        status:
+          response.status,
 
-        acceptedCandidate:
-          null,
+        rawResponse:
+          rawText.substring(0, 2000)
 
-        tests:
-          tests
+      });
 
-      }
-    );
+    }
+
+
+    // ========================================
+    // KOTAK API ERROR
+    // ========================================
+
+    if (!response.ok) {
+
+      return sendJson(res, response.status, {
+
+        success: false,
+
+        source:
+          "KOTAK NEO",
+
+        error:
+          "Kotak Neo Quotes API request failed.",
+
+        status:
+          response.status,
+
+        requestedNeoSymbols:
+          NEO_SYMBOLS.join(","),
+
+        kotakResponse:
+          kotakData
+
+      });
+
+    }
+
+
+    // ========================================
+    // EXTRACT QUOTES
+    // ========================================
+
+    const quotes =
+      extractQuotes(kotakData);
+
+
+    // ========================================
+    // NO QUOTES
+    // ========================================
+
+    if (!quotes.length) {
+
+      return sendJson(res, 502, {
+
+        success: false,
+
+        source:
+          "KOTAK NEO",
+
+        error:
+          "Kotak Neo response received but no quotes found.",
+
+        status:
+          response.status,
+
+        requestedNeoSymbols:
+          NEO_SYMBOLS.join(","),
+
+        requestedCount:
+          NEO_SYMBOLS.length,
+
+        kotakResponse:
+          kotakData
+
+      });
+
+    }
+
+
+    // ========================================
+    // SUCCESS
+    // ========================================
+
+    return sendJson(res, 200, {
+
+      success:
+        true,
+
+      source:
+        "KOTAK NEO",
+
+      marketData:
+        "LIVE",
+
+      totalRequested:
+        NEO_SYMBOLS.length,
+
+      totalReceived:
+        quotes.length,
+
+      totalErrors:
+        Math.max(
+          NEO_SYMBOLS.length -
+          quotes.length,
+          0
+        ),
+
+      quotes:
+        quotes
+
+    });
+
 
   }
 
   catch (error) {
 
-    return json(
-      res,
-      500,
-      {
-
-        success:
-          false,
-
-        source:
-          "KOTAK NEO",
-
-        error:
-          error?.message ||
-          "Unexpected server error."
-
-      }
+    console.error(
+      "Kotak Neo Quotes Error:",
+      error
     );
+
+
+    return sendJson(res, 500, {
+
+      success:
+        false,
+
+      source:
+        "KOTAK NEO",
+
+      error:
+        error?.message ||
+        "Unknown server error."
+
+    });
 
   }
 
