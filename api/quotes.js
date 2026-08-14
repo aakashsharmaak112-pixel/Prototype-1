@@ -1,8 +1,8 @@
+
 // ============================================
 // PROTOTYPE-1
 // KOTAK NEO QUOTES API
 // LIVE MARKET DATA - READ ONLY
-// Uses Scripmaster pSymbol as neoSymbol
 // ============================================
 
 const BASE_URL =
@@ -14,7 +14,7 @@ const ACCESS_TOKEN =
 
 
 // ============================================
-// NIFTY 50 SYMBOL NAMES
+// NIFTY 50 SYMBOLS
 // ============================================
 
 const NIFTY_SYMBOLS = [
@@ -99,29 +99,56 @@ function sendJson(res, statusCode, body) {
 function parseCsvLine(line) {
 
   const values = [];
+
   let current = "";
+
   let insideQuotes = false;
+
 
   for (let i = 0; i < line.length; i++) {
 
     const char = line[i];
 
+
     if (char === '"') {
-      insideQuotes = !insideQuotes;
+
+      insideQuotes =
+        !insideQuotes;
+
       continue;
+
     }
 
-    if (char === "," && !insideQuotes) {
-      values.push(current.trim());
+
+    if (
+      char === "," &&
+      !insideQuotes
+    ) {
+
+      values.push(
+        current.trim()
+      );
+
       current = "";
-    } else {
-      current += char;
+
     }
+
+    else {
+
+      current += char;
+
+    }
+
   }
 
-  values.push(current.trim());
+
+  values.push(
+    current.trim()
+  );
+
 
   return values;
+
 }
 
 
@@ -132,30 +159,60 @@ function parseCsvLine(line) {
 function extractQuotes(data) {
 
   if (Array.isArray(data)) {
+
     return data;
+
   }
 
-  if (!data || typeof data !== "object") {
+
+  if (
+    !data ||
+    typeof data !== "object"
+  ) {
+
     return [];
+
   }
 
-  if (Array.isArray(data.data)) {
+
+  if (
+    Array.isArray(data.data)
+  ) {
+
     return data.data;
+
   }
 
-  if (Array.isArray(data.quotes)) {
+
+  if (
+    Array.isArray(data.quotes)
+  ) {
+
     return data.quotes;
+
   }
 
-  if (Array.isArray(data.result)) {
+
+  if (
+    Array.isArray(data.result)
+  ) {
+
     return data.result;
+
   }
 
-  if (Array.isArray(data.results)) {
+
+  if (
+    Array.isArray(data.results)
+  ) {
+
     return data.results;
+
   }
+
 
   return [];
+
 }
 
 
@@ -163,181 +220,314 @@ function extractQuotes(data) {
 // API HANDLER
 // ============================================
 
-export default async function handler(req, res) {
+export default async function handler(
+  req,
+  res
+) {
 
-  if (req.method !== "GET") {
+  // ========================================
+  // METHOD CHECK
+  // ========================================
 
-    return sendJson(res, 405, {
-      success: false,
-      error: "Only GET method is allowed."
-    });
+  if (
+    req.method !== "GET"
+  ) {
+
+    return sendJson(
+      res,
+      405,
+      {
+        success: false,
+        error:
+          "Only GET method is allowed."
+      }
+    );
 
   }
 
 
+  // ========================================
+  // TOKEN CHECK
+  // ========================================
+
   if (!ACCESS_TOKEN) {
 
-    return sendJson(res, 500, {
-      success: false,
-      error: "NEO_ACCESS_TOKEN is not configured."
-    });
+    return sendJson(
+      res,
+      500,
+      {
+        success: false,
+        error:
+          "NEO_ACCESS_TOKEN is not configured."
+      }
+    );
 
   }
 
 
   try {
 
-    // ========================================
-    // 1. DOWNLOAD SCRIPMASTER
-    // ========================================
+    // ======================================
+    // DOWNLOAD SCRIPMASTER
+    // ======================================
 
     const masterResponse =
-      await fetch(MASTER_URL, {
-        method: "GET",
-        headers: {
-          "Accept": "text/csv"
-        },
-        cache: "no-store"
-      });
+      await fetch(
+        MASTER_URL,
+        {
+          method: "GET",
+
+          headers: {
+            "Accept":
+              "text/csv"
+          },
+
+          cache:
+            "no-store"
+        }
+      );
 
 
     const csvText =
       await masterResponse.text();
 
 
-    if (!masterResponse.ok) {
+    if (
+      !masterResponse.ok
+    ) {
 
-      return sendJson(res, masterResponse.status, {
-        success: false,
-        source: "KOTAK NEO",
-        error: "Scripmaster download failed.",
-        status: masterResponse.status,
-        rawResponse: csvText.slice(0, 1000)
-      });
+      return sendJson(
+        res,
+        masterResponse.status,
+        {
+          success: false,
+          source:
+            "KOTAK NEO",
+          error:
+            "Scripmaster download failed.",
+          status:
+            masterResponse.status,
+          rawResponse:
+            csvText.slice(
+              0,
+              1000
+            )
+        }
+      );
 
     }
 
 
-    // ========================================
-    // 2. PARSE CSV
-    // ========================================
+    // ======================================
+    // CSV LINES
+    // ======================================
 
     const lines =
       csvText
         .split(/\r?\n/)
-        .filter(line => line.trim() !== "");
+        .filter(
+          line =>
+            line.trim() !== ""
+        );
 
 
-    if (lines.length < 2) {
+    if (
+      lines.length < 2
+    ) {
 
-      return sendJson(res, 502, {
-        success: false,
-        source: "KOTAK NEO",
-        error: "Scripmaster CSV is empty."
-      });
+      return sendJson(
+        res,
+        502,
+        {
+          success: false,
+          source:
+            "KOTAK NEO",
+          error:
+            "Scripmaster CSV is empty."
+        }
+      );
 
     }
 
 
+    // ======================================
+    // HEADER
+    // ======================================
+
     const header =
-      parseCsvLine(lines[0]);
+      parseCsvLine(
+        lines[0]
+      );
 
 
     const symbolIndex =
-      header.indexOf("pSymbol");
+      header.indexOf(
+        "pSymbol"
+      );
+
 
     const tradingSymbolIndex =
-      header.indexOf("pTrdSymbol");
+      header.indexOf(
+        "pTrdSymbol"
+      );
+
 
     const exchangeIndex =
-      header.indexOf("pExchSeg");
+      header.indexOf(
+        "pExchSeg"
+      );
+
 
     const refKeyIndex =
-      header.indexOf("pScripRefKey");
+      header.indexOf(
+        "pScripRefKey"
+      );
+
 
     const symbolNameIndex =
-      header.indexOf("pSymbolName");
+      header.indexOf(
+        "pSymbolName"
+      );
 
+
+    // ======================================
+    // REQUIRED FIELDS
+    // ======================================
 
     if (
       symbolIndex < 0 ||
       tradingSymbolIndex < 0 ||
-      exchangeIndex < 0
+      exchangeIndex < 0 ||
+      refKeyIndex < 0
     ) {
 
-      return sendJson(res, 502, {
-        success: false,
-        source: "KOTAK NEO",
-        error: "Required Scripmaster fields missing.",
-        availableHeaders: header
-      });
+      return sendJson(
+        res,
+        502,
+        {
+          success: false,
+          source:
+            "KOTAK NEO",
+          error:
+            "Required Scripmaster fields missing.",
+          availableHeaders:
+            header
+        }
+      );
 
     }
 
 
-    // ========================================
-    // 3. FIND EXACT NIFTY 50 -EQ SYMBOLS
-    // ========================================
+    // ======================================
+    // FIND EXACT EQ SYMBOLS
+    // ======================================
 
-    const symbolMap = new Map();
+    const symbolMap =
+      new Map();
 
 
-    for (let i = 1; i < lines.length; i++) {
+    for (
+      let i = 1;
+      i < lines.length;
+      i++
+    ) {
 
       const row =
-        parseCsvLine(lines[i]);
+        parseCsvLine(
+          lines[i]
+        );
 
 
       const exchange =
-        row[exchangeIndex] || "";
+        row[exchangeIndex] ||
+        "";
 
 
-      if (exchange !== "nse_cm") {
+      if (
+        exchange !==
+        "nse_cm"
+      ) {
+
         continue;
+
       }
 
 
       const tradingSymbol =
-        row[tradingSymbolIndex] || "";
+        row[
+          tradingSymbolIndex
+        ] || "";
 
 
       const symbol =
-        row[symbolIndex] || "";
+        row[
+          symbolIndex
+        ] || "";
 
 
-      const expectedName =
+      const upperTradingSymbol =
         tradingSymbol.toUpperCase();
 
 
-      // ONLY normal equity instruments
-      if (!expectedName.endsWith("-EQ")) {
+      // Only EQ stocks
+      if (
+        !upperTradingSymbol.endsWith(
+          "-EQ"
+        )
+      ) {
+
         continue;
+
       }
 
 
-      for (const niftySymbol of NIFTY_SYMBOLS) {
+      for (
+        const niftySymbol
+        of NIFTY_SYMBOLS
+      ) {
 
         if (
-          expectedName ===
-          niftySymbol.toUpperCase() + "-EQ"
+          upperTradingSymbol ===
+          niftySymbol.toUpperCase() +
+          "-EQ"
         ) {
 
-          if (!symbolMap.has(niftySymbol)) {
+          if (
+            !symbolMap.has(
+              niftySymbol
+            )
+          ) {
 
-            symbolMap.set(niftySymbol, {
-              name: niftySymbol,
-              pSymbol: symbol,
-              pTrdSymbol: tradingSymbol,
-              pScripRefKey:
-                refKeyIndex >= 0
-                  ? row[refKeyIndex] || ""
-                  : "",
-              pSymbolName:
-                symbolNameIndex >= 0
-                  ? row[symbolNameIndex] || ""
-                  : "",
-              pExchSeg: exchange
-            });
+            symbolMap.set(
+              niftySymbol,
+              {
+
+                name:
+                  niftySymbol,
+
+                pSymbol:
+                  symbol,
+
+                pTrdSymbol:
+                  tradingSymbol,
+
+                pScripRefKey:
+                  row[
+                    refKeyIndex
+                  ] || "",
+
+                pSymbolName:
+                  symbolNameIndex >= 0
+                    ? row[
+                        symbolNameIndex
+                      ] || ""
+                    : "",
+
+                pExchSeg:
+                  exchange
+
+              }
+            );
 
           }
 
@@ -348,77 +538,151 @@ export default async function handler(req, res) {
     }
 
 
-    // ========================================
-    // 4. BUILD VALID NEO SYMBOL LIST
-    // ========================================
+    // ======================================
+    // VALID INSTRUMENTS
+    // ======================================
 
     const instruments =
       NIFTY_SYMBOLS
-        .map(name => symbolMap.get(name))
+        .map(
+          name =>
+            symbolMap.get(name)
+        )
         .filter(Boolean);
 
 
     const missingSymbols =
       NIFTY_SYMBOLS.filter(
-        name => !symbolMap.has(name)
+        name =>
+          !symbolMap.has(name)
       );
 
 
-    if (!instruments.length) {
+    if (
+      !instruments.length
+    ) {
 
-      return sendJson(res, 502, {
-        success: false,
-        source: "KOTAK NEO",
-        error:
-          "No valid NIFTY 50 EQ instruments found in Scripmaster.",
-        missingSymbols
-      });
+      return sendJson(
+        res,
+        502,
+        {
+          success: false,
+          source:
+            "KOTAK NEO",
+          error:
+            "No valid NIFTY 50 EQ instruments found.",
+          missingSymbols
+        }
+      );
 
     }
 
 
-    // IMPORTANT:
-    // Kotak Neo getQuote expects valid neoSymbol values.
-    // Scripmaster pSymbol is used here.
+    // ======================================
+    // IMPORTANT
+    // ======================================
+    // Kotak Neo getQuote requires valid
+    // neoSymbol values.
+    //
+    // We are using pScripRefKey here.
+    //
+    // Example:
+    // HDFCBANK -> HDFCBANK
+    // TCS      -> TCS
+    // RELIANCE -> RELIANCE
+    // INFY     -> INFY
+    // ======================================
 
     const neoSymbols =
       instruments
-        .map(item => item.pSymbol)
+        .map(
+          item =>
+            item.pScripRefKey
+        )
+        .filter(Boolean)
         .join(",");
 
 
-    const encodedNeoSymbols =
-      encodeURIComponent(neoSymbols);
+    if (!neoSymbols) {
+
+      return sendJson(
+        res,
+        502,
+        {
+          success: false,
+          source:
+            "KOTAK NEO",
+          error:
+            "No valid neoSymbol values found."
+        }
+      );
+
+    }
 
 
-    // ========================================
-    // 5. KOTAK NEO QUOTES API
-    // ========================================
+    // ======================================
+    // QUOTES URL
+    // ======================================
 
     const quotesUrl =
-      BASE_URL.replace(/\/+$/, "") +
+      BASE_URL.replace(
+        /\/+$/,
+        ""
+      ) +
       "/script-details/1.0/quotes/neosymbol/" +
-      encodedNeoSymbols +
+      encodeURIComponent(
+        neoSymbols
+      ) +
       "/all";
 
+
+    console.log(
+      "Kotak Neo Quotes URL:",
+      quotesUrl
+    );
+
+
+    console.log(
+      "Kotak Neo neoSymbols:",
+      neoSymbols
+    );
+
+
+    // ======================================
+    // KOTAK QUOTES REQUEST
+    // ======================================
 
     const response =
       await fetch(
         quotesUrl,
         {
-          method: "GET",
+
+          method:
+            "GET",
 
           headers: {
-            "Authorization": ACCESS_TOKEN,
-            "Accept": "application/json",
+
+            "Authorization":
+              ACCESS_TOKEN,
+
+            "Accept":
+              "application/json",
+
             "Content-Type":
               "application/x-www-form-urlencoded"
+
           },
 
-          cache: "no-store"
+          cache:
+            "no-store"
+
         }
       );
 
+
+    // ======================================
+    // RAW RESPONSE
+    // ======================================
 
     const rawText =
       await response.text();
@@ -430,106 +694,155 @@ export default async function handler(req, res) {
     try {
 
       kotakData =
-        JSON.parse(rawText);
+        JSON.parse(
+          rawText
+        );
 
-    } catch {
+    }
 
-      return sendJson(res, 502, {
-        success: false,
-        source: "KOTAK NEO",
-        error:
-          "Kotak Neo returned a non-JSON response.",
-        status: response.status,
-        rawResponse:
-          rawText.slice(0, 2000)
-      });
+    catch {
+
+      return sendJson(
+        res,
+        502,
+        {
+          success: false,
+          source:
+            "KOTAK NEO",
+          error:
+            "Kotak Neo returned a non-JSON response.",
+          status:
+            response.status,
+          rawResponse:
+            rawText.slice(
+              0,
+              2000
+            )
+        }
+      );
 
     }
 
 
-    // ========================================
-    // 6. KOTAK ERROR
-    // ========================================
+    // ======================================
+    // KOTAK API ERROR
+    // ======================================
 
-    if (!response.ok) {
+    if (
+      !response.ok
+    ) {
 
-      return sendJson(res, response.status, {
-        success: false,
-        source: "KOTAK NEO",
-        error:
-          "Kotak Neo Quotes API request failed.",
-        status: response.status,
-        kotakResponse: kotakData,
-        requestedNeoSymbols: neoSymbols
-      });
+      return sendJson(
+        res,
+        response.status,
+        {
+          success: false,
+          source:
+            "KOTAK NEO",
+          error:
+            "Kotak Neo Quotes API request failed.",
+          status:
+            response.status,
+          requestedNeoSymbols:
+            neoSymbols,
+          kotakResponse:
+            kotakData
+        }
+      );
 
     }
 
 
-    // ========================================
-    // 7. EXTRACT QUOTES
-    // ========================================
+    // ======================================
+    // EXTRACT QUOTES
+    // ======================================
 
     const quotes =
-      extractQuotes(kotakData);
+      extractQuotes(
+        kotakData
+      );
 
 
-    if (!quotes.length) {
+    if (
+      !quotes.length
+    ) {
 
-      return sendJson(res, 502, {
-        success: false,
-        source: "KOTAK NEO",
-        error:
-          "Kotak Neo response received but no quotes found.",
-        status: response.status,
-        requestedNeoSymbols: neoSymbols,
-        requestedCount: instruments.length,
-        kotakResponse: kotakData
-      });
+      return sendJson(
+        res,
+        502,
+        {
+          success: false,
+          source:
+            "KOTAK NEO",
+          error:
+            "Kotak Neo response received but no quotes found.",
+          status:
+            response.status,
+          requestedNeoSymbols:
+            neoSymbols,
+          requestedCount:
+            instruments.length,
+          kotakResponse:
+            kotakData
+        }
+      );
 
     }
 
 
-    // ========================================
-    // 8. SUCCESS
-    // ========================================
+    // ======================================
+    // SUCCESS
+    // ======================================
 
-    return sendJson(res, 200, {
+    return sendJson(
+      res,
+      200,
+      {
 
-      success: true,
+        success:
+          true,
 
-      source:
-        "KOTAK NEO",
+        source:
+          "KOTAK NEO",
 
-      marketData:
-        "LIVE",
+        marketData:
+          "LIVE",
 
-      totalRequested:
-        NIFTY_SYMBOLS.length,
+        totalRequested:
+          NIFTY_SYMBOLS.length,
 
-      validInstruments:
-        instruments.length,
+        validInstruments:
+          instruments.length,
 
-      totalReceived:
-        quotes.length,
-
-      totalErrors:
-        Math.max(
-          instruments.length -
+        totalReceived:
           quotes.length,
-          0
-        ),
 
-      missingSymbols,
+        totalErrors:
+          Math.max(
+            instruments.length -
+            quotes.length,
+            0
+          ),
 
-      instruments,
+        missingSymbols:
 
-      quotes
+          missingSymbols,
 
-    });
+        instruments:
+
+          instruments,
+
+        quotes:
+
+          quotes
+
+      }
+    );
 
 
-  } catch (error) {
+  }
+
+  catch (error) {
 
     console.error(
       "Kotak Neo quotes error:",
@@ -537,18 +850,23 @@ export default async function handler(req, res) {
     );
 
 
-    return sendJson(res, 500, {
+    return sendJson(
+      res,
+      500,
+      {
 
-      success: false,
+        success:
+          false,
 
-      source:
-        "KOTAK NEO",
+        source:
+          "KOTAK NEO",
 
-      error:
-        error?.message ||
-        "Unexpected server error."
+        error:
+          error?.message ||
+          "Unexpected server error."
 
-    });
+      }
+    );
 
   }
 
