@@ -27,7 +27,11 @@ export default async function handler(req, res) {
     process.env.NEO_MPIN;
 
   const TOTP =
-    req.body?.totp;
+    String(req.body?.totp || "").trim();
+
+  // ------------------------------------------
+  // ENVIRONMENT CHECK
+  // ------------------------------------------
 
   if (!ACCESS_TOKEN) {
     return res.status(500).json({
@@ -57,7 +61,7 @@ export default async function handler(req, res) {
     });
   }
 
-  if (!/^\d{6}$/.test(String(TOTP || ""))) {
+  if (!/^\d{6}$/.test(TOTP)) {
     return res.status(400).json({
       success: false,
       error: "Current 6-digit TOTP required."
@@ -71,15 +75,19 @@ export default async function handler(req, res) {
     });
   }
 
-  const mobile =
+  // ------------------------------------------
+  // MOBILE NORMALIZATION
+  // ------------------------------------------
+
+  const cleanMobile =
     String(MOBILE)
       .trim()
       .replace(/[\s-]/g, "");
 
   const mobileNumber =
-    /^\d{10}$/.test(mobile)
-      ? "+91" + mobile
-      : mobile;
+    /^\d{10}$/.test(cleanMobile)
+      ? "+91" + cleanMobile
+      : cleanMobile;
 
   if (!/^\+91\d{10}$/.test(mobileNumber)) {
     return res.status(400).json({
@@ -88,160 +96,241 @@ export default async function handler(req, res) {
     });
   }
 
-  // ------------------------------------------
-  // STEP 1: TOTP LOGIN
-  // ------------------------------------------
-
-  const loginUrl =
-    "https://mis.kotaksecurities.com/login/1.0/tradeApiLogin";
-
   try {
 
+    // ========================================
+    // STEP 1
+    // TOTP LOGIN
+    // ========================================
+
+    const loginUrl =
+      "https://mis.kotaksecurities.com/login/1.0/tradeApiLogin";
+
     const loginResponse =
-      await fetch(loginUrl, {
+      await fetch(
+        loginUrl,
+        {
+          method: "POST",
 
-        method: "POST",
+          headers: {
+            "Authorization":
+              String(ACCESS_TOKEN).trim(),
 
-        headers: {
-          "Authorization":
-            String(ACCESS_TOKEN).trim(),
+            "neo-fin-key":
+              "neotradeapi",
 
-          "neo-fin-key":
-            "neotradeapi",
+            "Content-Type":
+              "application/json",
 
-          "Content-Type":
-            "application/json",
+            "Accept":
+              "application/json"
+          },
 
-          "Accept":
-            "application/json"
-        },
+          body:
+            JSON.stringify({
 
-        body: JSON.stringify({
+              mobileNumber:
+                mobileNumber,
 
-          mobileNumber:
-            mobileNumber,
+              ucc:
+                String(UCC).trim(),
 
-          ucc:
-            String(UCC).trim(),
+              totp:
+                TOTP
 
-          totp:
-            String(TOTP)
-
-        })
-
-      });
+            })
+        }
+      );
 
     const loginRaw =
       await loginResponse.text();
 
-    let loginData;
+    let loginData = null;
 
     try {
+
       loginData =
-        JSON.parse(loginRaw);
+        loginRaw
+          ? JSON.parse(loginRaw)
+          : null;
+
     } catch {
+
       return res.status(502).json({
         success: false,
         step: "TOTP LOGIN",
         kotakHttpStatus:
           loginResponse.status,
         error:
-          "Kotak returned non-JSON response."
+          "Kotak TOTP login returned non-JSON response."
       });
+
     }
 
     if (!loginResponse.ok) {
-      return res.status(loginResponse.status).json({
+
+      return res.status(
+        loginResponse.status
+      ).json({
+
         success: false,
-        step: "TOTP LOGIN",
+
+        step:
+          "TOTP LOGIN",
+
         kotakHttpStatus:
           loginResponse.status,
+
+        error:
+          "Kotak TOTP login failed.",
+
         kotakResponse:
           loginData
+
       });
+
     }
 
-    const session =
-      loginData?.data || loginData;
+    // ----------------------------------------
+    // LOGIN SESSION
+    // ----------------------------------------
+
+    const loginSession =
+      loginData?.data ||
+      loginData;
 
     const sid =
-      session?.sid ||
-      session?.Sid;
+      loginSession?.sid ||
+      loginSession?.Sid ||
+      loginSession?.viewSid ||
+      null;
 
     const auth =
-      session?.token ||
-      session?.Auth ||
-      session?.auth;
+      loginSession?.token ||
+      loginSession?.Auth ||
+      loginSession?.auth ||
+      loginSession?.viewToken ||
+      null;
 
     if (!sid || !auth) {
+
       return res.status(502).json({
+
         success: false,
-        step: "TOTP LOGIN",
+
+        step:
+          "TOTP LOGIN",
+
         error:
-          "Kotak login succeeded but session credentials were not returned."
+          "TOTP login succeeded but SID/Auth was not returned."
+
       });
+
     }
 
-    // ------------------------------------------
-    // STEP 2: MPIN VALIDATION
-    // ------------------------------------------
+    // ========================================
+    // STEP 2
+    // MPIN VALIDATION
+    // ========================================
 
     const validateUrl =
       "https://mis.kotaksecurities.com/login/1.0/tradeApiValidate";
 
     const validateResponse =
-      await fetch(validateUrl, {
+      await fetch(
+        validateUrl,
+        {
+          method: "POST",
 
-        method: "POST",
+          headers: {
 
-        headers: {
+            "Authorization":
+              String(ACCESS_TOKEN).trim(),
 
-          "Authorization":
-            String(ACCESS_TOKEN).trim(),
+            "neo-fin-key":
+              "neotradeapi",
 
-          "neo-fin-key":
-            "neotradeapi",
+            "Sid":
+              String(sid).trim(),
 
-          "Sid":
-            String(sid).trim(),
+            "Auth":
+              String(auth).trim(),
 
-          "Auth":
-            String(auth).trim(),
+            "Content-Type":
+              "application/json",
 
-          "Content-Type":
-            "application/json",
+            "Accept":
+              "application/json"
+          },
 
-          "Accept":
-            "application/json"
-        },
+          body:
+            JSON.stringify({
 
-        body: JSON.stringify({
+              mpin:
+                String(MPIN).trim()
 
-          mpin:
-            String(MPIN).trim()
-
-        })
-
-      });
+            })
+        }
+      );
 
     const validateRaw =
       await validateResponse.text();
 
-    let validateData;
+    let validateData = null;
 
     try {
+
       validateData =
-        JSON.parse(validateRaw);
+        validateRaw
+          ? JSON.parse(validateRaw)
+          : null;
+
     } catch {
+
       return res.status(502).json({
+
         success: false,
-        step: "MPIN VALIDATION",
+
+        step:
+          "MPIN VALIDATION",
+
         kotakHttpStatus:
           validateResponse.status,
+
         error:
-          "Kotak returned non-JSON response."
+          "Kotak MPIN validation returned non-JSON response."
+
       });
+
     }
+
+    if (!validateResponse.ok) {
+
+      return res.status(
+        validateResponse.status
+      ).json({
+
+        success: false,
+
+        step:
+          "MPIN VALIDATION",
+
+        kotakHttpStatus:
+          validateResponse.status,
+
+        error:
+          "Kotak MPIN validation failed.",
+
+        kotakResponse:
+          validateData
+
+      });
+
+    }
+
+    // ----------------------------------------
+    // MPIN RESPONSE
+    // ----------------------------------------
 
     const result =
       validateData?.data ||
@@ -255,18 +344,40 @@ export default async function handler(req, res) {
     const tradeSid =
       result?.sid ||
       result?.Sid ||
-      null;
+      sid;
 
     const tradeToken =
       result?.token ||
       result?.Auth ||
       result?.auth ||
-      null;
+      auth;
 
-    return res.status(validateResponse.status).json({
+    if (!baseUrl) {
 
-      success:
-        validateResponse.ok,
+      return res.status(502).json({
+
+        success: false,
+
+        step:
+          "MPIN VALIDATION",
+
+        error:
+          "MPIN succeeded but Kotak did not return baseUrl.",
+
+        kotakResponse:
+          validateData
+
+      });
+
+    }
+
+    // ----------------------------------------
+    // DO NOT EXPOSE SESSION CREDENTIALS
+    // ----------------------------------------
+
+    return res.status(200).json({
+
+      success: true,
 
       source:
         "KOTAK NEO V2",
@@ -278,7 +389,7 @@ export default async function handler(req, res) {
         validateResponse.status,
 
       baseUrlFound:
-        Boolean(baseUrl),
+        true,
 
       tradeSidFound:
         Boolean(tradeSid),
@@ -300,15 +411,24 @@ export default async function handler(req, res) {
           : 0,
 
       message:
-        validateResponse.ok
-          ? "TOTP + MPIN validation successful."
-          : "MPIN validation failed.",
+        "TOTP + MPIN validation successful.",
 
-      kotakResponse:
-        validateData
+      // INTERNAL VALUES ARE NOT RETURNED
+      sessionReady:
+        Boolean(
+          tradeSid &&
+          tradeToken &&
+          baseUrl
+        )
+
     });
 
   } catch (error) {
+
+    console.error(
+      "KOTAK NEO AUTH ERROR:",
+      error
+    );
 
     return res.status(500).json({
 
@@ -320,6 +440,9 @@ export default async function handler(req, res) {
       error:
         error.message ||
         "Unexpected server error."
+
     });
+
   }
+
 }
