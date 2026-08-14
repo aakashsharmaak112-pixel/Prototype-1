@@ -70,12 +70,14 @@ const NEO_SYMBOLS = [
 
 
 // ============================================
-// JSON HELPER
+// JSON RESPONSE
 // ============================================
 
 function sendJson(res, statusCode, body) {
 
-  return res.status(statusCode).json(body);
+  return res
+    .status(statusCode)
+    .json(body);
 
 }
 
@@ -90,7 +92,10 @@ function extractQuotes(data) {
     return data;
   }
 
-  if (!data || typeof data !== "object") {
+  if (
+    !data ||
+    typeof data !== "object"
+  ) {
     return [];
   }
 
@@ -121,34 +126,100 @@ function extractQuotes(data) {
 
 export default async function handler(req, res) {
 
-  if (req.method !== "GET") {
+  // ------------------------------------------
+  // ALLOW POST FROM PROTOTYPE FRONTEND
+  // ------------------------------------------
+
+  if (
+    req.method !== "POST" &&
+    req.method !== "GET"
+  ) {
 
     return sendJson(res, 405, {
+
       success: false,
-      error: "Method not allowed"
+
+      error:
+        "Method not allowed"
+
     });
 
   }
 
 
+  // ------------------------------------------
+  // TOKEN CHECK
+  // ------------------------------------------
+
   if (!ACCESS_TOKEN) {
 
     return sendJson(res, 500, {
+
       success: false,
-      error: "NEO_ACCESS_TOKEN is not configured"
+
+      source:
+        "KOTAK NEO",
+
+      error:
+        "NEO_ACCESS_TOKEN is not configured"
+
+    });
+
+  }
+
+
+  // ------------------------------------------
+  // READ TOTP
+  // ------------------------------------------
+
+  let totp = "";
+
+  if (
+    req.body &&
+    typeof req.body === "object"
+  ) {
+
+    totp =
+      String(
+        req.body.totp || ""
+      ).trim();
+
+  }
+
+
+  // TOTP is accepted from the prototype
+  // request for the current connection flow.
+  // Do not log or return it.
+
+  if (
+    totp &&
+    !/^\d{6}$/.test(totp)
+  ) {
+
+    return sendJson(res, 400, {
+
+      success: false,
+
+      source:
+        "KOTAK NEO",
+
+      error:
+        "Invalid TOTP. A 6-digit TOTP is required."
+
     });
 
   }
 
 
   // ==========================================
-  // KOTAK QUOTES URL
+  // KOTAK NEO QUOTES URL
   // ==========================================
 
   const symbols =
     encodeURIComponent(
       NEO_SYMBOLS.join(",")
     );
+
 
   const quotesUrl =
     BASE_URL.replace(/\/+$/, "") +
@@ -160,15 +231,20 @@ export default async function handler(req, res) {
   try {
 
     console.log(
-      "Kotak Neo Quotes:",
+      "Kotak Neo Quotes request:",
       quotesUrl
     );
 
+
+    // ----------------------------------------
+    // KOTAK REQUEST
+    // ----------------------------------------
 
     const response =
       await fetch(
         quotesUrl,
         {
+
           method: "GET",
 
           headers: {
@@ -180,6 +256,9 @@ export default async function handler(req, res) {
               "neotradeapi",
 
             "Accept":
+              "application/json",
+
+            "Content-Type":
               "application/json"
 
           },
@@ -195,20 +274,29 @@ export default async function handler(req, res) {
       await response.text();
 
 
-    // ========================================
-    // PARSE RESPONSE
-    // ========================================
+    // ----------------------------------------
+    // PARSE JSON
+    // ----------------------------------------
 
-    let kotakData;
+    let kotakData = null;
+
 
     try {
 
       kotakData =
-        JSON.parse(rawText);
+        rawText
+          ? JSON.parse(rawText)
+          : null;
 
     }
 
-    catch {
+    catch (parseError) {
+
+      console.error(
+        "Kotak returned non-JSON:",
+        rawText
+      );
+
 
       return sendJson(res, 502, {
 
@@ -224,116 +312,156 @@ export default async function handler(req, res) {
           response.status,
 
         rawResponse:
-          rawText.substring(0, 2000)
+          rawText.substring(
+            0,
+            2000
+          )
 
       });
 
     }
 
 
-    // ========================================
-    // KOTAK API ERROR
-    // ========================================
+    // ----------------------------------------
+    // HTTP ERROR
+    // ----------------------------------------
 
     if (!response.ok) {
 
-      return sendJson(res, response.status, {
+      console.error(
+        "Kotak HTTP error:",
+        response.status,
+        kotakData
+      );
 
-        success: false,
 
-        source:
-          "KOTAK NEO",
+      return sendJson(
+        res,
+        response.status,
+        {
 
-        error:
-          "Kotak Neo Quotes API request failed.",
+          success: false,
 
-        status:
-          response.status,
+          source:
+            "KOTAK NEO",
 
-        requestedNeoSymbols:
-          NEO_SYMBOLS.join(","),
+          error:
+            "Kotak Neo Quotes API request failed.",
 
-        kotakResponse:
-          kotakData
+          status:
+            response.status,
 
-      });
+          requestedCount:
+            NEO_SYMBOLS.length,
+
+          requestedNeoSymbols:
+            NEO_SYMBOLS.join(","),
+
+          kotakResponse:
+            kotakData
+
+        }
+      );
 
     }
 
 
-    // ========================================
+    // ----------------------------------------
     // EXTRACT QUOTES
-    // ========================================
+    // ----------------------------------------
 
     const quotes =
-      extractQuotes(kotakData);
+      extractQuotes(
+        kotakData
+      );
 
 
-    // ========================================
+    // ----------------------------------------
     // NO QUOTES
-    // ========================================
+    // ----------------------------------------
 
-    if (!quotes.length) {
+    if (
+      !quotes.length
+    ) {
 
-      return sendJson(res, 502, {
+      console.error(
+        "Kotak response contains no quotes:",
+        kotakData
+      );
 
-        success: false,
 
-        source:
-          "KOTAK NEO",
+      return sendJson(
+        res,
+        502,
+        {
 
-        error:
-          "Kotak Neo response received but no quotes found.",
+          success: false,
 
-        status:
-          response.status,
+          source:
+            "KOTAK NEO",
 
-        requestedNeoSymbols:
-          NEO_SYMBOLS.join(","),
+          error:
+            "Kotak Neo response received but no quotes found.",
 
-        requestedCount:
-          NEO_SYMBOLS.length,
+          status:
+            response.status,
 
-        kotakResponse:
-          kotakData
+          requestedCount:
+            NEO_SYMBOLS.length,
 
-      });
+          requestedNeoSymbols:
+            NEO_SYMBOLS.join(","),
+
+          kotakResponse:
+            kotakData
+
+        }
+      );
 
     }
 
 
-    // ========================================
+    // ----------------------------------------
     // SUCCESS
-    // ========================================
+    // ----------------------------------------
 
-    return sendJson(res, 200, {
+    console.log(
+      "Kotak Neo quotes received:",
+      quotes.length
+    );
 
-      success:
-        true,
 
-      source:
-        "KOTAK NEO",
+    return sendJson(
+      res,
+      200,
+      {
 
-      marketData:
-        "LIVE",
+        success: true,
 
-      totalRequested:
-        NEO_SYMBOLS.length,
+        source:
+          "KOTAK NEO",
 
-      totalReceived:
-        quotes.length,
+        marketData:
+          "LIVE",
 
-      totalErrors:
-        Math.max(
-          NEO_SYMBOLS.length -
+        totalRequested:
+          NEO_SYMBOLS.length,
+
+        totalReceived:
           quotes.length,
-          0
-        ),
 
-      quotes:
-        quotes
+        totalErrors:
+          Math.max(
+            NEO_SYMBOLS.length -
+            quotes.length,
+            0
+          ),
 
-    });
+        quotes:
+          quotes
+
+      }
+    );
 
 
   }
@@ -346,19 +474,22 @@ export default async function handler(req, res) {
     );
 
 
-    return sendJson(res, 500, {
+    return sendJson(
+      res,
+      500,
+      {
 
-      success:
-        false,
+        success: false,
 
-      source:
-        "KOTAK NEO",
+        source:
+          "KOTAK NEO",
 
-      error:
-        error?.message ||
-        "Unknown server error."
+        error:
+          error?.message ||
+          "Unknown server error."
 
-    });
+      }
+    );
 
   }
 
