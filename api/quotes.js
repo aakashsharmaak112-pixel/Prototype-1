@@ -1,15 +1,9 @@
 // ============================================
 // PROTOTYPE-1
 // KOTAK NEO LIVE QUOTES
-// SCRIPMASTER -> NEO SYMBOL -> QUOTES
+// TOTP + MPIN + SCRIPMASTER
 // api/quotes.js
 // ============================================
-
-const LOGIN_URL =
-  "https://mis.kotaksecurities.com/login/1.0/tradeApiLogin";
-
-const VALIDATE_URL =
-  "https://mis.kotaksecurities.com/login/1.0/tradeApiValidate";
 
 const ACCESS_TOKEN =
   process.env.NEO_ACCESS_TOKEN;
@@ -25,10 +19,30 @@ const MPIN =
 
 
 // ============================================
+// KOTAK LOGIN
+// ============================================
+
+const LOGIN_URL =
+  "https://mis.kotaksecurities.com/login/1.0/tradeApiLogin";
+
+const VALIDATE_URL =
+  "https://mis.kotaksecurities.com/login/1.0/tradeApiValidate";
+
+
+// ============================================
+// SCRIPMASTER
+// CURRENT MASTER USED BY PROJECT
+// ============================================
+
+const SCRIPMASTER_URL =
+  "https://lapi.kotaksecurities.com/wso2-scripmaster/v1/prod/2026-08-12/transformed-v1/nse_cm-v1.csv";
+
+
+// ============================================
 // NIFTY 50 SYMBOLS
 // ============================================
 
-const NIFTY_SYMBOLS = [
+const NIFTY_50 = [
   "ADANIENT",
   "ADANIPORTS",
   "APOLLOHOSP",
@@ -83,16 +97,16 @@ const NIFTY_SYMBOLS = [
 
 
 // ============================================
-// RESPONSE
+// RESPONSE HELPER
 // ============================================
 
-function send(res, status, body) {
-  return res.status(status).json(body);
+function send(res, status, data) {
+  return res.status(status).json(data);
 }
 
 
 // ============================================
-// SAFE JSON
+// SAFE JSON PARSER
 // ============================================
 
 async function readResponse(response) {
@@ -100,76 +114,474 @@ async function readResponse(response) {
   const text =
     await response.text();
 
+  let json = null;
+
   try {
 
-    return {
-      json: text
-        ? JSON.parse(text)
-        : null,
+    json =
       text
-    };
+        ? JSON.parse(text)
+        : null;
 
   } catch {
 
-    return {
-      json: null,
-      text
-    };
+    json = null;
 
   }
 
+  return {
+    text,
+    json
+  };
 }
 
 
 // ============================================
-// GET DATA OBJECT
+// NORMALIZE MOBILE
 // ============================================
 
-function getData(data) {
+function normalizeMobile(value) {
 
-  if (
-    data &&
-    typeof data === "object" &&
-    data.data &&
-    typeof data.data === "object"
+  let mobile =
+    String(value || "")
+      .trim()
+      .replace(/[\s-]/g, "");
+
+  if (/^\d{10}$/.test(mobile)) {
+    mobile =
+      "+91" + mobile;
+  }
+
+  return mobile;
+}
+
+
+// ============================================
+// CSV PARSER
+// ============================================
+
+function parseCsvLine(line) {
+
+  const values = [];
+
+  let current = "";
+
+  let insideQuotes = false;
+
+
+  for (
+    let i = 0;
+    i < line.length;
+    i++
   ) {
-    return data.data;
+
+    const char =
+      line[i];
+
+
+    if (char === '"') {
+
+      if (
+        insideQuotes &&
+        line[i + 1] === '"'
+      ) {
+
+        current += '"';
+
+        i++;
+
+      } else {
+
+        insideQuotes =
+          !insideQuotes;
+
+      }
+
+      continue;
+    }
+
+
+    if (
+      char === "," &&
+      !insideQuotes
+    ) {
+
+      values.push(
+        current.trim()
+      );
+
+      current = "";
+
+    } else {
+
+      current += char;
+
+    }
+
   }
 
-  return data || {};
+
+  values.push(
+    current.trim()
+  );
+
+
+  return values;
 }
 
 
 // ============================================
-// SCRIPMASTER FETCH
+// DOWNLOAD SCRIPMASTER
 // ============================================
 
-async function getScripMaster(baseUrl, authToken) {
-
-  const url =
-    baseUrl.replace(/\/+$/, "") +
-    "/script-details/1.0/masterscrip/file-paths";
-
+async function downloadScripmaster() {
 
   const response =
     await fetch(
-      url,
+      SCRIPMASTER_URL,
       {
         method: "GET",
 
         headers: {
-          "Authorization":
-            authToken,
-
-          "neo-fin-key":
-            "neotradeapi",
-
-          "Accept":
-            "application/json"
+          Accept: "text/csv"
         },
 
         cache:
           "no-store"
+      }
+    );
+
+
+  const text =
+    await response.text();
+
+
+  if (!response.ok) {
+
+    throw new Error(
+      "Scripmaster download failed. HTTP " +
+      response.status
+    );
+
+  }
+
+
+  return text;
+}
+
+
+// ============================================
+// BUILD SYMBOL MAP
+// ============================================
+
+function buildSymbolMap(csvText) {
+
+  const lines =
+    csvText
+      .split(/\r?\n/)
+      .filter(
+        line =>
+          line.trim() !== ""
+      );
+
+
+  if (lines.length < 2) {
+
+    throw new Error(
+      "Scripmaster CSV is empty."
+    );
+
+  }
+
+
+  const header =
+    parseCsvLine(
+      lines[0]
+    );
+
+
+  function indexOf(name) {
+
+    return header.indexOf(name);
+
+  }
+
+
+  const symbolIndex =
+    indexOf("pSymbol");
+
+  const exchangeIndex =
+    indexOf("pExchSeg");
+
+  const tradingSymbolIndex =
+    indexOf("pTrdSymbol");
+
+  const refKeyIndex =
+    indexOf("pScripRefKey");
+
+  const combinedIndex =
+    indexOf("pCombinedSymbol");
+
+  const contractIdIndex =
+    indexOf("pContractId");
+
+
+  const required = [
+    ["pSymbol", symbolIndex],
+    ["pExchSeg", exchangeIndex],
+    ["pTrdSymbol", tradingSymbolIndex],
+    ["pScripRefKey", refKeyIndex]
+  ];
+
+
+  const missing =
+    required
+      .filter(
+        item =>
+          item[1] < 0
+      )
+      .map(
+        item =>
+          item[0]
+      );
+
+
+  if (missing.length) {
+
+    throw new Error(
+      "Scripmaster fields missing: " +
+      missing.join(", ")
+    );
+
+  }
+
+
+  const map = {};
+
+  const duplicateSymbols = [];
+
+
+  for (
+    let i = 1;
+    i < lines.length;
+    i++
+  ) {
+
+    const row =
+      parseCsvLine(
+        lines[i]
+      );
+
+
+    const exchange =
+      String(
+        row[exchangeIndex] || ""
+      )
+        .trim()
+        .toLowerCase();
+
+
+    // NSE CASH ONLY
+    if (
+      exchange !== "nse_cm"
+    ) {
+
+      continue;
+
+    }
+
+
+    const pSymbol =
+      String(
+        row[symbolIndex] || ""
+      ).trim();
+
+
+    const pTrdSymbol =
+      String(
+        row[tradingSymbolIndex] || ""
+      ).trim();
+
+
+    const pScripRefKey =
+      String(
+        row[refKeyIndex] || ""
+      ).trim();
+
+
+    const pCombinedSymbol =
+      combinedIndex >= 0
+        ? String(
+            row[combinedIndex] || ""
+          ).trim()
+        : "";
+
+
+    const pContractId =
+      contractIdIndex >= 0
+        ? String(
+            row[contractIdIndex] || ""
+          ).trim()
+        : "";
+
+
+    if (!pSymbol) {
+      continue;
+    }
+
+
+    const cleanTrading =
+      pTrdSymbol
+        .toUpperCase()
+        .replace(/-EQ$/, "");
+
+
+    const cleanSymbol =
+      pSymbol
+        .toUpperCase()
+        .replace(/-EQ$/, "");
+
+
+    const cleanCombined =
+      pCombinedSymbol
+        .toUpperCase()
+        .replace(/-EQ$/, "");
+
+
+    const candidates = [
+      cleanSymbol,
+      cleanTrading,
+      cleanCombined
+    ];
+
+
+    for (
+      const niftySymbol
+      of NIFTY_50
+    ) {
+
+      const target =
+        niftySymbol
+          .toUpperCase();
+
+
+      if (
+        candidates.includes(target)
+      ) {
+
+        if (
+          map[target]
+        ) {
+
+          duplicateSymbols.push(
+            target
+          );
+
+          continue;
+
+        }
+
+
+        map[target] = {
+
+          symbol:
+            target,
+
+          neoSymbol:
+            pSymbol,
+
+          pSymbol:
+            pSymbol,
+
+          pTrdSymbol:
+            pTrdSymbol,
+
+          pScripRefKey:
+            pScripRefKey,
+
+          pCombinedSymbol:
+            pCombinedSymbol,
+
+          pContractId:
+            pContractId,
+
+          exchange:
+            exchange
+
+        };
+
+
+        break;
+
+      }
+
+    }
+
+  }
+
+
+  return {
+    map,
+    duplicateSymbols
+  };
+}
+
+
+// ============================================
+// TOTP LOGIN
+// ============================================
+
+async function loginWithTotp(
+  mobileNumber,
+  totp
+) {
+
+  const response =
+    await fetch(
+      LOGIN_URL,
+      {
+
+        method: "POST",
+
+        headers: {
+
+          Authorization:
+            String(
+              ACCESS_TOKEN
+            ).trim(),
+
+          "neo-fin-key":
+            "neotradeapi",
+
+          "Content-Type":
+            "application/json",
+
+          Accept:
+            "application/json"
+
+        },
+
+        body:
+          JSON.stringify({
+
+            mobileNumber:
+              mobileNumber,
+
+            ucc:
+              String(
+                UCC
+              ).trim(),
+
+            totp:
+              String(
+                totp
+              )
+
+          }),
+
+        cache:
+          "no-store"
+
       }
     );
 
@@ -180,867 +592,728 @@ async function getScripMaster(baseUrl, authToken) {
     );
 
 
-  if (!response.ok) {
+  if (!result.json) {
 
     throw new Error(
-      "Scripmaster file-path API failed: HTTP " +
-      response.status
+      "Kotak TOTP Login returned non-JSON response."
     );
 
   }
 
 
-  return result.json;
+  if (!response.ok) {
+
+    const message =
+      result
+        .json
+        ?.error?.[0]
+        ?.message ||
+      "Kotak TOTP login failed.";
+
+
+    throw new Error(
+      message
+    );
+
+  }
+
+
+  const session =
+    result.json?.data ||
+    result.json;
+
+
+  const sid =
+    session?.sid ||
+    session?.Sid ||
+    null;
+
+
+  const auth =
+    session?.token ||
+    session?.Auth ||
+    session?.auth ||
+    null;
+
+
+  if (!sid || !auth) {
+
+    throw new Error(
+      "TOTP login succeeded but Sid/Auth was not returned."
+    );
+
+  }
+
+
+  return {
+    sid,
+    auth,
+    response:
+      result.json
+  };
 
 }
 
 
 // ============================================
-// FIND ARRAY RECURSIVELY
+// MPIN VALIDATION
 // ============================================
 
-function findArray(obj) {
+async function validateMpin(
+  sid,
+  auth
+) {
 
-  if (!obj || typeof obj !== "object") {
-    return null;
-  }
+  const response =
+    await fetch(
+      VALIDATE_URL,
+      {
 
-  if (Array.isArray(obj)) {
-    return obj;
-  }
+        method: "POST",
 
-  for (const key of Object.keys(obj)) {
+        headers: {
 
-    const value =
-      obj[key];
+          Authorization:
+            String(
+              ACCESS_TOKEN
+            ).trim(),
 
-    if (Array.isArray(value)) {
-      return value;
-    }
+          "neo-fin-key":
+            "neotradeapi",
 
-    if (
-      value &&
-      typeof value === "object"
-    ) {
+          Sid:
+            String(
+              sid
+            ).trim(),
 
-      const found =
-        findArray(value);
+          Auth:
+            String(
+              auth
+            ).trim(),
 
-      if (found) {
-        return found;
+          "Content-Type":
+            "application/json",
+
+          Accept:
+            "application/json"
+
+        },
+
+        body:
+          JSON.stringify({
+
+            mpin:
+              String(
+                MPIN
+              ).trim()
+
+          }),
+
+        cache:
+          "no-store"
+
       }
-
-    }
-
-  }
-
-  return null;
-
-}
+    );
 
 
-// ============================================
-// NORMALIZE SYMBOL
-// ============================================
-
-function cleanSymbol(value) {
-
-  return String(
-    value || ""
-  )
-    .trim()
-    .toUpperCase()
-    .replace(/-EQ$/i, "");
-
-}
+  const result =
+    await readResponse(
+      response
+    );
 
 
-// ============================================
-// FIND NEO SYMBOL IN MASTER
-// ============================================
+  if (!result.json) {
 
-function findNeoSymbol(master, target) {
-
-  const targetSymbol =
-    cleanSymbol(target);
-
-
-  const rows =
-    findArray(master);
-
-
-  if (!rows) {
-    return null;
-  }
-
-
-  for (const row of rows) {
-
-    if (
-      !row ||
-      typeof row !== "object"
-    ) {
-      continue;
-    }
-
-
-    const exchange =
-      cleanSymbol(
-        row.pExchange ||
-        row.exchange ||
-        row.pExchSeg
-      );
-
-
-    const tradingSymbol =
-      cleanSymbol(
-        row.pTrdSymbol ||
-        row.trading_symbol ||
-        row.tradingSymbol
-      );
-
-
-    const symbol =
-      cleanSymbol(
-        row.pSymbol ||
-        row.symbol
-      );
-
-
-    const displaySymbol =
-      cleanSymbol(
-        row.display_symbol ||
-        row.displaySymbol
-      );
-
-
-    const refKey =
-      cleanSymbol(
-        row.pScripRefKey ||
-        row.scripRefKey
-      );
-
-
-    const matches =
-      targetSymbol === tradingSymbol ||
-      targetSymbol === symbol ||
-      targetSymbol === displaySymbol ||
-      targetSymbol === refKey;
-
-
-    if (!matches) {
-      continue;
-    }
-
-
-    // Prefer NSE cash segment.
-    if (
-      exchange &&
-      !(
-        exchange === "NSE_CM" ||
-        exchange === "NSECM" ||
-        exchange === "NSE"
-      )
-    ) {
-      continue;
-    }
-
-
-    return (
-      row.pSymbol ||
-      row.pTrdSymbol ||
-      row.pScripRefKey ||
-      row.symbol ||
-      null
+    throw new Error(
+      "Kotak MPIN validation returned non-JSON response."
     );
 
   }
 
 
-  return null;
+  if (!response.ok) {
+
+    const message =
+      result
+        .json
+        ?.error?.[0]
+        ?.message ||
+      "Kotak MPIN validation failed.";
+
+
+    throw new Error(
+      message
+    );
+
+  }
+
+
+  const data =
+    result.json?.data ||
+    result.json;
+
+
+  const baseUrl =
+    data?.baseUrl ||
+    data?.base_url ||
+    null;
+
+
+  const tradeSid =
+    data?.sid ||
+    data?.Sid ||
+    sid;
+
+
+  const tradeToken =
+    data?.token ||
+    data?.Auth ||
+    data?.auth ||
+    auth;
+
+
+  if (!baseUrl) {
+
+    throw new Error(
+      "MPIN validation succeeded but baseUrl was not returned."
+    );
+
+  }
+
+
+  return {
+
+    baseUrl:
+      String(
+        baseUrl
+      ).replace(/\/+$/, ""),
+
+    sid:
+      tradeSid,
+
+    auth:
+      tradeToken,
+
+    response:
+      result.json
+
+  };
 
 }
 
 
 // ============================================
-// MAIN
+// KOTAK QUOTES
 // ============================================
 
-export default async function handler(req, res) {
+async function getQuotes(
+  baseUrl,
+  sid,
+  auth,
+  neoSymbols
+) {
 
-  if (req.method !== "POST") {
+  const encodedSymbols =
+    encodeURIComponent(
+      neoSymbols.join(",")
+    );
 
-    return send(res, 405, {
-      success: false,
-      error: "Use POST method."
-    });
+
+  const quotesUrl =
+    baseUrl +
+    "/script-details/1.0/quotes/" +
+    encodedSymbols +
+    "/all";
+
+
+  const response =
+    await fetch(
+      quotesUrl,
+      {
+
+        method: "GET",
+
+        headers: {
+
+          Authorization:
+            String(
+              ACCESS_TOKEN
+            ).trim(),
+
+          "neo-fin-key":
+            "neotradeapi",
+
+          Sid:
+            String(
+              sid
+            ).trim(),
+
+          Auth:
+            String(
+              auth
+            ).trim(),
+
+          Accept:
+            "application/json"
+
+        },
+
+        cache:
+          "no-store"
+
+      }
+    );
+
+
+  const result =
+    await readResponse(
+      response
+    );
+
+
+  if (!result.json) {
+
+    return {
+
+      success:
+        false,
+
+      status:
+        response.status,
+
+      error:
+        "Kotak Neo returned non-JSON response.",
+
+      rawResponse:
+        result.text.substring(
+          0,
+          3000
+        )
+
+    };
 
   }
 
 
-  // ------------------------------------------
-  // ENVIRONMENT
-  // ------------------------------------------
+  if (!response.ok) {
+
+    return {
+
+      success:
+        false,
+
+      status:
+        response.status,
+
+      error:
+        "Kotak Neo Quotes request failed.",
+
+      kotakResponse:
+        result.json
+
+    };
+
+  }
+
+
+  return {
+
+    success:
+      true,
+
+    status:
+      response.status,
+
+    data:
+      result.json
+
+  };
+
+}
+
+
+// ============================================
+// MAIN HANDLER
+// ============================================
+
+export default async function handler(
+  req,
+  res
+) {
+
+  if (
+    req.method !== "POST"
+  ) {
+
+    return send(
+      res,
+      405,
+      {
+        success:
+          false,
+
+        error:
+          "Use POST method."
+      }
+    );
+
+  }
+
+
+  // ========================================
+  // ENVIRONMENT CHECK
+  // ========================================
 
   if (!ACCESS_TOKEN) {
-    return send(res, 500, {
-      success: false,
-      step: "ENVIRONMENT",
-      error: "NEO_ACCESS_TOKEN missing."
-    });
+
+    return send(
+      res,
+      500,
+      {
+        success:
+          false,
+
+        step:
+          "ENVIRONMENT",
+
+        error:
+          "NEO_ACCESS_TOKEN missing."
+      }
+    );
+
   }
 
 
   if (!MOBILE) {
-    return send(res, 500, {
-      success: false,
-      step: "ENVIRONMENT",
-      error: "NEO_MOBILE missing."
-    });
+
+    return send(
+      res,
+      500,
+      {
+        success:
+          false,
+
+        step:
+          "ENVIRONMENT",
+
+        error:
+          "NEO_MOBILE missing."
+      }
+    );
+
   }
 
 
   if (!UCC) {
-    return send(res, 500, {
-      success: false,
-      step: "ENVIRONMENT",
-      error: "NEO_UCC missing."
-    });
+
+    return send(
+      res,
+      500,
+      {
+        success:
+          false,
+
+        step:
+          "ENVIRONMENT",
+
+        error:
+          "NEO_UCC missing."
+      }
+    );
+
   }
 
 
   if (!MPIN) {
-    return send(res, 500, {
-      success: false,
-      step: "ENVIRONMENT",
-      error: "NEO_MPIN missing."
-    });
+
+    return send(
+      res,
+      500,
+      {
+        success:
+          false,
+
+        step:
+          "ENVIRONMENT",
+
+        error:
+          "NEO_MPIN missing."
+      }
+    );
+
   }
 
 
-  // ------------------------------------------
+  // ========================================
   // TOTP
-  // ------------------------------------------
+  // ========================================
 
   const totp =
     String(
-      req.body?.totp || ""
+      req.body?.totp ||
+      ""
     ).trim();
 
 
-  if (!/^\d{6}$/.test(totp)) {
+  if (
+    !/^\d{6}$/.test(
+      totp
+    )
+  ) {
 
-    return send(res, 400, {
-      success: false,
-      step: "TOTP",
-      error:
-        "Current 6-digit TOTP required."
-    });
+    return send(
+      res,
+      400,
+      {
+        success:
+          false,
+
+        step:
+          "TOTP",
+
+        error:
+          "Current 6-digit TOTP required."
+      }
+    );
+
+  }
+
+
+  // ========================================
+  // MPIN
+  // ========================================
+
+  if (
+    !/^\d{6}$/.test(
+      String(
+        MPIN
+      ).trim()
+    )
+  ) {
+
+    return send(
+      res,
+      500,
+      {
+        success:
+          false,
+
+        step:
+          "MPIN",
+
+        error:
+          "NEO_MPIN must be 6 digits."
+      }
+    );
+
+  }
+
+
+  // ========================================
+  // MOBILE
+  // ========================================
+
+  const mobileNumber =
+    normalizeMobile(
+      MOBILE
+    );
+
+
+  if (
+    !/^\+91\d{10}$/.test(
+      mobileNumber
+    )
+  ) {
+
+    return send(
+      res,
+      500,
+      {
+        success:
+          false,
+
+        step:
+          "MOBILE",
+
+        error:
+          "NEO_MOBILE must be a valid Indian mobile number."
+      }
+    );
 
   }
 
 
   try {
 
-    // ========================================
-    // 1. TOTP LOGIN
-    // ========================================
-
-    const loginResponse =
-      await fetch(
-        LOGIN_URL,
-        {
-          method: "POST",
-
-          headers: {
-            "Authorization":
-              String(ACCESS_TOKEN).trim(),
-
-            "neo-fin-key":
-              "neotradeapi",
-
-            "Content-Type":
-              "application/json",
-
-            "Accept":
-              "application/json"
-          },
-
-          body:
-            JSON.stringify({
-
-              mobileNumber:
-                String(MOBILE).trim(),
-
-              ucc:
-                String(UCC).trim(),
-
-              totp:
-                totp
-
-            }),
-
-          cache:
-            "no-store"
-        }
-      );
-
+    // ======================================
+    // STEP 1
+    // ======================================
 
     const login =
-      await readResponse(
-        loginResponse
+      await loginWithTotp(
+        mobileNumber,
+        totp
       );
 
 
-    if (
-      !login.json
-    ) {
+    // ======================================
+    // STEP 2
+    // ======================================
 
-      return send(res, 502, {
-
-        success: false,
-
-        step:
-          "TOTP LOGIN",
-
-        status:
-          loginResponse.status,
-
-        error:
-          "Kotak returned non-JSON response.",
-
-        rawResponse:
-          login.text.substring(
-            0,
-            2000
-          )
-
-      });
-
-    }
-
-
-    if (!loginResponse.ok) {
-
-      return send(
-        res,
-        loginResponse.status,
-        {
-
-          success: false,
-
-          step:
-            "TOTP LOGIN",
-
-          error:
-            "Kotak TOTP login failed.",
-
-          kotakResponse:
-            login.json
-
-        }
-      );
-
-    }
-
-
-    const loginData =
-      getData(
-        login.json
+    const session =
+      await validateMpin(
+        login.sid,
+        login.auth
       );
 
 
-    const sid =
-      loginData.sid ||
-      loginData.Sid ||
-      loginData.viewSid;
+    // ======================================
+    // STEP 3
+    // ======================================
+
+    const csvText =
+      await downloadScripmaster();
 
 
-    const auth =
-      loginData.token ||
-      loginData.Auth ||
-      loginData.auth ||
-      loginData.viewToken;
+    // ======================================
+    // STEP 4
+    // ======================================
 
-
-    if (!sid || !auth) {
-
-      return send(res, 502, {
-
-        success: false,
-
-        step:
-          "TOTP LOGIN",
-
-        error:
-          "Sid/Auth not returned by Kotak."
-
-      });
-
-    }
-
-
-    // ========================================
-    // 2. MPIN VALIDATION
-    // ========================================
-
-    const validateResponse =
-      await fetch(
-        VALIDATE_URL,
-        {
-
-          method: "POST",
-
-          headers: {
-
-            "Authorization":
-              String(
-                ACCESS_TOKEN
-              ).trim(),
-
-            "neo-fin-key":
-              "neotradeapi",
-
-            "Sid":
-              String(sid),
-
-            "Auth":
-              String(auth),
-
-            "Content-Type":
-              "application/json",
-
-            "Accept":
-              "application/json"
-
-          },
-
-          body:
-            JSON.stringify({
-
-              mpin:
-                String(
-                  MPIN
-                ).trim()
-
-            }),
-
-          cache:
-            "no-store"
-
-        }
+    const master =
+      buildSymbolMap(
+        csvText
       );
 
 
-    const validation =
-      await readResponse(
-        validateResponse
-      );
-
-
-    if (
-      !validation.json
-    ) {
-
-      return send(res, 502, {
-
-        success: false,
-
-        step:
-          "MPIN VALIDATION",
-
-        status:
-          validateResponse.status,
-
-        error:
-          "Kotak MPIN validation returned non-JSON.",
-
-        rawResponse:
-          validation.text.substring(
-            0,
-            2000
-          )
-
-      });
-
-    }
-
-
-    if (!validateResponse.ok) {
-
-      return send(
-        res,
-        validateResponse.status,
-        {
-
-          success: false,
-
-          step:
-            "MPIN VALIDATION",
-
-          error:
-            "MPIN validation failed.",
-
-          kotakResponse:
-            validation.json
-
-        }
-      );
-
-    }
-
-
-    const validationData =
-      getData(
-        validation.json
-      );
-
-
-    const baseUrl =
-      validationData.baseUrl ||
-      validationData.base_url;
-
-
-    if (!baseUrl) {
-
-      return send(res, 502, {
-
-        success: false,
-
-        step:
-          "MPIN VALIDATION",
-
-        error:
-          "Kotak did not return baseUrl.",
-
-        kotakResponse:
-          validation.json
-
-      });
-
-    }
-
-
-    // ========================================
-    // 3. GET SCRIPMASTER PATH
-    // ========================================
-
-    const masterInfo =
-      await getScripMaster(
-        baseUrl,
-        ACCESS_TOKEN
-      );
-
-
-    // ----------------------------------------
-    // IMPORTANT
-    // ----------------------------------------
-
-    // Different Kotak responses can expose
-    // file paths differently. We return the
-    // response if no downloadable master path
-    // is available instead of guessing.
-
-
-    const masterPath =
-      masterInfo?.data?.filePath ||
-      masterInfo?.data?.file_path ||
-      masterInfo?.filePath ||
-      masterInfo?.file_path;
-
-
-    if (!masterPath) {
-
-      return send(res, 502, {
-
-        success: false,
-
-        step:
-          "SCRIPMASTER",
-
-        error:
-          "Kotak returned Scripmaster information but no downloadable file path was found.",
-
-        kotakResponse:
-          masterInfo
-
-      });
-
-    }
-
-
-    // ========================================
-    // 4. DOWNLOAD SCRIPMASTER
-    // ========================================
-
-    const masterUrl =
-      String(masterPath)
-        .startsWith("http")
-        ? String(masterPath)
-        : (
-          baseUrl.replace(/\/+$/, "") +
-          "/" +
-          String(masterPath)
-            .replace(/^\/+/, "")
-        );
-
-
-    const masterResponse =
-      await fetch(
-        masterUrl,
-        {
-          method: "GET",
-          cache: "no-store"
-        }
-      );
-
-
-    const masterText =
-      await masterResponse.text();
-
-
-    if (!masterResponse.ok) {
-
-      return send(res, 502, {
-
-        success: false,
-
-        step:
-          "SCRIPMASTER DOWNLOAD",
-
-        status:
-          masterResponse.status,
-
-        error:
-          "Scripmaster download failed.",
-
-        rawResponse:
-          masterText.substring(
-            0,
-            2000
-          )
-
-      });
-
-    }
-
-
-    // ========================================
-    // 5. PARSE MASTER
-    // ========================================
-
-    let masterData = null;
-
-
-    try {
-
-      masterData =
-        JSON.parse(
-          masterText
-        );
-
-    } catch {
-
-      return send(res, 502, {
-
-        success: false,
-
-        step:
-          "SCRIPMASTER PARSE",
-
-        error:
-          "Downloaded Scripmaster is not JSON.",
-
-        rawResponse:
-          masterText.substring(
-            0,
-            1000
-          )
-
-      });
-
-    }
-
-
-    // ========================================
-    // 6. RESOLVE NIFTY SYMBOLS
-    // ========================================
-
-    const resolved = [];
-
-    const missing = [];
+    const resolved =
+      [];
+
+    const missing =
+      [];
 
 
     for (
-      const niftySymbol
-      of NIFTY_SYMBOLS
+      const symbol
+      of NIFTY_50
     ) {
 
-      const neoSymbol =
-        findNeoSymbol(
-          masterData,
-          niftySymbol
+      if (
+        master.map[symbol]
+      ) {
+
+        resolved.push(
+          master.map[symbol]
         );
 
-
-      if (!neoSymbol) {
+      } else {
 
         missing.push(
-          niftySymbol
+          symbol
         );
 
-        continue;
-
       }
-
-
-      resolved.push({
-
-        symbol:
-          niftySymbol,
-
-        neoSymbol:
-          String(
-            neoSymbol
-          )
-
-      });
 
     }
 
 
-    // ----------------------------------------
-    // DO NOT SEND INVALID SYMBOLS
-    // ----------------------------------------
+    // ======================================
+    // NO SYMBOLS
+    // ======================================
 
     if (
       resolved.length === 0
     ) {
 
-      return send(res, 502, {
-
-        success: false,
-
-        step:
-          "SCRIPMASTER MAPPING",
-
-        error:
-          "No valid NSE Neo symbols could be resolved.",
-
-        resolvedCount:
-          0,
-
-        missing:
-          missing
-
-      });
-
-    }
-
-
-    // ========================================
-    // 7. QUOTES
-    // ========================================
-
-    const neoSymbols =
-      resolved
-        .map(
-          item =>
-            item.neoSymbol
-        )
-        .join(",");
-
-
-    const quotesUrl =
-      baseUrl.replace(/\/+$/, "") +
-      "/script-details/1.0/quotes/neosymbol/" +
-      encodeURIComponent(
-        neoSymbols
-      ) +
-      "/all";
-
-
-    const quotesResponse =
-      await fetch(
-        quotesUrl,
+      return send(
+        res,
+        502,
         {
 
-          method:
-            "GET",
+          success:
+            false,
 
-          headers: {
+          step:
+            "SCRIPMASTER",
 
-            "Authorization":
-              String(
-                ACCESS_TOKEN
-              ).trim(),
+          error:
+            "No Nifty 50 Neo symbols were resolved from Scripmaster.",
 
-            "Accept":
-              "application/json"
+          requestedCount:
+            NIFTY_50.length,
 
-          },
+          resolvedCount:
+            0,
 
-          cache:
-            "no-store"
+          missingSymbols:
+            missing
 
         }
       );
 
+    }
 
-    const quotes =
-      await readResponse(
-        quotesResponse
+
+    // ======================================
+    // STEP 5 - QUOTES
+    // ======================================
+
+    const neoSymbols =
+      resolved.map(
+        item =>
+          item.neoSymbol
+      );
+
+
+    const quoteResult =
+      await getQuotes(
+        session.baseUrl,
+        session.sid,
+        session.auth,
+        neoSymbols
       );
 
 
     if (
-      !quotes.json
+      !quoteResult.success
     ) {
-
-      return send(res, 502, {
-
-        success: false,
-
-        step:
-          "QUOTES",
-
-        status:
-          quotesResponse.status,
-
-        error:
-          "Kotak Quotes returned non-JSON.",
-
-        rawResponse:
-          quotes.text.substring(
-            0,
-            2000
-          )
-
-      });
-
-    }
-
-
-    if (!quotesResponse.ok) {
 
       return send(
         res,
-        quotesResponse.status,
+        502,
         {
 
-          success: false,
+          success:
+            false,
+
+          source:
+            "KOTAK NEO",
 
           step:
             "QUOTES",
 
           error:
-            "Kotak Quotes request failed.",
+            quoteResult.error,
 
-          kotakResponse:
-            quotes.json,
+          status:
+            quoteResult.status,
+
+          requestedCount:
+            NIFTY_50.length,
 
           resolvedCount:
-            resolved.length
+            resolved.length,
+
+          missingSymbols:
+            missing,
+
+          resolvedSymbols:
+            resolved,
+
+          kotakResponse:
+            quoteResult.kotakResponse,
+
+          rawResponse:
+            quoteResult.rawResponse
 
         }
       );
@@ -1048,37 +1321,157 @@ export default async function handler(req, res) {
     }
 
 
-    // ========================================
-    // SUCCESS
-    // ========================================
+    // ======================================
+    // EXTRACT QUOTES
+    // ======================================
 
-    return send(res, 200, {
+    const kotakData =
+      quoteResult.data;
 
-      success:
-        true,
 
-      source:
-        "KOTAK NEO",
+    let quotes = [];
 
-      marketData:
-        "LIVE",
 
-      totalRequested:
-        NIFTY_SYMBOLS.length,
+    if (
+      Array.isArray(
+        kotakData
+      )
+    ) {
 
-      resolvedSymbols:
-        resolved.length,
+      quotes =
+        kotakData;
 
-      missingSymbols:
-        missing,
+    }
 
-      neoSymbols:
-        resolved,
+    else if (
+      Array.isArray(
+        kotakData?.data
+      )
+    ) {
 
-      kotakResponse:
-        quotes.json
+      quotes =
+        kotakData.data;
 
-    });
+    }
+
+    else if (
+      Array.isArray(
+        kotakData?.quotes
+      )
+    ) {
+
+      quotes =
+        kotakData.quotes;
+
+    }
+
+    else if (
+      Array.isArray(
+        kotakData?.result
+      )
+    ) {
+
+      quotes =
+        kotakData.result;
+
+    }
+
+    else if (
+      Array.isArray(
+        kotakData?.results
+      )
+    ) {
+
+      quotes =
+        kotakData.results;
+
+    }
+
+
+    // ======================================
+    // FINAL RESPONSE
+    // ======================================
+
+    if (
+      quotes.length === 0
+    ) {
+
+      return send(
+        res,
+        502,
+        {
+
+          success:
+            false,
+
+          source:
+            "KOTAK NEO",
+
+          step:
+            "QUOTES",
+
+          error:
+            "Kotak responded successfully but no quote array was found.",
+
+          requestedCount:
+            NIFTY_50.length,
+
+          resolvedCount:
+            resolved.length,
+
+          missingSymbols:
+            missing,
+
+          resolvedSymbols:
+            resolved,
+
+          kotakResponse:
+            kotakData
+
+        }
+      );
+
+    }
+
+
+    return send(
+      res,
+      200,
+      {
+
+        success:
+          true,
+
+        source:
+          "KOTAK NEO",
+
+        marketData:
+          "LIVE",
+
+        totalRequested:
+          NIFTY_50.length,
+
+        totalResolved:
+          resolved.length,
+
+        totalReceived:
+          quotes.length,
+
+        totalErrors:
+          Math.max(
+            NIFTY_50.length -
+            quotes.length,
+            0
+          ),
+
+        missingSymbols:
+          missing,
+
+        quotes:
+          quotes
+
+      }
+    );
 
 
   } catch (error) {
@@ -1089,21 +1482,26 @@ export default async function handler(req, res) {
     );
 
 
-    return send(res, 500, {
+    return send(
+      res,
+      500,
+      {
 
-      success: false,
+        success:
+          false,
 
-      source:
-        "KOTAK NEO",
+        source:
+          "KOTAK NEO",
 
-      step:
-        "QUOTES",
+        step:
+          "QUOTES",
 
-      error:
-        error.message ||
-        "Unexpected server error."
+        error:
+          error?.message ||
+          "Unexpected server error."
 
-    });
+      }
+    );
 
   }
 
