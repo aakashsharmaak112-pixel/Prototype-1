@@ -57,17 +57,37 @@ function toNumber(value) {
 function extractQuotes(data) {
   if (!data) return [];
 
-  if (Array.isArray(data)) return data;
+  // Direct array
+  if (Array.isArray(data)) {
+    return data;
+  }
 
-  if (Array.isArray(data.quotes)) return data.quotes;
+  // KOTAK NEO BACKEND RESPONSE
+  // { success: true, neoResponse: [...] }
+  if (Array.isArray(data.neoResponse)) {
+    return data.neoResponse;
+  }
 
-  if (Array.isArray(data.data)) return data.data;
+  // Other supported formats
+  if (Array.isArray(data.quotes)) {
+    return data.quotes;
+  }
 
-  if (Array.isArray(data.stocks)) return data.stocks;
+  if (Array.isArray(data.data)) {
+    return data.data;
+  }
 
-  if (Array.isArray(data.results)) return data.results;
+  if (Array.isArray(data.stocks)) {
+    return data.stocks;
+  }
 
-  if (Array.isArray(data.result)) return data.result;
+  if (Array.isArray(data.results)) {
+    return data.results;
+  }
+
+  if (Array.isArray(data.result)) {
+    return data.result;
+  }
 
   return [];
 }
@@ -81,24 +101,24 @@ function normalizeNeoQuote(quote) {
     return null;
   }
 
-  const symbol = normalizeSymbol(
-    quote.display_symbol ||
-    quote.symbol ||
-    quote.trading_symbol ||
-    quote.pTrdSymbol ||
-    quote.pScripRefKey ||
-    quote.neo_symbol
-  );
-
-  if (!symbol) {
-    return null;
-  }
-
   const source =
     quote.data &&
     typeof quote.data === "object"
       ? quote.data
       : quote;
+
+  const symbol = normalizeSymbol(
+    source.display_symbol ||
+    source.symbol ||
+    source.trading_symbol ||
+    source.pTrdSymbol ||
+    source.pScripRefKey ||
+    source.neo_symbol
+  );
+
+  if (!symbol) {
+    return null;
+  }
 
   const price = toNumber(
     source.ltp ??
@@ -140,6 +160,7 @@ function normalizeNeoQuote(quote) {
     source.NET_CHANGE
   );
 
+  // Calculate change from previous close when available
   if (previousClose > 0) {
     percentChange =
       ((price - previousClose) / previousClose) * 100;
@@ -174,7 +195,9 @@ function saveMarketData(data) {
       "No quotes array found in API response.",
       data
     );
+
     MARKET_DATA.status = "ERROR";
+
     return false;
   }
 
@@ -192,20 +215,26 @@ function saveMarketData(data) {
     };
   });
 
-  const stockCount = Object.keys(normalized).length;
+  const stockCount =
+    Object.keys(normalized).length;
 
   if (stockCount === 0) {
     console.error(
       "Quotes received but no valid stock prices found.",
       quotes
     );
+
     MARKET_DATA.status = "ERROR";
+
     return false;
   }
 
   MARKET_DATA.stocks = normalized;
-  MARKET_DATA.lastUpdated = new Date().toISOString();
-  MARKET_DATA.status = "LIVE_DATA_LOADED";
+  MARKET_DATA.lastUpdated =
+    new Date().toISOString();
+
+  MARKET_DATA.status =
+    "LIVE_DATA_LOADED";
 
   console.log(
     "LIVE market data loaded:",
@@ -243,7 +272,8 @@ function getMarketStatus() {
     source: MARKET_DATA.source,
     status: MARKET_DATA.status,
     lastUpdated: MARKET_DATA.lastUpdated,
-    stockCount: Object.keys(MARKET_DATA.stocks).length
+    stockCount:
+      Object.keys(MARKET_DATA.stocks).length
   };
 }
 
@@ -254,7 +284,8 @@ function getMarketStatus() {
 
 async function fetchMarketData(totp) {
   try {
-    const cleanTotp = String(totp || "").trim();
+    const cleanTotp =
+      String(totp || "").trim();
 
     if (!/^\d{6}$/.test(cleanTotp)) {
       MARKET_DATA.status = "ERROR";
@@ -277,17 +308,21 @@ async function fetchMarketData(totp) {
       {
         method: "POST",
         cache: "no-store",
+
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type":
+            "application/json",
           Accept: "application/json"
         },
+
         body: JSON.stringify({
           totp: cleanTotp
         })
       }
     );
 
-    const responseText = await response.text();
+    const responseText =
+      await response.text();
 
     let data = null;
 
@@ -295,6 +330,7 @@ async function fetchMarketData(totp) {
       data = responseText
         ? JSON.parse(responseText)
         : null;
+
     } catch (parseError) {
       console.error(
         "Quotes API returned non-JSON response:",
@@ -311,6 +347,7 @@ async function fetchMarketData(totp) {
       data
     );
 
+    // HTTP error
     if (!response.ok) {
       console.error(
         "Quotes API HTTP error:",
@@ -323,7 +360,11 @@ async function fetchMarketData(totp) {
       return false;
     }
 
-    if (data && data.success === false) {
+    // Backend explicitly reported failure
+    if (
+      data &&
+      data.success === false
+    ) {
       console.error(
         "Quotes API returned success=false:",
         data
@@ -334,10 +375,13 @@ async function fetchMarketData(totp) {
       return false;
     }
 
-    const success = saveMarketData(data);
+    // Save normalized market data
+    const success =
+      saveMarketData(data);
 
     if (!success) {
       MARKET_DATA.status = "ERROR";
+
       return false;
     }
 
