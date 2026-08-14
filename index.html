@@ -79,6 +79,16 @@
       font-size: 16px;
       font-weight: bold;
       cursor: pointer;
+      margin-bottom: 10px;
+    }
+
+    .button:last-child {
+      margin-bottom: 0;
+    }
+
+    .button.secondary {
+      background: #26303c;
+      color: white;
     }
 
     .button:active {
@@ -242,6 +252,26 @@
       placeholder="Enter amount e.g. 10000"
     >
 
+    <h2>🔐 Kotak Neo TOTP</h2>
+
+    <input
+      id="totp"
+      class="input-box"
+      type="password"
+      inputmode="numeric"
+      maxlength="6"
+      placeholder="Enter current 6-digit TOTP"
+      autocomplete="one-time-code"
+    >
+
+    <button
+      id="connectButton"
+      class="button secondary"
+      onclick="connectMarketData()"
+    >
+      Connect Live Market Data
+    </button>
+
     <button
       class="button"
       onclick="analyzeInvestment()"
@@ -291,7 +321,7 @@
           id="marketStatus"
           class="status-pending"
         >
-          CONNECTING
+          WAITING
         </strong>
 
       </div>
@@ -322,7 +352,7 @@
     <div id="top20List">
 
       <p class="note">
-        Live market data load ho raha hai...
+        TOTP enter karke "Connect Live Market Data" dabaiye.
       </p>
 
     </div>
@@ -468,7 +498,6 @@
 
   function analyzeInvestment() {
 
-
     const amount =
       Number(
         document.getElementById(
@@ -500,7 +529,6 @@
       typeof window.analyzeInvestmentAmount ===
       "function"
     ) {
-
 
       const result =
         window.analyzeInvestmentAmount(
@@ -559,7 +587,6 @@
 
   function buildTop20Directly() {
 
-
     if (
       !window.NIFTY_50_STOCKS ||
       !Array.isArray(
@@ -599,7 +626,6 @@
 
     window.NIFTY_50_STOCKS.forEach(
       function(stock) {
-
 
         const data =
           liveData[
@@ -686,7 +712,6 @@
   // ==========================================
 
   function loadTop20() {
-
 
     const list =
       document.getElementById(
@@ -777,7 +802,6 @@
     top20.forEach(
       function(stock, index) {
 
-
         const row =
           document.createElement(
             "div"
@@ -861,124 +885,165 @@
 
 
   // ==========================================
-  // START LIVE MARKET DATA
+  // CONNECT LIVE MARKET DATA
   // ==========================================
 
-  document.addEventListener(
-    "DOMContentLoaded",
-    async function() {
+  async function connectMarketData() {
 
-
-      console.log(
-        "Prototype-1 dashboard loaded."
+    const status =
+      document.getElementById(
+        "marketStatus"
       );
 
 
-      const status =
-        document.getElementById(
-          "marketStatus"
-        );
+    const list =
+      document.getElementById(
+        "top20List"
+      );
 
+
+    const button =
+      document.getElementById(
+        "connectButton"
+      );
+
+
+    const totpInput =
+      document.getElementById(
+        "totp"
+      );
+
+
+    const totp =
+      totpInput
+        ? totpInput.value.trim()
+        : "";
+
+
+    // ----------------------------------------
+    // VALIDATE TOTP
+    // ----------------------------------------
+
+    if (
+      !/^\d{6}$/.test(totp)
+    ) {
 
       status.innerText =
-        "LOADING";
-
+        "TOTP REQUIRED";
 
       status.className =
         "status-pending";
 
 
-      // Wait for scripts
+      list.innerHTML =
+        '<p class="note">Current 6-digit TOTP enter karein.</p>';
 
-      await new Promise(
-        function(resolve) {
-
-          setTimeout(
-            resolve,
-            100
-          );
-
-        }
-      );
-
-
-      // --------------------------------------
-      // FETCH LIVE DATA
-      // --------------------------------------
-
-      if (
-        typeof window.fetchMarketData ===
-        "function"
-      ) {
-
-
-        const success =
-          await window.fetchMarketData();
-
-
-        if (
-          success
-        ) {
-
-          console.log(
-            "LIVE market data fetched successfully."
-          );
-
-
-          loadTop20();
-
-        }
-
-        else {
-
-          status.innerText =
-            "ERROR";
-
-          status.className =
-            "status-error";
-
-
-          document.getElementById(
-            "top20List"
-          ).innerHTML =
-            '<p class="note">Live market data fetch failed.</p>';
-
-        }
-
-
+      if (totpInput) {
+        totpInput.focus();
       }
 
-      else {
+      return;
+
+    }
 
 
-        console.error(
-          "fetchMarketData() not found."
+    // ----------------------------------------
+    // CHECK MARKET DATA ENGINE
+    // ----------------------------------------
+
+    if (
+      typeof window.fetchMarketData !==
+      "function"
+    ) {
+
+      status.innerText =
+        "ERROR";
+
+      status.className =
+        "status-error";
+
+
+      list.innerHTML =
+        '<p class="note">Market data engine load nahi hua.</p>';
+
+      console.error(
+        "fetchMarketData() not found."
+      );
+
+      return;
+
+    }
+
+
+    // ----------------------------------------
+    // LOADING
+    // ----------------------------------------
+
+    status.innerText =
+      "LOADING";
+
+    status.className =
+      "status-pending";
+
+
+    list.innerHTML =
+      '<p class="note">Kotak Neo se live market data load ho raha hai...</p>';
+
+
+    button.disabled =
+      true;
+
+    button.innerText =
+      "Connecting...";
+
+
+    try {
+
+      const success =
+        await window.fetchMarketData(
+          totp
         );
 
 
+      if (success) {
+
+        console.log(
+          "LIVE market data fetched successfully."
+        );
+
+
+        loadTop20();
+
+
+      } else {
+
         status.innerText =
           "ERROR";
-
 
         status.className =
           "status-error";
 
 
-        document.getElementById(
-          "top20List"
-        ).innerHTML =
-          '<p class="note">Market data engine load nahi hua.</p>';
+        list.innerHTML =
+          '<p class="note">Live market data fetch failed. Browser console mein detailed API response available hai.</p>';
 
       }
 
 
-    }
-  );
+    } catch (error) {
+
+      console.error(
+        "connectMarketData error:",
+        error
+      );
 
 
-</script>
+      status.innerText =
+        "ERROR";
+
+      status.className =
+        "status-error";
 
 
-</body>
-
-</html>
+      list.innerHTML =
+        '<p class="
