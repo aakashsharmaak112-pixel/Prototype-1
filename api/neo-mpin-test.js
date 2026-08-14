@@ -1,6 +1,6 @@
 // ============================================
 // PROTOTYPE-1
-// KOTAK NEO AUTH DIAGNOSTIC
+// KOTAK NEO AUTH DIAGNOSTIC V3
 // api/neo-mpin-test.js
 // ============================================
 
@@ -13,56 +13,42 @@ export default async function handler(req, res) {
     });
   }
 
-  const ACCESS_TOKEN =
-    process.env.NEO_ACCESS_TOKEN;
-
-  const MOBILE =
-    process.env.NEO_MOBILE;
-
-  const UCC =
-    process.env.NEO_UCC;
-
-  const MPIN =
-    process.env.NEO_MPIN;
+  const ACCESS_TOKEN = process.env.NEO_ACCESS_TOKEN;
+  const MOBILE = process.env.NEO_MOBILE;
+  const UCC = process.env.NEO_UCC;
+  const MPIN = process.env.NEO_MPIN;
 
   const TOTP =
     String(req.body?.totp || "").trim();
 
   // ------------------------------------------
-  // ENV CHECK
+  // ENVIRONMENT CHECK
   // ------------------------------------------
 
-  if (!ACCESS_TOKEN) {
+  const missing = [];
+
+  if (!ACCESS_TOKEN) missing.push("NEO_ACCESS_TOKEN");
+  if (!MOBILE) missing.push("NEO_MOBILE");
+  if (!UCC) missing.push("NEO_UCC");
+  if (!MPIN) missing.push("NEO_MPIN");
+
+  if (missing.length) {
     return res.status(500).json({
       success: false,
-      error: "NEO_ACCESS_TOKEN missing."
+      step: "ENVIRONMENT",
+      error: "Missing environment variables.",
+      missing
     });
   }
 
-  if (!MOBILE) {
-    return res.status(500).json({
-      success: false,
-      error: "NEO_MOBILE missing."
-    });
-  }
-
-  if (!UCC) {
-    return res.status(500).json({
-      success: false,
-      error: "NEO_UCC missing."
-    });
-  }
-
-  if (!MPIN) {
-    return res.status(500).json({
-      success: false,
-      error: "NEO_MPIN missing."
-    });
-  }
+  // ------------------------------------------
+  // INPUT VALIDATION
+  // ------------------------------------------
 
   if (!/^\d{6}$/.test(TOTP)) {
     return res.status(400).json({
       success: false,
+      step: "TOTP INPUT",
       error: "Current 6-digit TOTP required."
     });
   }
@@ -70,12 +56,13 @@ export default async function handler(req, res) {
   if (!/^\d{6}$/.test(String(MPIN).trim())) {
     return res.status(400).json({
       success: false,
-      error: "NEO_MPIN must be 6 digits."
+      step: "MPIN INPUT",
+      error: "NEO_MPIN must be exactly 6 digits."
     });
   }
 
   // ------------------------------------------
-  // MOBILE FORMAT
+  // MOBILE
   // ------------------------------------------
 
   const cleanMobile =
@@ -83,21 +70,24 @@ export default async function handler(req, res) {
       .trim()
       .replace(/[^\d+]/g, "");
 
-  const mobileNumber =
-    cleanMobile.startsWith("+")
-      ? cleanMobile
-      : "+91" + cleanMobile;
+  let mobileNumber = cleanMobile;
+
+  if (/^\d{10}$/.test(cleanMobile)) {
+    mobileNumber = "+91" + cleanMobile;
+  }
 
   if (!/^\+91\d{10}$/.test(mobileNumber)) {
     return res.status(400).json({
       success: false,
-      error: "Invalid mobile number format."
+      step: "MOBILE",
+      error: "Invalid mobile number format.",
+      detectedLength: mobileNumber.length
     });
   }
 
-  // ------------------------------------------
-  // STEP 1: TOTP LOGIN
-  // ------------------------------------------
+  // ==========================================
+  // STEP 1 — TOTP LOGIN
+  // ==========================================
 
   const loginUrl =
     "https://mis.kotaksecurities.com/login/1.0/tradeApiLogin";
@@ -141,12 +131,14 @@ export default async function handler(req, res) {
     const loginRaw =
       await loginResponse.text();
 
-    let loginData;
+    let loginData = null;
 
     try {
 
       loginData =
-        JSON.parse(loginRaw);
+        loginRaw
+          ? JSON.parse(loginRaw)
+          : null;
 
     } catch {
 
@@ -164,16 +156,14 @@ export default async function handler(req, res) {
           "Kotak returned non-JSON response.",
 
         rawResponse:
-          loginRaw.slice(0, 2000)
+          loginRaw.slice(0, 1000)
 
       });
 
     }
 
     // ----------------------------------------
-    // IMPORTANT:
-    // RETURN RAW TOTP RESPONSE
-    // WITHOUT EXPOSING ACCESS TOKEN
+    // LOGIN FAILURE
     // ----------------------------------------
 
     if (!loginResponse.ok) {
@@ -188,6 +178,9 @@ export default async function handler(req, res) {
         kotakHttpStatus:
           loginResponse.status,
 
+        error:
+          "Kotak TOTP login failed.",
+
         kotakResponse:
           loginData
 
@@ -195,38 +188,32 @@ export default async function handler(req, res) {
 
     }
 
+    // ----------------------------------------
+    // LOGIN RESPONSE STRUCTURE
+    // ----------------------------------------
+
     const loginRoot =
       loginData?.data ||
       loginData;
 
-    // ----------------------------------------
-    // TRY ALL COMMON FIELD LOCATIONS
-    // ----------------------------------------
-
     const sid =
-      loginRoot?.sid ||
-      loginRoot?.Sid ||
-      loginRoot?.sessionId ||
-      loginRoot?.sessionID ||
-      loginRoot?.viewSid ||
-      loginData?.sid ||
-      loginData?.Sid ||
+      loginRoot?.sid ??
+      loginRoot?.Sid ??
+      loginRoot?.sessionId ??
+      loginRoot?.sessionID ??
+      loginRoot?.viewSid ??
       null;
 
     const auth =
-      loginRoot?.Auth ||
-      loginRoot?.auth ||
-      loginRoot?.token ||
-      loginRoot?.Token ||
-      loginRoot?.viewToken ||
-      loginData?.Auth ||
-      loginData?.auth ||
-      loginData?.token ||
+      loginRoot?.Auth ??
+      loginRoot?.auth ??
+      loginRoot?.token ??
+      loginRoot?.Token ??
+      loginRoot?.viewToken ??
       null;
 
     // ----------------------------------------
-    // IF LOGIN RESPONSE DOES NOT CONTAIN
-    // SESSION CREDENTIALS
+    // LOGIN DIAGNOSTIC
     // ----------------------------------------
 
     if (!sid || !auth) {
@@ -242,10 +229,24 @@ export default async function handler(req, res) {
           loginResponse.status,
 
         error:
-          "TOTP accepted but Sid/Auth fields were not found.",
+          "TOTP response received but session fields were not detected.",
 
-        detectedFields:
-          Object.keys(loginRoot || {}),
+        responseType:
+          Array.isArray(loginData)
+            ? "array"
+            : typeof loginData,
+
+        rootKeys:
+          loginRoot &&
+          typeof loginRoot === "object"
+            ? Object.keys(loginRoot)
+            : [],
+
+        topLevelKeys:
+          loginData &&
+          typeof loginData === "object"
+            ? Object.keys(loginData)
+            : [],
 
         kotakResponse:
           loginData
@@ -254,9 +255,9 @@ export default async function handler(req, res) {
 
     }
 
-    // ------------------------------------------
-    // STEP 2: MPIN VALIDATION
-    // ------------------------------------------
+    // ==========================================
+    // STEP 2 — MPIN VALIDATION
+    // ==========================================
 
     const validateUrl =
       "https://mis.kotaksecurities.com/login/1.0/tradeApiValidate";
@@ -300,12 +301,14 @@ export default async function handler(req, res) {
     const validateRaw =
       await validateResponse.text();
 
-    let validateData;
+    let validateData = null;
 
     try {
 
       validateData =
-        JSON.parse(validateRaw);
+        validateRaw
+          ? JSON.parse(validateRaw)
+          : null;
 
     } catch {
 
@@ -323,7 +326,7 @@ export default async function handler(req, res) {
           "Kotak returned non-JSON response.",
 
         rawResponse:
-          validateRaw.slice(0, 2000)
+          validateRaw.slice(0, 1000)
 
       });
 
@@ -333,46 +336,47 @@ export default async function handler(req, res) {
       validateData?.data ||
       validateData;
 
-    // ----------------------------------------
+    // ==========================================
     // FIND BASE URL
-    // ----------------------------------------
+    // ==========================================
 
     const baseUrl =
-      validateRoot?.baseUrl ||
-      validateRoot?.base_url ||
-      validateRoot?.BaseUrl ||
-      validateRoot?.BaseURL ||
+      validateRoot?.baseUrl ??
+      validateRoot?.base_url ??
+      validateRoot?.BaseUrl ??
+      validateRoot?.BaseURL ??
       null;
 
-    const tradeSid =
-      validateRoot?.sid ||
-      validateRoot?.Sid ||
-      validateRoot?.sessionId ||
-      validateRoot?.sessionID ||
-      sid ||
+    const returnedSid =
+      validateRoot?.sid ??
+      validateRoot?.Sid ??
+      validateRoot?.sessionId ??
+      validateRoot?.sessionID ??
+      sid ??
       null;
 
-    const tradeAuth =
-      validateRoot?.Auth ||
-      validateRoot?.auth ||
-      validateRoot?.token ||
-      validateRoot?.Token ||
-      auth ||
+    const returnedAuth =
+      validateRoot?.Auth ??
+      validateRoot?.auth ??
+      validateRoot?.token ??
+      validateRoot?.Token ??
+      auth ??
       null;
 
-    // ----------------------------------------
-    // SAFE RESULT
-    // ----------------------------------------
+    // ==========================================
+    // FINAL DIAGNOSTIC RESPONSE
+    // ==========================================
 
     return res.status(
-      validateResponse.ok
-        ? 200
-        : validateResponse.status
+      validateResponse.ok ? 200 : validateResponse.status
     ).json({
 
       success:
         validateResponse.ok &&
         Boolean(baseUrl),
+
+      source:
+        "KOTAK NEO",
 
       step:
         "MPIN VALIDATION",
@@ -384,31 +388,34 @@ export default async function handler(req, res) {
         Boolean(baseUrl),
 
       sidFound:
-        Boolean(tradeSid),
+        Boolean(returnedSid),
 
       authFound:
-        Boolean(tradeAuth),
+        Boolean(returnedAuth),
 
       baseUrl:
         baseUrl || null,
 
       sidLength:
-        tradeSid
-          ? String(tradeSid).length
+        returnedSid
+          ? String(returnedSid).length
           : 0,
 
       authLength:
-        tradeAuth
-          ? String(tradeAuth).length
+        returnedAuth
+          ? String(returnedAuth).length
           : 0,
 
-      detectedFields:
-        Object.keys(validateRoot || {}),
+      responseType:
+        Array.isArray(validateData)
+          ? "array"
+          : typeof validateData,
 
-      message:
-        validateResponse.ok
-          ? "Kotak authentication response received."
-          : "MPIN validation failed.",
+      rootKeys:
+        validateRoot &&
+        typeof validateRoot === "object"
+          ? Object.keys(validateRoot)
+          : [],
 
       kotakResponse:
         validateData
@@ -423,6 +430,9 @@ export default async function handler(req, res) {
 
       source:
         "KOTAK NEO",
+
+      step:
+        "SERVER",
 
       error:
         error.message ||
