@@ -204,6 +204,19 @@
       margin-top: 10px;
     }
 
+    .error-box {
+      background: #251519;
+      border: 1px solid #5a252d;
+      color: #ff8b94;
+      padding: 12px;
+      border-radius: 10px;
+      margin-top: 10px;
+      font-size: 12px;
+      line-height: 1.5;
+      word-break: break-word;
+      display: none;
+    }
+
     .footer {
       text-align: center;
       color: #697586;
@@ -221,6 +234,7 @@
 
 <div class="container">
 
+
   <!-- HEADER -->
 
   <div class="header">
@@ -234,7 +248,7 @@
   </div>
 
 
-  <!-- INVESTMENT -->
+  <!-- INVESTMENT + LOGIN -->
 
   <div class="card">
 
@@ -246,6 +260,7 @@
       type="number"
       placeholder="Enter amount e.g. 10000"
     >
+
 
     <h2>🔐 Kotak Neo TOTP</h2>
 
@@ -259,6 +274,7 @@
       autocomplete="one-time-code"
     >
 
+
     <button
       id="connectButton"
       type="button"
@@ -267,6 +283,7 @@
       Connect Live Market Data
     </button>
 
+
     <button
       id="analyzeButton"
       type="button"
@@ -274,6 +291,12 @@
     >
       Analyze Investment
     </button>
+
+
+    <div
+      id="errorBox"
+      class="error-box"
+    ></div>
 
   </div>
 
@@ -296,6 +319,7 @@
 
       </div>
 
+
       <div class="stat">
 
         <small>Target Top Stocks</small>
@@ -305,6 +329,7 @@
         </strong>
 
       </div>
+
 
       <div class="stat">
 
@@ -318,6 +343,7 @@
         </strong>
 
       </div>
+
 
       <div class="stat">
 
@@ -349,80 +375,81 @@
     </div>
 
     <p class="note">
+
       Live ranking available market data
       ke basis par calculate ho rahi hai.
+
     </p>
 
   </div>
 
 
-  <!-- AI WATCHLIST -->
+  <!-- WATCHLIST -->
 
   <div class="card">
 
     <h2>⭐ AI Watchlist</h2>
 
-    <div id="watchlist">
 
-      <div class="stock">
+    <div class="stock">
 
-        <div>
+      <div>
 
-          <div class="stock-name">
-            HDFC Bank
-          </div>
-
-          <div class="stock-sector">
-            Financial Services
-          </div>
-
+        <div class="stock-name">
+          HDFC Bank
         </div>
 
-        <span class="badge watch">
-          WATCH
-        </span>
+        <div class="stock-sector">
+          Financial Services
+        </div>
 
       </div>
 
-      <div class="stock">
+      <span class="badge watch">
+        WATCH
+      </span>
 
-        <div>
+    </div>
 
-          <div class="stock-name">
-            Reliance Industries
-          </div>
 
-          <div class="stock-sector">
-            Oil, Gas & Consumable Fuels
-          </div>
+    <div class="stock">
 
+      <div>
+
+        <div class="stock-name">
+          Reliance Industries
         </div>
 
-        <span class="badge watch">
-          WATCH
-        </span>
+        <div class="stock-sector">
+          Oil, Gas & Consumable Fuels
+        </div>
 
       </div>
 
-      <div class="stock">
+      <span class="badge watch">
+        WATCH
+      </span>
 
-        <div>
+    </div>
 
-          <div class="stock-name">
-            ICICI Bank
-          </div>
 
-          <div class="stock-sector">
-            Financial Services
-          </div>
+    <div class="stock">
 
+      <div>
+
+        <div class="stock-name">
+          ICICI Bank
         </div>
 
-        <span class="badge watch">
-          WATCH
-        </span>
+        <div class="stock-sector">
+          Financial Services
+        </div>
 
       </div>
+
+      <span class="badge watch">
+        WATCH
+      </span>
 
     </div>
 
@@ -458,12 +485,11 @@
 
   </div>
 
+
 </div>
 
 
-<!-- ========================================= -->
 <!-- EXISTING ENGINES -->
-<!-- ========================================= -->
 
 <script src="market-data.js"></script>
 
@@ -478,9 +504,23 @@ document.addEventListener(
   "DOMContentLoaded",
   function () {
 
+
     console.log(
-      "Prototype-1 dashboard loaded."
+      "================================"
     );
+
+    console.log(
+      "PROTOTYPE-1 DASHBOARD"
+    );
+
+    console.log(
+      "SESSION BASED MARKET DATA FLOW"
+    );
+
+    console.log(
+      "================================"
+    );
+
 
     const connectButton =
       document.getElementById(
@@ -522,6 +562,11 @@ document.addEventListener(
         "stockCount"
       );
 
+    const errorBox =
+      document.getElementById(
+        "errorBox"
+      );
+
 
     // ========================================
     // STOCK COUNT
@@ -541,6 +586,32 @@ document.addEventListener(
 
 
     // ========================================
+    // ERROR DISPLAY
+    // ========================================
+
+    function showError(message) {
+
+      errorBox.style.display =
+        "block";
+
+      errorBox.innerText =
+        message;
+
+    }
+
+
+    function clearError() {
+
+      errorBox.style.display =
+        "none";
+
+      errorBox.innerText =
+        "";
+
+    }
+
+
+    // ========================================
     // ANALYZE INVESTMENT
     // ========================================
 
@@ -552,6 +623,7 @@ document.addEventListener(
           Number(
             amountInput.value
           );
+
 
         if (
           !amount ||
@@ -575,6 +647,7 @@ document.addEventListener(
             window.analyzeInvestmentAmount(
               amount
             );
+
 
           if (
             result &&
@@ -635,10 +708,6 @@ document.addEventListener(
         )
       ) {
 
-        console.error(
-          "NIFTY_50_STOCKS not available."
-        );
-
         return [];
 
       }
@@ -648,10 +717,6 @@ document.addEventListener(
         !window.MARKET_DATA ||
         !window.MARKET_DATA.stocks
       ) {
-
-        console.error(
-          "MARKET_DATA not available."
-        );
 
         return [];
 
@@ -672,10 +737,12 @@ document.addEventListener(
               stock.symbol
             ] || {};
 
+
           const price =
             Number(
               data.price
             ) || 0;
+
 
           const change =
             Number(
@@ -755,10 +822,11 @@ document.addEventListener(
         status.className =
           "status-error";
 
-        list.innerHTML =
-          '<p class="note">Market data received, but no valid Nifty 50 prices were matched.</p>';
 
-        return;
+        list.innerHTML =
+          '<p class="note">Session received, but valid Nifty 50 market prices were not returned.</p>';
+
+        return false;
 
       }
 
@@ -781,6 +849,7 @@ document.addEventListener(
             document.createElement(
               "div"
             );
+
 
           row.className =
             "stock";
@@ -830,6 +899,7 @@ document.addEventListener(
 
             </div>
 
+
             <div class="stock-change">
 
               <div class="${changeClass}">
@@ -854,32 +924,22 @@ document.addEventListener(
         }
       );
 
+
+      return true;
+
     }
 
 
     // ========================================
-    // CONNECT LIVE MARKET DATA
+    // CONNECT
     // ========================================
 
     connectButton.addEventListener(
       "click",
       async function () {
 
-        console.log(
-          "Connect Live Market Data button clicked."
-        );
 
-
-        // Immediate visible confirmation
-        status.innerText =
-          "LOADING";
-
-        status.className =
-          "status-pending";
-
-
-        list.innerHTML =
-          '<p class="note">Connecting to Kotak Neo...</p>';
+        clearError();
 
 
         const totp =
@@ -887,10 +947,6 @@ document.addEventListener(
             totpInput.value || ""
           ).trim();
 
-
-        // ====================================
-        // TOTP VALIDATION
-        // ====================================
 
         if (
           !/^\d{6}$/.test(totp)
@@ -914,134 +970,323 @@ document.addEventListener(
         }
 
 
-        // ====================================
-        // ENGINE CHECK
-        // ====================================
-
-        if (
-          typeof window.fetchMarketData !==
-          "function"
-        ) {
-
-          status.innerText =
-            "ENGINE ERROR";
-
-          status.className =
-            "status-error";
-
-
-          list.innerHTML =
-            '<p class="note">fetchMarketData() function available nahi hai.</p>';
-
-
-          console.error(
-            "fetchMarketData() not found."
-          );
-
-          return;
-
-        }
-
-
-        // ====================================
-        // DISABLE BUTTON
-        // ====================================
-
         connectButton.disabled =
           true;
 
+        analyzeButton.disabled =
+          true;
+
         connectButton.innerText =
-          "Connecting...";
+          "Authenticating...";
+
+
+        status.innerText =
+          "LOGIN";
+
+        status.className =
+          "status-pending";
+
+
+        list.innerHTML =
+          '<p class="note">Kotak Neo TOTP login ho raha hai...</p>';
 
 
         try {
 
+
           // ==================================
-          // 15 SECOND TIMEOUT
+          // STEP 1
+          // TOTP + MPIN VALIDATION
           // ==================================
 
-          const controller =
-            new AbortController();
+          const loginResponse =
+            await fetch(
+              "/api/neo-mpin-test",
+              {
+                method: "POST",
 
-          const timeout =
-            setTimeout(
-              function () {
-                controller.abort();
-              },
-              15000
+                headers: {
+                  "Content-Type":
+                    "application/json",
+
+                  "Accept":
+                    "application/json"
+                },
+
+                body:
+                  JSON.stringify({
+                    totp: totp
+                  })
+              }
             );
 
 
-          const success =
-            await Promise.race([
-
-              window.fetchMarketData(
-                totp
-              ),
-
-              new Promise(
-                function (_, reject) {
-
-                  controller.signal.addEventListener(
-                    "abort",
-                    function () {
-
-                      reject(
-                        new Error(
-                          "Request timed out after 15 seconds."
-                        )
-                      );
-
-                    }
-                  );
-
-                }
-              )
-
-            ]);
+          const loginText =
+            await loginResponse.text();
 
 
-          clearTimeout(
-            timeout
+          let loginData;
+
+
+          try {
+
+            loginData =
+              loginText
+                ? JSON.parse(
+                    loginText
+                  )
+                : null;
+
+          } catch {
+
+            throw new Error(
+              "TOTP/MPIN API returned non-JSON response."
+            );
+
+          }
+
+
+          console.log(
+            "TOTP + MPIN response:",
+            loginData
           );
 
 
+          if (
+            !loginResponse.ok ||
+            !loginData ||
+            loginData.success !== true
+          ) {
+
+            throw new Error(
+              loginData?.error ||
+              loginData?.message ||
+              "Kotak Neo authentication failed."
+            );
+
+          }
+
+
           // ==================================
-          // SUCCESS
+          // SESSION CHECK
           // ==================================
 
-          if (success) {
+          const baseUrl =
+            loginData.baseUrl ||
+            null;
 
-            console.log(
-              "LIVE market data loaded successfully."
+
+          const sid =
+            loginData.tradeSid ||
+            null;
+
+
+          const auth =
+            loginData.tradeToken ||
+            null;
+
+
+          if (
+            !baseUrl ||
+            !sid ||
+            !auth
+          ) {
+
+            throw new Error(
+              "Kotak authentication successful nahi hui: baseUrl/Sid/Auth missing."
+            );
+
+          }
+
+
+          console.log(
+            "Kotak session established."
+          );
+
+
+          status.innerText =
+            "SESSION READY";
+
+          status.className =
+            "status-ready";
+
+
+          list.innerHTML =
+            '<p class="note">Session ready. Ab live quotes request bheji ja rahi hai...</p>';
+
+
+          connectButton.innerText =
+            "Loading Quotes...";
+
+
+          // ==================================
+          // STEP 2
+          // LIVE QUOTES
+          // ==================================
+
+          const quoteResponse =
+            await fetch(
+              "/api/quotes",
+              {
+                method: "POST",
+
+                headers: {
+                  "Content-Type":
+                    "application/json",
+
+                  "Accept":
+                    "application/json"
+                },
+
+                body:
+                  JSON.stringify({
+
+                    totp:
+                      totp,
+
+                    baseUrl:
+                      baseUrl,
+
+                    sid:
+                      sid,
+
+                    auth:
+                      auth
+
+                  })
+              }
             );
 
 
+          const quoteText =
+            await quoteResponse.text();
+
+
+          let quoteData;
+
+
+          try {
+
+            quoteData =
+              quoteText
+                ? JSON.parse(
+                    quoteText
+                  )
+                : null;
+
+          } catch {
+
+            throw new Error(
+              "Quotes API returned non-JSON response. HTTP " +
+              quoteResponse.status
+            );
+
+          }
+
+
+          console.log(
+            "Quotes response:",
+            quoteData
+          );
+
+
+          if (
+            !quoteResponse.ok ||
+            !quoteData ||
+            quoteData.success === false
+          ) {
+
+            throw new Error(
+              quoteData?.error ||
+              quoteData?.message ||
+              "Kotak Neo quotes request failed."
+            );
+
+          }
+
+
+          // ==================================
+          // STEP 3
+          // SAVE DATA
+          // ==================================
+
+          let saved =
+            false;
+
+
+          if (
+            typeof window.saveMarketData ===
+            "function"
+          ) {
+
+            saved =
+              window.saveMarketData(
+                quoteData
+              );
+
+          }
+
+
+          if (!saved) {
+
+            throw new Error(
+              "Quotes response mila, lekin market-data.js usko normalize nahi kar paaya."
+            );
+
+          }
+
+
+          // ==================================
+          // STEP 4
+          // TOP 20
+          // ==================================
+
+          const displayed =
             loadTop20();
 
-          }
 
-          else {
+          if (!displayed) {
 
-            status.innerText =
-              "ERROR";
-
-            status.className =
-              "status-error";
-
-
-            list.innerHTML =
-              '<p class="note">Kotak Neo market data request failed. Check the API response in browser console.</p>';
+            throw new Error(
+              "Live quotes aaye, lekin Nifty 50 symbols se match nahi hue."
+            );
 
           }
+
+
+          status.innerText =
+            "LIVE";
+
+          status.className =
+            "status-ready";
+
+
+          list.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+          });
+
+
+          console.log(
+            "================================"
+          );
+
+          console.log(
+            "PROTOTYPE-1 LIVE MARKET DATA READY"
+          );
+
+          console.log(
+            "================================"
+          );
 
 
         }
 
         catch (error) {
 
+
           console.error(
-            "Market connection error:",
+            "Prototype-1 connection error:",
             error
           );
 
@@ -1054,22 +1299,43 @@ document.addEventListener(
 
 
           list.innerHTML =
-            '<p class="note">Connection error: ' +
-            error.message +
-            '</p>';
+            '<p class="note">Kotak Neo connection failed.</p>';
+
+
+          showError(
+            error.message ||
+            "Unknown connection error."
+          );
 
         }
 
 
-        // ==================================
-        // ENABLE BUTTON
-        // ==================================
-
         connectButton.disabled =
+          false;
+
+        analyzeButton.disabled =
           false;
 
         connectButton.innerText =
           "Connect Live Market Data";
+
+
+      }
+    );
+
+
+    // ========================================
+    // TOTP INPUT
+    // ========================================
+
+    totpInput.addEventListener(
+      "input",
+      function () {
+
+        this.value =
+          this.value
+            .replace(/\D/g, "")
+            .slice(0, 6);
 
       }
     );
