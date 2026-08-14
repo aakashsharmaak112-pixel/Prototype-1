@@ -2,6 +2,7 @@
 // PROTOTYPE-1
 // MARKET DATA ENGINE
 // LIVE KOTAK NEO MARKET DATA
+// POST + FRESH TOTP
 // ============================================
 
 const MARKET_DATA = {
@@ -111,13 +112,62 @@ function normalizeNeoQuote(quote) {
     return null;
   }
 
+  // ------------------------------------------
+  // NEW /api/quotes RESPONSE STRUCTURE
+  // ------------------------------------------
 
-  const symbol = normalizeSymbol(
-    quote.display_symbol ||
-    quote.symbol ||
-    quote.trading_symbol ||
-    quote.neo_symbol
-  );
+  let raw = quote;
+
+  if (
+    quote.data &&
+    typeof quote.data === "object"
+  ) {
+
+    raw = quote.data;
+
+  }
+
+  if (
+    raw.data &&
+    typeof raw.data === "object"
+  ) {
+
+    raw = raw.data;
+
+  }
+
+  // ------------------------------------------
+  // SYMBOL
+  // ------------------------------------------
+
+  const symbol =
+    normalizeSymbol(
+
+      quote.symbol ||
+
+      quote.display_symbol ||
+
+      quote.trading_symbol ||
+
+      quote.pTrdSymbol ||
+
+      quote.neoSymbol ||
+
+      quote.neo_symbol ||
+
+      raw.display_symbol ||
+
+      raw.symbol ||
+
+      raw.trading_symbol ||
+
+      raw.pTrdSymbol ||
+
+      raw.neoSymbol ||
+
+      raw.neo_symbol
+
+    );
 
 
   if (!symbol) {
@@ -125,14 +175,28 @@ function normalizeNeoQuote(quote) {
   }
 
 
-  const price = toNumber(
-    quote.ltp ??
-    quote.last_price ??
-    quote.lastPrice ??
-    quote.close_price ??
-    quote.close ??
-    quote.LTP
-  );
+  // ------------------------------------------
+  // PRICE
+  // ------------------------------------------
+
+  const price =
+    toNumber(
+
+      raw.ltp ??
+
+      raw.last_price ??
+
+      raw.lastPrice ??
+
+      raw.close_price ??
+
+      raw.close ??
+
+      raw.LTP ??
+
+      raw.lp
+
+    );
 
 
   if (price <= 0) {
@@ -140,25 +204,50 @@ function normalizeNeoQuote(quote) {
   }
 
 
-  const previousClose = toNumber(
-    quote.previous_close ??
-    quote.prev_close ??
-    quote.prevClose ??
-    quote.previousClose ??
-    quote.pc ??
-    quote.PREVIOUS_CLOSE
-  );
+  // ------------------------------------------
+  // PREVIOUS CLOSE
+  // ------------------------------------------
+
+  const previousClose =
+    toNumber(
+
+      raw.previous_close ??
+
+      raw.prev_close ??
+
+      raw.prevClose ??
+
+      raw.previousClose ??
+
+      raw.pc ??
+
+      raw.PREVIOUS_CLOSE
+
+    );
 
 
-  let percentChange = toNumber(
-    quote.percentage_change ??
-    quote.percent_change ??
-    quote.percentChange ??
-    quote.change_percent ??
-    quote.changePercent ??
-    quote.pChange ??
-    quote.PERCENTAGE_CHANGE
-  );
+  // ------------------------------------------
+  // PERCENT CHANGE
+  // ------------------------------------------
+
+  let percentChange =
+    toNumber(
+
+      raw.percentage_change ??
+
+      raw.percent_change ??
+
+      raw.percentChange ??
+
+      raw.change_percent ??
+
+      raw.changePercent ??
+
+      raw.pChange ??
+
+      raw.PERCENTAGE_CHANGE
+
+    );
 
 
   if (
@@ -167,18 +256,32 @@ function normalizeNeoQuote(quote) {
   ) {
 
     percentChange =
-      ((price - previousClose) / previousClose) * 100;
+      (
+        (price - previousClose) /
+        previousClose
+      ) * 100;
 
   }
 
 
-  let rupeeChange = toNumber(
-    quote.net_change ??
-    quote.netChange ??
-    quote.change ??
-    quote.chg ??
-    quote.NET_CHANGE
-  );
+  // ------------------------------------------
+  // RUPEE CHANGE
+  // ------------------------------------------
+
+  let rupeeChange =
+    toNumber(
+
+      raw.net_change ??
+
+      raw.netChange ??
+
+      raw.change ??
+
+      raw.chg ??
+
+      raw.NET_CHANGE
+
+    );
 
 
   if (
@@ -192,21 +295,29 @@ function normalizeNeoQuote(quote) {
   }
 
 
+  // ------------------------------------------
+  // FINAL NORMALIZED STOCK
+  // ------------------------------------------
+
   return {
 
-    symbol: symbol,
+    symbol:
+      symbol,
 
-    price: Number(
-      price.toFixed(2)
-    ),
+    price:
+      Number(
+        price.toFixed(2)
+      ),
 
-    change: Number(
-      percentChange.toFixed(2)
-    ),
+    change:
+      Number(
+        percentChange.toFixed(2)
+      ),
 
-    rupeeChange: Number(
-      rupeeChange.toFixed(2)
-    )
+    rupeeChange:
+      Number(
+        rupeeChange.toFixed(2)
+      )
 
   };
 
@@ -225,14 +336,16 @@ function saveMarketData(data) {
       "Invalid market data response."
     );
 
-    MARKET_DATA.status = "ERROR";
+    MARKET_DATA.status =
+      "ERROR";
 
     return false;
 
   }
 
 
-  const quotes = extractQuotes(data);
+  const quotes =
+    extractQuotes(data);
 
 
   if (!quotes.length) {
@@ -242,7 +355,8 @@ function saveMarketData(data) {
       data
     );
 
-    MARKET_DATA.status = "ERROR";
+    MARKET_DATA.status =
+      "ERROR";
 
     return false;
 
@@ -252,42 +366,56 @@ function saveMarketData(data) {
   const normalized = {};
 
 
-  quotes.forEach(function(quote) {
+  quotes.forEach(
+    function(quote) {
 
-    const result =
-      normalizeNeoQuote(quote);
+      const result =
+        normalizeNeoQuote(
+          quote
+        );
 
 
-    if (!result) {
-      return;
+      if (!result) {
+        return;
+      }
+
+
+      normalized[
+        result.symbol
+      ] = {
+
+        price:
+          result.price,
+
+        change:
+          result.change,
+
+        rupeeChange:
+          result.rupeeChange
+
+      };
+
     }
-
-
-    normalized[result.symbol] = {
-
-      price: result.price,
-
-      change: result.change,
-
-      rupeeChange: result.rupeeChange
-
-    };
-
-  });
+  );
 
 
   const stockCount =
-    Object.keys(normalized).length;
+    Object.keys(
+      normalized
+    ).length;
 
 
-  if (stockCount === 0) {
+  if (
+    stockCount === 0
+  ) {
 
     console.error(
       "Quotes received but no valid stock prices found.",
       quotes
     );
 
-    MARKET_DATA.status = "ERROR";
+    MARKET_DATA.status =
+      "ERROR";
 
     return false;
 
@@ -325,7 +453,9 @@ function saveMarketData(data) {
 function getMarketStock(symbol) {
 
   const key =
-    normalizeSymbol(symbol);
+    normalizeSymbol(
+      symbol
+    );
 
 
   return (
@@ -342,7 +472,9 @@ function getMarketStock(symbol) {
 
 function getAllMarketData() {
 
-  return MARKET_DATA.stocks;
+  return (
+    MARKET_DATA.stocks
+  );
 
 }
 
@@ -375,42 +507,191 @@ function getMarketStatus() {
 
 
 // ============================================
-// FETCH LIVE MARKET DATA
+// API ERROR MESSAGE
 // ============================================
 
-async function fetchMarketData() {
+function getApiErrorMessage(data) {
+
+  if (!data) {
+    return "Empty API response.";
+  }
+
+
+  if (data.error) {
+    return String(
+      data.error
+    );
+  }
+
+
+  if (data.kotakResponse) {
+
+    const response =
+      data.kotakResponse;
+
+    return (
+      response?.fault?.description ||
+
+      response?.fault?.message ||
+
+      response?.message ||
+
+      "Kotak API request failed."
+    );
+
+  }
+
+
+  if (
+    Array.isArray(
+      data.errors
+    ) &&
+    data.errors.length > 0
+  ) {
+
+    const firstError =
+      data.errors[0];
+
+    return (
+
+      firstError?.response?.fault?.description ||
+
+      firstError?.response?.fault?.message ||
+
+      firstError?.error ||
+
+      "Live quote request failed."
+
+    );
+
+  }
+
+
+  return (
+    "Live market data request failed."
+  );
+
+}
+
+
+// ============================================
+// FETCH LIVE MARKET DATA
+//
+// IMPORTANT:
+// /api/quotes is POST-only.
+// It requires the current 6-digit TOTP.
+//
+// Usage:
+// fetchMarketData("123456")
+// ============================================
+
+async function fetchMarketData(
+  totp
+) {
 
   try {
+
+    const cleanTotp =
+      String(
+        totp || ""
+      ).trim();
+
+
+    // ----------------------------------------
+    // TOTP VALIDATION
+    // ----------------------------------------
+
+    if (
+      !/^\d{6}$/.test(
+        cleanTotp
+      )
+    ) {
+
+      MARKET_DATA.status =
+        "TOTP_REQUIRED";
+
+
+      console.error(
+        "Current 6-digit TOTP required."
+      );
+
+
+      return false;
+
+    }
+
 
     MARKET_DATA.status =
       "LOADING";
 
 
+    // ----------------------------------------
+    // POST REQUEST
+    // ----------------------------------------
+
     const response =
       await fetch(
+
         MARKET_API_URL,
+
         {
-          method: "GET",
-          cache: "no-store",
+
+          method:
+            "POST",
+
+          cache:
+            "no-store",
+
           headers: {
-            Accept: "application/json"
-          }
+
+            "Content-Type":
+              "application/json",
+
+            "Accept":
+              "application/json"
+
+          },
+
+          body:
+            JSON.stringify({
+
+              totp:
+                cleanTotp
+
+            })
+
         }
+
       );
 
 
-    if (!response.ok) {
+    // ----------------------------------------
+    // READ RESPONSE
+    // ----------------------------------------
+
+    const responseText =
+      await response.text();
+
+
+    let data;
+
+
+    try {
+
+      data =
+        responseText
+          ? JSON.parse(
+              responseText
+            )
+          : null;
+
+    } catch {
 
       throw new Error(
-        "API response error: " +
-        response.status
+        "Quotes API returned non-JSON response."
       );
 
     }
-
-
-    const data =
-      await response.json();
 
 
     console.log(
@@ -419,21 +700,53 @@ async function fetchMarketData() {
     );
 
 
+    // ----------------------------------------
+    // HTTP ERROR
+    // ----------------------------------------
+
+    if (
+      !response.ok
+    ) {
+
+      throw new Error(
+
+        getApiErrorMessage(
+          data
+        )
+
+      );
+
+    }
+
+
+    // ----------------------------------------
+    // API ERROR
+    // ----------------------------------------
+
     if (
       data &&
       data.success === false
     ) {
 
       throw new Error(
-        data.error ||
-        "Quotes API returned success=false"
+
+        getApiErrorMessage(
+          data
+        )
+
       );
 
     }
 
 
+    // ----------------------------------------
+    // SAVE DATA
+    // ----------------------------------------
+
     const success =
-      saveMarketData(data);
+      saveMarketData(
+        data
+      );
 
 
     if (!success) {
@@ -480,17 +793,22 @@ if (
   window.MARKET_DATA =
     MARKET_DATA;
 
+
   window.saveMarketData =
     saveMarketData;
+
 
   window.getMarketStock =
     getMarketStock;
 
+
   window.getAllMarketData =
     getAllMarketData;
 
+
   window.getMarketStatus =
     getMarketStatus;
+
 
   window.fetchMarketData =
     fetchMarketData;
@@ -516,6 +834,10 @@ console.log(
 
 console.log(
   "API: /api/quotes"
+);
+
+console.log(
+  "Method: POST + FRESH TOTP"
 );
 
 console.log(
