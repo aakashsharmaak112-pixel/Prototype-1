@@ -1,15 +1,9 @@
 // ============================================
 // PROTOTYPE-1
-// MARKET DATA CLIENT
-// LIVE KOTAK NEO DATA
+// FRONTEND MARKET DATA CLIENT
 // ============================================
 
-const MARKET_DATA_API =
-  "/api/market-data";
-
-// ============================================
-// MARKET DATA STATE
-// ============================================
+const MARKET_DATA_API = "/api/market-data";
 
 window.MARKET_DATA = {
   success: false,
@@ -28,7 +22,7 @@ window.MARKET_DATA = {
 async function fetchMarketData() {
 
   console.log(
-    "Fetching live market data from:",
+    "Fetching:",
     MARKET_DATA_API
   );
 
@@ -46,19 +40,13 @@ async function fetchMarketData() {
     );
 
 
-    const data =
-      await response.json();
-
+    const data = await response.json();
 
     console.log(
-      "MARKET DATA API RESPONSE:",
+      "Market Data Response:",
       data
     );
 
-
-    // ----------------------------------------
-    // API ERROR
-    // ----------------------------------------
 
     if (
       !response.ok ||
@@ -66,7 +54,7 @@ async function fetchMarketData() {
     ) {
 
       console.error(
-        "Market Data API Error:",
+        "Market API failed:",
         data
       );
 
@@ -76,32 +64,24 @@ async function fetchMarketData() {
       return false;
     }
 
-
-    // ----------------------------------------
-    // VALIDATE STOCK ARRAY
-    // ----------------------------------------
 
     if (
       !Array.isArray(data.stocks)
     ) {
 
       console.error(
-        "stocks array missing:",
-        data
+        "stocks array missing"
       );
-
-      window.MARKET_DATA.success =
-        false;
 
       return false;
     }
 
 
     // ----------------------------------------
-    // CONVERT ARRAY → SYMBOL MAP
+    // ARRAY → SYMBOL MAP
     // ----------------------------------------
 
-    const stockMap = {};
+    const stocks = {};
 
 
     data.stocks.forEach(
@@ -118,12 +98,11 @@ async function fetchMarketData() {
         const price =
           Number(stock.ltp) || 0;
 
-
-        const change =
+        const percentChange =
           Number(stock.perChange) || 0;
 
 
-        stockMap[stock.symbol] = {
+        stocks[stock.symbol] = {
 
           symbol:
             stock.symbol,
@@ -144,10 +123,10 @@ async function fetchMarketData() {
             price,
 
           change:
-            change,
+            percentChange,
 
           perChange:
-            change,
+            percentChange,
 
           absoluteChange:
             Number(stock.change) || 0,
@@ -171,9 +150,7 @@ async function fetchMarketData() {
             Number(stock.yearLow) || 0,
 
           lastTradedQuantity:
-            Number(
-              stock.lastTradedQuantity
-            ) || 0,
+            Number(stock.lastTradedQuantity) || 0,
 
           avgCost:
             Number(stock.avgCost) || 0,
@@ -188,7 +165,7 @@ async function fetchMarketData() {
 
 
     // ----------------------------------------
-    // SAVE GLOBAL MARKET DATA
+    // SAVE GLOBAL DATA
     // ----------------------------------------
 
     window.MARKET_DATA = {
@@ -200,7 +177,7 @@ async function fetchMarketData() {
         data.source || "KOTAK NEO",
 
       stocks:
-        stockMap,
+        stocks,
 
       top20:
         Array.isArray(data.top20)
@@ -208,7 +185,7 @@ async function fetchMarketData() {
           : [],
 
       totalStocks:
-        Object.keys(stockMap).length,
+        Object.keys(stocks).length,
 
       fetchedAt:
         data.fetchedAt || null
@@ -218,25 +195,8 @@ async function fetchMarketData() {
 
     console.log(
       "LIVE MARKET DATA LOADED:",
-      window.MARKET_DATA.totalStocks,
-      "stocks"
+      window.MARKET_DATA.totalStocks
     );
-
-
-    // ----------------------------------------
-    // VERIFY 50 STOCKS
-    // ----------------------------------------
-
-    if (
-      window.MARKET_DATA.totalStocks !== 50
-    ) {
-
-      console.warn(
-        "Expected 50 stocks but received:",
-        window.MARKET_DATA.totalStocks
-      );
-
-    }
 
 
     return true;
@@ -246,14 +206,12 @@ async function fetchMarketData() {
   catch (error) {
 
     console.error(
-      "fetchMarketData() failed:",
+      "fetchMarketData error:",
       error
     );
 
-
     window.MARKET_DATA.success =
       false;
-
 
     return false;
 
@@ -263,30 +221,40 @@ async function fetchMarketData() {
 
 
 // ============================================
-// GET MARKET DATA
+// MARKET DATA ACCESS
 // ============================================
 
 function getMarketData() {
 
-  return (
-    window.MARKET_DATA &&
-    window.MARKET_DATA.stocks
-  )
+  return window.MARKET_DATA &&
+         window.MARKET_DATA.stocks
     ? window.MARKET_DATA.stocks
     : {};
 
 }
 
 
-// ============================================
-// GET MARKET STATUS
-// ============================================
+function getMarketStock(symbol) {
+
+  const stocks =
+    getMarketData();
+
+  return stocks[symbol] || null;
+
+}
+
+
+function getAllMarketData() {
+
+  return getMarketData();
+
+}
+
 
 function getMarketStatus() {
 
   const stocks =
     getMarketData();
-
 
   return {
 
@@ -297,12 +265,10 @@ function getMarketStatus() {
       Object.keys(stocks).length,
 
     source:
-      window.MARKET_DATA?.source ||
-      null,
+      window.MARKET_DATA?.source || null,
 
     fetchedAt:
-      window.MARKET_DATA?.fetchedAt ||
-      null
+      window.MARKET_DATA?.fetchedAt || null
 
   };
 
@@ -310,36 +276,7 @@ function getMarketStatus() {
 
 
 // ============================================
-// GET SINGLE STOCK
-// ============================================
-
-function getMarketStock(symbol) {
-
-  const stocks =
-    getMarketData();
-
-
-  return (
-    stocks[symbol] ||
-    null
-  );
-
-}
-
-
-// ============================================
-// GET ALL STOCKS
-// ============================================
-
-function getAllMarketData() {
-
-  return getMarketData();
-
-}
-
-
-// ============================================
-// BROWSER ACCESS
+// EXPOSE FUNCTIONS
 // ============================================
 
 window.fetchMarketData =
@@ -348,37 +285,16 @@ window.fetchMarketData =
 window.getMarketData =
   getMarketData;
 
-window.getMarketStatus =
-  getMarketStatus;
-
 window.getMarketStock =
   getMarketStock;
 
 window.getAllMarketData =
   getAllMarketData;
 
+window.getMarketStatus =
+  getMarketStatus;
 
-// ============================================
-// STARTUP LOG
-// ============================================
-
-console.log(
-  "================================"
-);
 
 console.log(
-  "PROTOTYPE-1 MARKET DATA CLIENT"
-);
-
-console.log(
-  "API:",
-  MARKET_DATA_API
-);
-
-console.log(
-  "fetchMarketData(): READY"
-);
-
-console.log(
-  "================================"
+  "Prototype-1 frontend market-data.js READY"
 );
