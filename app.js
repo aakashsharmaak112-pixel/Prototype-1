@@ -1,465 +1,182 @@
 // ============================================
 // PROTOTYPE-1
-// AI STOCK ASSISTANT
-// APP ENGINE
-// LIVE MARKET DATA
+// REAL KOTAK NEO MARKET DATA
 // ============================================
 
+const API_URL = "/api/quotes";
 
-// ============================================
-// NIFTY 50 STOCK LIST
-// ============================================
+async function loadRealMarketData() {
+  const status = document.getElementById("engineStatus");
 
-const NIFTY_50_STOCKS = [
-
-  { symbol: "HDFCBANK", name: "HDFC Bank", sector: "Financial Services" },
-  { symbol: "ICICIBANK", name: "ICICI Bank", sector: "Financial Services" },
-  { symbol: "RELIANCE", name: "Reliance Industries", sector: "Oil, Gas & Consumable Fuels" },
-  { symbol: "BHARTIARTL", name: "Bharti Airtel", sector: "Telecommunication" },
-  { symbol: "LT", name: "Larsen & Toubro", sector: "Construction" },
-  { symbol: "SBIN", name: "State Bank of India", sector: "Financial Services" },
-  { symbol: "INFY", name: "Infosys", sector: "Information Technology" },
-  { symbol: "AXISBANK", name: "Axis Bank", sector: "Financial Services" },
-  { symbol: "BAJFINANCE", name: "Bajaj Finance", sector: "Financial Services" },
-  { symbol: "M&M", name: "Mahindra & Mahindra", sector: "Automobile" },
-
-  { symbol: "ADANIENT", name: "Adani Enterprises", sector: "Metals & Mining" },
-  { symbol: "ADANIPORTS", name: "Adani Ports", sector: "Services" },
-  { symbol: "APOLLOHOSP", name: "Apollo Hospitals", sector: "Healthcare" },
-  { symbol: "ASIANPAINT", name: "Asian Paints", sector: "Consumer Durables" },
-  { symbol: "BAJAJ-AUTO", name: "Bajaj Auto", sector: "Automobile" },
-  { symbol: "BAJAJFINSV", name: "Bajaj Finserv", sector: "Financial Services" },
-  { symbol: "BEL", name: "Bharat Electronics", sector: "Capital Goods" },
-  { symbol: "CIPLA", name: "Cipla", sector: "Healthcare" },
-  { symbol: "COALINDIA", name: "Coal India", sector: "Oil, Gas & Consumable Fuels" },
-  { symbol: "DRREDDY", name: "Dr. Reddy's Laboratories", sector: "Healthcare" },
-  { symbol: "EICHERMOT", name: "Eicher Motors", sector: "Automobile" },
-
-  { symbol: "ETERNAL", name: "Eternal", sector: "Consumer Services" },
-  { symbol: "GRASIM", name: "Grasim Industries", sector: "Construction Materials" },
-  { symbol: "HCLTECH", name: "HCL Technologies", sector: "Information Technology" },
-  { symbol: "HDFCLIFE", name: "HDFC Life Insurance", sector: "Financial Services" },
-  { symbol: "HINDALCO", name: "Hindalco Industries", sector: "Metals & Mining" },
-  { symbol: "HINDUNILVR", name: "Hindustan Unilever", sector: "FMCG" },
-  { symbol: "ITC", name: "ITC", sector: "FMCG" },
-  { symbol: "INDIGO", name: "InterGlobe Aviation", sector: "Services" },
-  { symbol: "JSWSTEEL", name: "JSW Steel", sector: "Metals & Mining" },
-  { symbol: "JIOFIN", name: "Jio Financial Services", sector: "Financial Services" },
-
-  { symbol: "KOTAKBANK", name: "Kotak Mahindra Bank", sector: "Financial Services" },
-  { symbol: "MARUTI", name: "Maruti Suzuki", sector: "Automobile" },
-  { symbol: "MAXHEALTH", name: "Max Healthcare", sector: "Healthcare" },
-  { symbol: "NTPC", name: "NTPC", sector: "Power" },
-  { symbol: "NESTLEIND", name: "Nestle India", sector: "FMCG" },
-  { symbol: "ONGC", name: "ONGC", sector: "Oil, Gas & Consumable Fuels" },
-  { symbol: "POWERGRID", name: "Power Grid", sector: "Power" },
-  { symbol: "SHRIRAMFIN", name: "Shriram Finance", sector: "Financial Services" },
-  { symbol: "SUNPHARMA", name: "Sun Pharmaceutical", sector: "Healthcare" },
-  { symbol: "TATACONSUM", name: "Tata Consumer Products", sector: "FMCG" },
-
-  { symbol: "TATASTEEL", name: "Tata Steel", sector: "Metals & Mining" },
-  { symbol: "TCS", name: "Tata Consultancy Services", sector: "Information Technology" },
-  { symbol: "TECHM", name: "Tech Mahindra", sector: "Information Technology" },
-  { symbol: "TITAN", name: "Titan Company", sector: "Consumer Durables" },
-  { symbol: "TRENT", name: "Trent", sector: "Consumer Services" },
-  { symbol: "ULTRACEMCO", name: "UltraTech Cement", sector: "Construction Materials" },
-  { symbol: "WIPRO", name: "Wipro", sector: "Information Technology" },
-  { symbol: "HINDZINC", name: "Hindustan Zinc", sector: "Metals & Mining" },
-
-  // 50th stock
-  { symbol: "TATAMOTORS", name: "Tata Motors", sector: "Automobile" }
-
-];
-
-
-// ============================================
-// APP STATE
-// ============================================
-
-const APP_STATE = {
-
-  stockCount:
-    NIFTY_50_STOCKS.length,
-
-  marketDataStatus:
-    "CONNECTING",
-
-  top20: [],
-
-  investmentAmount:
-    10000
-
-};
-
-
-// ============================================
-// GET STOCK INFORMATION
-// ============================================
-
-function getStockInfo(symbol) {
-
-  return NIFTY_50_STOCKS.find(
-    function(stock) {
-
-      return stock.symbol === symbol;
-
+  try {
+    if (status) {
+      status.textContent = "Connecting to Kotak Neo...";
     }
-  ) || null;
 
-}
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        symbols: [
+          "ADANIENT",
+          "ADANIPORTS",
+          "APOLLOHOSP",
+          "ASIANPAINT",
+          "AXISBANK",
+          "BAJAJ-AUTO",
+          "BAJFINANCE",
+          "BAJAJFINSV",
+          "BEL",
+          "BHARTIARTL",
+          "CIPLA",
+          "COALINDIA",
+          "DRREDDY",
+          "EICHERMOT",
+          "ETERNAL",
+          "GRASIM",
+          "HCLTECH",
+          "HDFCBANK",
+          "HDFCLIFE",
+          "HEROMOTOCO",
+          "HINDALCO",
+          "HINDUNILVR",
+          "ICICIBANK",
+          "INDUSINDBK",
+          "INFY",
+          "ITC",
+          "JIOFIN",
+          "JSWSTEEL",
+          "KOTAKBANK",
+          "LT",
+          "M&M",
+          "MARUTI",
+          "NESTLEIND",
+          "NTPC",
+          "ONGC",
+          "POWERGRID",
+          "RELIANCE",
+          "SBILIFE",
+          "SBIN",
+          "SHRIRAMFIN",
+          "SUNPHARMA",
+          "TATACONSUM",
+          "TATAMOTORS",
+          "TATASTEEL",
+          "TCS",
+          "TECHM",
+          "TITAN",
+          "TRENT",
+          "ULTRACEMCO",
+          "WIPRO"
+        ]
+      })
+    });
 
+    const data = await response.json();
 
-// ============================================
-// CALCULATE TOP 20 FROM LIVE DATA
-// ============================================
+    console.log("KOTAK NEO RESPONSE:", data);
 
-function calculateTop20() {
-
-  const rankings = [];
-
-  const liveData =
-    window.MARKET_DATA &&
-    window.MARKET_DATA.stocks
-      ? window.MARKET_DATA.stocks
-      : {};
-
-
-  NIFTY_50_STOCKS.forEach(
-    function(stock) {
-
-      const data =
-        liveData[stock.symbol] || {};
-
-
-      const price =
-        Number(data.price) || 0;
-
-
-      const change =
-        Number(data.change) || 0;
-
-
-      if (price <= 0) {
-
-        return;
-
-      }
-
-
-      rankings.push({
-
-        symbol:
-          stock.symbol,
-
-        name:
-          stock.name,
-
-        sector:
-          stock.sector,
-
-        price:
-          price,
-
-        change:
-          change,
-
-        score:
-          change
-
-      });
-
+    if (!data.success) {
+      throw new Error(data.error || "Market data request failed");
     }
-  );
 
-
-  rankings.sort(
-    function(a, b) {
-
-      return b.score - a.score;
-
+    if (!Array.isArray(data.stocks)) {
+      throw new Error("Invalid stocks data received");
     }
-  );
 
+    // Store real market data
+    window.REAL_MARKET_DATA = data.stocks;
 
-  rankings.forEach(
-    function(stock, index) {
+    // Sort by percentage change
+    const sortedStocks = [...data.stocks].sort(
+      (a, b) => Number(b.perChange) - Number(a.perChange)
+    );
 
-      stock.rank =
-        index + 1;
+    // Top 20
+    window.TOP_20_STOCKS = sortedStocks.slice(0, 20);
 
+    displayTop20(window.TOP_20_STOCKS);
+
+    if (status) {
+      status.textContent =
+        `LIVE DATA CONNECTED • ${data.totalReceived}/${data.totalRequested} stocks`;
     }
-  );
 
+    return data;
 
-  APP_STATE.top20 =
-    rankings.slice(0, 20);
+  } catch (error) {
 
+    console.error("Market data error:", error);
 
-  return APP_STATE.top20;
-
-}
-
-
-// ============================================
-// INVESTMENT ANALYSIS
-// ============================================
-
-function analyzeInvestmentAmount(amount) {
-
-  amount =
-    Number(amount);
-
-
-  if (!amount || amount <= 0) {
+    if (status) {
+      status.textContent = "Market Data Error";
+    }
 
     return {
-
       success: false,
-
-      message:
-        "Please valid investment amount enter karein."
-
+      error: error.message
     };
-
   }
-
-
-  APP_STATE.investmentAmount =
-    amount;
-
-
-  let message;
-
-
-  if (amount < 5000) {
-
-    message =
-      "₹" +
-      amount.toLocaleString("en-IN") +
-      " ke liye limited quality stocks aur risk control par focus karna better hoga.";
-
-  }
-
-  else if (amount < 25000) {
-
-    message =
-      "₹" +
-      amount.toLocaleString("en-IN") +
-      " ke liye diversification aur risk management ko priority di jayegi.";
-
-  }
-
-  else {
-
-    message =
-      "₹" +
-      amount.toLocaleString("en-IN") +
-      " ke liye multiple sectors mein diversification aur risk management ko priority di jayegi.";
-
-  }
-
-
-  return {
-
-    success:
-      true,
-
-    message:
-      message
-
-  };
-
 }
 
 
 // ============================================
-// MARKET DATA ACCESS
+// DISPLAY TOP 20
 // ============================================
 
-function getMarketData() {
+function displayTop20(stocks) {
 
-  if (
-    window.MARKET_DATA &&
-    window.MARKET_DATA.stocks
-  ) {
+  const container =
+    document.getElementById("top20List") ||
+    document.getElementById("top20");
 
-    return window.MARKET_DATA.stocks;
-
+  if (!container) {
+    console.warn("Top 20 container not found");
+    return;
   }
 
-  return {};
+  container.innerHTML = "";
 
+  stocks.forEach((stock, index) => {
+
+    const change = Number(stock.perChange);
+
+    const row = document.createElement("div");
+
+    row.className = "stock-row";
+
+    row.innerHTML = `
+      <div class="stock-rank">${index + 1}</div>
+
+      <div class="stock-info">
+        <strong>${stock.symbol}</strong>
+        <span>${stock.displaySymbol || ""}</span>
+      </div>
+
+      <div class="stock-price">
+        ₹${Number(stock.ltp).toFixed(2)}
+      </div>
+
+      <div class="stock-change">
+        ${change >= 0 ? "+" : ""}${change.toFixed(2)}%
+      </div>
+    `;
+
+    container.appendChild(row);
+  });
 }
 
 
 // ============================================
-// APP STATUS
+// START PROTOTYPE-1
 // ============================================
 
-function getAppStatus() {
+document.addEventListener("DOMContentLoaded", () => {
 
-  return {
+  console.log("Prototype-1 starting...");
 
-    stockCount:
-      NIFTY_50_STOCKS.length,
+  loadRealMarketData();
 
-    marketData:
-      APP_STATE.marketDataStatus,
-
-    top20Count:
-      APP_STATE.top20.length,
-
-    investmentAmount:
-      APP_STATE.investmentAmount
-
-  };
-
-}
-
-
-// ============================================
-// LOAD LIVE MARKET DATA
-// ============================================
-
-async function initializeLiveMarketData() {
-
-  console.log(
-    "Connecting to live market data..."
-  );
-
-
-  APP_STATE.marketDataStatus =
-    "LOADING";
-
-
-  if (
-    typeof window.fetchMarketData !==
-    "function"
-  ) {
-
-    console.error(
-      "fetchMarketData() not available."
-    );
-
-
-    APP_STATE.marketDataStatus =
-      "ERROR";
-
-
-    return false;
-
-  }
-
-
-  const success =
-    await window.fetchMarketData();
-
-
-  if (!success) {
-
-    APP_STATE.marketDataStatus =
-      "ERROR";
-
-
-    return false;
-
-  }
-
-
-  const status =
-    window.getMarketStatus
-      ? window.getMarketStatus()
-      : null;
-
-
-  if (
-    status &&
-    status.stockCount > 0
-  ) {
-
-    APP_STATE.marketDataStatus =
-      "LIVE";
-
-
-    calculateTop20();
-
-
-    console.log(
-      "LIVE market data connected:",
-      status.stockCount,
-      "stocks"
-    );
-
-
-    return true;
-
-  }
-
-
-  APP_STATE.marketDataStatus =
-    "NO_DATA";
-
-
-  return false;
-
-}
-
-
-// ============================================
-// BROWSER ACCESS
-// ============================================
-
-if (typeof window !== "undefined") {
-
-  window.NIFTY_50_STOCKS =
-    NIFTY_50_STOCKS;
-
-  window.APP_STATE =
-    APP_STATE;
-
-  window.calculateTop20 =
-    calculateTop20;
-
-  window.getStockInfo =
-    getStockInfo;
-
-  window.analyzeInvestmentAmount =
-    analyzeInvestmentAmount;
-
-  window.getMarketData =
-    getMarketData;
-
-  window.getAppStatus =
-    getAppStatus;
-
-  window.initializeLiveMarketData =
-    initializeLiveMarketData;
-
-}
-
-
-// ============================================
-// STARTUP
-// ============================================
-
-console.log(
-  "================================"
-);
-
-console.log(
-  "PROTOTYPE-1 APP ENGINE"
-);
-
-console.log(
-  "Nifty 50:",
-  NIFTY_50_STOCKS.length
-);
-
-console.log(
-  "Market Data:",
-  APP_STATE.marketDataStatus
-);
-
-console.log(
-  "================================"
-);
+});
