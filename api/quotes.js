@@ -1,7 +1,7 @@
 // ============================================
 // PROTOTYPE-1
 // KOTAK NEO LIVE QUOTES
-// SERVER-SIDE AUTHENTICATION FLOW
+// DIAGNOSTIC VERSION
 // api/quotes.js
 // ============================================
 
@@ -75,7 +75,7 @@ function send(res, status, body) {
   return res.status(status).json(body);
 }
 
-async function readJson(response) {
+async function readResponse(response) {
   const text = await response.text();
 
   let data = null;
@@ -142,7 +142,9 @@ function loadSymbolMap(csvText) {
     .filter(Boolean);
 
   if (lines.length < 2) {
-    throw new Error("Scripmaster CSV is empty.");
+    throw new Error(
+      "SCRIPMASTER: CSV empty hai."
+    );
   }
 
   const header = parseCsvLine(lines[0]);
@@ -159,8 +161,9 @@ function loadSymbolMap(csvText) {
     iRef < 0
   ) {
     throw new Error(
-      "Required Scripmaster fields missing. " +
-      "Required: pSymbol, pExchSeg, pTrdSymbol, pScripRefKey"
+      "SCRIPMASTER: Required fields missing. " +
+      "Header: " +
+      header.join(", ")
     );
   }
 
@@ -169,19 +172,23 @@ function loadSymbolMap(csvText) {
   for (let i = 1; i < lines.length; i++) {
     const row = parseCsvLine(lines[i]);
 
-    const exchange = String(row[iExchange] || "")
-      .trim()
-      .toLowerCase();
+    const exchange =
+      String(row[iExchange] || "")
+        .trim()
+        .toLowerCase();
 
     if (exchange !== "nse_cm") {
       continue;
     }
 
-    const pSymbol = String(row[iSymbol] || "").trim();
+    const pSymbol =
+      String(row[iSymbol] || "").trim();
 
-    const pTrdSymbol = String(row[iTrading] || "").trim();
+    const pTrdSymbol =
+      String(row[iTrading] || "").trim();
 
-    const pScripRefKey = String(row[iRef] || "").trim();
+    const pScripRefKey =
+      String(row[iRef] || "").trim();
 
     if (!pSymbol) {
       continue;
@@ -198,7 +205,8 @@ function loadSymbolMap(csvText) {
         .replace(/-EQ$/i, "");
 
     for (const target of NIFTY_50) {
-      const cleanTarget = target.toUpperCase();
+      const cleanTarget =
+        target.toUpperCase();
 
       if (
         symbol === cleanTarget ||
@@ -220,63 +228,62 @@ function loadSymbolMap(csvText) {
 }
 
 async function kotakLogin(totp) {
-  const mobileNumber = normalizeMobile(MOBILE);
+  const mobileNumber =
+    normalizeMobile(MOBILE);
 
   if (!/^\+91\d{10}$/.test(mobileNumber)) {
-    throw new Error("Invalid NEO_MOBILE.");
+    throw new Error(
+      "TOTP_LOGIN: NEO_MOBILE invalid hai."
+    );
   }
 
-  const response = await fetch(
-    LOGIN_URL,
-    {
-      method: "POST",
+  const response =
+    await fetch(
+      LOGIN_URL,
+      {
+        method: "POST",
 
-      headers: {
-        Authorization:
-          String(ACCESS_TOKEN).trim(),
+        headers: {
+          Authorization:
+            String(ACCESS_TOKEN).trim(),
 
-        "neo-fin-key":
-          "neotradeapi",
+          "neo-fin-key":
+            "neotradeapi",
 
-        "Content-Type":
-          "application/json",
+          "Content-Type":
+            "application/json",
 
-        Accept:
-          "application/json"
-      },
+          Accept:
+            "application/json"
+        },
 
-      body: JSON.stringify({
-        mobileNumber,
-        ucc: String(UCC).trim(),
-        totp
-      })
-    }
-  );
+        body: JSON.stringify({
+          mobileNumber,
+          ucc:
+            String(UCC).trim(),
+          totp
+        })
+      }
+    );
 
-  const result = await readJson(response);
+  const result =
+    await readResponse(response);
 
   if (!result.data) {
     throw new Error(
-      "Kotak TOTP login returned non-JSON response. " +
-      "HTTP " +
+      "TOTP_LOGIN: Kotak ne JSON nahi diya. HTTP " +
       response.status +
-      ". Raw: " +
-      result.text.slice(0, 500)
+      ". Response: " +
+      result.text.slice(0, 800)
     );
   }
 
   if (!response.ok) {
-    const message =
-      result.data?.error?.[0]?.message ||
-      result.data?.error?.message ||
-      result.data?.message ||
-      "Kotak TOTP login failed.";
-
     throw new Error(
-      message +
-      " [HTTP " +
+      "TOTP_LOGIN FAILED: HTTP " +
       response.status +
-      "]"
+      ". " +
+      JSON.stringify(result.data).slice(0, 1200)
     );
   }
 
@@ -287,19 +294,22 @@ async function kotakLogin(totp) {
   const sid =
     root?.sid ||
     root?.Sid ||
+    root?.sessionId ||
+    root?.sessionID ||
     root?.viewSid;
 
   const auth =
     root?.token ||
     root?.Auth ||
     root?.auth ||
+    root?.Token ||
     root?.viewToken;
 
   if (!sid || !auth) {
     throw new Error(
-      "Kotak TOTP login response received but Sid/Auth missing. " +
-      "Response: " +
-      JSON.stringify(result.data).slice(0, 1000)
+      "TOTP_LOGIN: Response mila lekin Sid/Auth nahi mila. " +
+      "Detected fields: " +
+      Object.keys(root || {}).join(", ")
     );
   }
 
@@ -310,62 +320,57 @@ async function kotakLogin(totp) {
 }
 
 async function kotakValidate(session) {
-  const response = await fetch(
-    VALIDATE_URL,
-    {
-      method: "POST",
+  const response =
+    await fetch(
+      VALIDATE_URL,
+      {
+        method: "POST",
 
-      headers: {
-        Authorization:
-          String(ACCESS_TOKEN).trim(),
+        headers: {
+          Authorization:
+            String(ACCESS_TOKEN).trim(),
 
-        "neo-fin-key":
-          "neotradeapi",
+          "neo-fin-key":
+            "neotradeapi",
 
-        Sid:
-          String(session.sid).trim(),
+          Sid:
+            String(session.sid).trim(),
 
-        Auth:
-          String(session.auth).trim(),
+          Auth:
+            String(session.auth).trim(),
 
-        "Content-Type":
-          "application/json",
+          "Content-Type":
+            "application/json",
 
-        Accept:
-          "application/json"
-      },
+          Accept:
+            "application/json"
+        },
 
-      body: JSON.stringify({
-        mpin:
-          String(MPIN).trim()
-      })
-    }
-  );
+        body: JSON.stringify({
+          mpin:
+            String(MPIN).trim()
+        })
+      }
+    );
 
-  const result = await readJson(response);
+  const result =
+    await readResponse(response);
 
   if (!result.data) {
     throw new Error(
-      "Kotak MPIN validation returned non-JSON response. " +
-      "HTTP " +
+      "MPIN_VALIDATE: Kotak ne JSON nahi diya. HTTP " +
       response.status +
-      ". Raw: " +
-      result.text.slice(0, 500)
+      ". Response: " +
+      result.text.slice(0, 800)
     );
   }
 
   if (!response.ok) {
-    const message =
-      result.data?.error?.[0]?.message ||
-      result.data?.error?.message ||
-      result.data?.message ||
-      "Kotak MPIN validation failed.";
-
     throw new Error(
-      message +
-      " [HTTP " +
+      "MPIN_VALIDATE FAILED: HTTP " +
       response.status +
-      "]"
+      ". " +
+      JSON.stringify(result.data).slice(0, 1200)
     );
   }
 
@@ -381,53 +386,61 @@ async function kotakValidate(session) {
 
   if (!baseUrl) {
     throw new Error(
-      "MPIN validation succeeded but baseUrl was not returned. " +
-      "Response: " +
-      JSON.stringify(result.data).slice(0, 1000)
+      "MPIN_VALIDATE: Validation response mila lekin baseUrl nahi mila. " +
+      "Detected fields: " +
+      Object.keys(root || {}).join(", ")
     );
   }
 
   return {
     baseUrl:
-      String(baseUrl).replace(/\/+$/, "")
+      String(baseUrl)
+        .replace(/\/+$/, "")
   };
 }
 
 async function getScripmaster() {
-  const response = await fetch(
-    SCRIPMASTER_URL,
-    {
-      method: "GET",
+  const response =
+    await fetch(
+      SCRIPMASTER_URL,
+      {
+        method: "GET",
 
-      headers: {
-        Accept: "text/csv"
-      },
+        headers: {
+          Accept:
+            "text/csv"
+        },
 
-      cache: "no-store"
-    }
-  );
+        cache:
+          "no-store"
+      }
+    );
 
-  const text = await response.text();
+  const text =
+    await response.text();
 
   if (!response.ok) {
     throw new Error(
-      "Scripmaster download failed. HTTP " +
+      "SCRIPMASTER DOWNLOAD FAILED: HTTP " +
       response.status +
-      ". Raw: " +
-      text.slice(0, 500)
+      ". " +
+      text.slice(0, 800)
     );
   }
 
   if (!text.trim()) {
     throw new Error(
-      "Scripmaster returned empty response."
+      "SCRIPMASTER: Empty response."
     );
   }
 
   return text;
 }
 
-async function getQuotes(baseUrl, symbolMap) {
+async function getQuotes(
+  baseUrl,
+  symbolMap
+) {
   const resolved =
     NIFTY_50
       .map(
@@ -444,7 +457,7 @@ async function getQuotes(baseUrl, symbolMap) {
 
   if (!resolved.length) {
     throw new Error(
-      "No Nifty 50 Neo symbols resolved from Scripmaster."
+      "QUOTES: Nifty 50 ka koi symbol resolve nahi hua."
     );
   }
 
@@ -488,18 +501,20 @@ async function getQuotes(baseUrl, symbolMap) {
     );
 
   const result =
-    await readJson(response);
+    await readResponse(response);
 
   if (!result.data) {
     return {
       success: false,
-      status: response.status,
+
+      status:
+        response.status,
 
       error:
-        "Kotak Neo returned non-JSON response.",
+        "QUOTES: Kotak ne non-JSON response diya.",
 
       rawResponse:
-        result.text,
+        result.text.slice(0, 2000),
 
       resolved,
       missing
@@ -509,10 +524,13 @@ async function getQuotes(baseUrl, symbolMap) {
   if (!response.ok) {
     return {
       success: false,
-      status: response.status,
+
+      status:
+        response.status,
 
       error:
-        "Kotak Neo Quotes request failed.",
+        "QUOTES FAILED: HTTP " +
+        response.status,
 
       kotakResponse:
         result.data,
@@ -524,7 +542,9 @@ async function getQuotes(baseUrl, symbolMap) {
 
   return {
     success: true,
-    status: response.status,
+
+    status:
+      response.status,
 
     missing,
     resolved,
@@ -534,29 +554,38 @@ async function getQuotes(baseUrl, symbolMap) {
   };
 }
 
-export default async function handler(req, res) {
+export default async function handler(
+  req,
+  res
+) {
 
   // ============================================
-  // METHOD CHECK
+  // POST CHECK
   // ============================================
 
   if (req.method !== "POST") {
     return send(res, 405, {
       success: false,
+
+      step:
+        "METHOD",
+
       error:
         "Use POST method."
     });
   }
 
   // ============================================
-  // ENVIRONMENT CHECK
+  // ENVIRONMENT
   // ============================================
 
   if (!ACCESS_TOKEN) {
     return send(res, 500, {
       success: false,
+
       step:
         "ENVIRONMENT",
+
       error:
         "NEO_ACCESS_TOKEN missing."
     });
@@ -565,8 +594,10 @@ export default async function handler(req, res) {
   if (!MOBILE) {
     return send(res, 500, {
       success: false,
+
       step:
         "ENVIRONMENT",
+
       error:
         "NEO_MOBILE missing."
     });
@@ -575,8 +606,10 @@ export default async function handler(req, res) {
   if (!UCC) {
     return send(res, 500, {
       success: false,
+
       step:
         "ENVIRONMENT",
+
       error:
         "NEO_UCC missing."
     });
@@ -585,3 +618,231 @@ export default async function handler(req, res) {
   if (!MPIN) {
     return send(res, 500, {
       success: false,
+
+      step:
+        "ENVIRONMENT",
+
+      error:
+        "NEO_MPIN missing."
+    });
+  }
+
+  // ============================================
+  // TOTP
+  // ============================================
+
+  const totp =
+    String(
+      req.body?.totp || ""
+    ).trim();
+
+  if (!/^\d{6}$/.test(totp)) {
+    return send(res, 400, {
+      success: false,
+
+      step:
+        "TOTP_INPUT",
+
+      error:
+        "Current 6-digit TOTP required."
+    });
+  }
+
+  // ============================================
+  // EXACT STEP TRACKING
+  // ============================================
+
+  let currentStep =
+    "START";
+
+  try {
+
+    // ==========================================
+    // 1. TOTP LOGIN
+    // ==========================================
+
+    currentStep =
+      "TOTP_LOGIN";
+
+    const login =
+      await kotakLogin(totp);
+
+    // ==========================================
+    // 2. MPIN VALIDATION
+    // ==========================================
+
+    currentStep =
+      "MPIN_VALIDATE";
+
+    const session =
+      await kotakValidate(login);
+
+    // ==========================================
+    // 3. SCRIPMASTER
+    // ==========================================
+
+    currentStep =
+      "SCRIPMASTER";
+
+    const csv =
+      await getScripmaster();
+
+    // ==========================================
+    // 4. SYMBOL MAPPING
+    // ==========================================
+
+    currentStep =
+      "SYMBOL_MAPPING";
+
+    const symbolMap =
+      loadSymbolMap(csv);
+
+    const resolvedSymbols =
+      Object.keys(symbolMap);
+
+    const missingSymbols =
+      NIFTY_50.filter(
+        symbol =>
+          !symbolMap[symbol]
+      );
+
+    if (!resolvedSymbols.length) {
+      return send(res, 502, {
+        success: false,
+
+        source:
+          "KOTAK NEO",
+
+        step:
+          currentStep,
+
+        error:
+          "Scripmaster se Nifty 50 symbols resolve nahi hue.",
+
+        resolvedCount:
+          0,
+
+        missingSymbols
+      });
+    }
+
+    // ==========================================
+    // 5. QUOTES
+    // ==========================================
+
+    currentStep =
+      "QUOTES";
+
+    const quotes =
+      await getQuotes(
+        session.baseUrl,
+        symbolMap
+      );
+
+    if (!quotes.success) {
+
+      return send(res, 502, {
+
+        success: false,
+
+        source:
+          "KOTAK NEO",
+
+        step:
+          currentStep,
+
+        status:
+          quotes.status,
+
+        error:
+          quotes.error,
+
+        resolvedCount:
+          quotes.resolved?.length || 0,
+
+        missingSymbols:
+          quotes.missing || [],
+
+        kotakResponse:
+          quotes.kotakResponse || null,
+
+        rawResponse:
+          quotes.rawResponse || null
+
+      });
+    }
+
+    // ==========================================
+    // SUCCESS
+    // ==========================================
+
+    return send(res, 200, {
+
+      success:
+        true,
+
+      source:
+        "KOTAK NEO",
+
+      step:
+        "SUCCESS",
+
+      marketData:
+        "LIVE",
+
+      totalRequested:
+        NIFTY_50.length,
+
+      totalResolved:
+        quotes.resolved.length,
+
+      totalReceived:
+        Array.isArray(
+          quotes.data
+        )
+          ? quotes.data.length
+          : null,
+
+      missingSymbols:
+        quotes.missing,
+
+      quotes:
+        quotes.data
+
+    });
+
+  } catch (error) {
+
+    console.error(
+      "Prototype-1 Quotes Error:",
+      currentStep,
+      error
+    );
+
+    // ==========================================
+    // IMPORTANT:
+    // EXACT ERROR WILL BE RETURNED TO FRONTEND
+    // ==========================================
+
+    return send(res, 502, {
+
+      success:
+        false,
+
+      source:
+        "KOTAK NEO",
+
+      step:
+        currentStep,
+
+      error:
+        error?.message ||
+        String(error),
+
+      errorName:
+        error?.name ||
+        null
+
+    });
+  }
+}
