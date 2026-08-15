@@ -1,6 +1,6 @@
 // ============================================
 // PROTOTYPE-1
-// KOTAK NEO LIVE QUOTES - V2
+// KOTAK NEO LIVE QUOTES - DIAGNOSTIC VERSION
 // api/quotes.js
 // ============================================
 
@@ -75,18 +75,15 @@ function send(res, status, body) {
 }
 
 async function readResponse(response) {
-
-  const text =
-    await response.text();
+  const text = await response.text();
 
   let data = null;
 
   try {
-    data =
-      text
-        ? JSON.parse(text)
-        : null;
-  } catch (_) {}
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = null;
+  }
 
   return {
     text,
@@ -94,153 +91,65 @@ async function readResponse(response) {
   };
 }
 
-
-// ============================================
-// FIND FIELD RECURSIVELY
-// ============================================
-
-function findField(
-  value,
-  names,
-  depth = 0
-) {
-
-  if (!value || depth > 8) {
-    return null;
-  }
-
-  if (Array.isArray(value)) {
-
-    for (const item of value) {
-
-      const found =
-        findField(
-          item,
-          names,
-          depth + 1
-        );
-
-      if (
-        found !== null &&
-        found !== undefined &&
-        found !== ""
-      ) {
-        return found;
-      }
-
-    }
-
-    return null;
-  }
-
-  if (
-    typeof value !== "object"
-  ) {
-    return null;
-  }
-
-  for (const name of names) {
-
-    if (
-      Object.prototype.hasOwnProperty.call(
-        value,
-        name
-      ) &&
-      value[name] !== null &&
-      value[name] !== undefined &&
-      value[name] !== ""
-    ) {
-
-      return value[name];
-
-    }
-
-  }
-
-  for (
-    const key of Object.keys(value)
-  ) {
-
-    const found =
-      findField(
-        value[key],
-        names,
-        depth + 1
-      );
-
-    if (
-      found !== null &&
-      found !== undefined &&
-      found !== ""
-    ) {
-      return found;
-    }
-
-  }
-
-  return null;
-}
-
-
-// ============================================
-// SAFE KEYS
-// ============================================
-
-function safeKeys(value) {
-
-  if (
-    !value ||
-    typeof value !== "object"
-  ) {
-    return [];
-  }
-
-  if (Array.isArray(value)) {
-    return ["ARRAY"];
-  }
-
-  return Object.keys(value);
-}
-
-
-// ============================================
-// MOBILE
-// ============================================
-
 function normalizeMobile(value) {
+  const mobile = String(value || "")
+    .trim()
+    .replace(/[^\d+]/g, "");
 
-  const mobile =
-    String(value || "")
-      .trim()
-      .replace(/[^\d+]/g, "");
-
-  if (
-    /^\d{10}$/.test(mobile)
-  ) {
+  if (/^\d{10}$/.test(mobile)) {
     return "+91" + mobile;
   }
 
   return mobile;
 }
 
+function safeKotakError(data) {
+  if (!data) {
+    return null;
+  }
 
-// ============================================
-// CSV PARSER
-// ============================================
+  if (typeof data === "string") {
+    return data.slice(0, 1000);
+  }
+
+  if (Array.isArray(data)) {
+    return data.slice(0, 5);
+  }
+
+  return {
+    message:
+      data.message ||
+      data.Message ||
+      null,
+
+    description:
+      data.description ||
+      data.Description ||
+      null,
+
+    error:
+      data.error ||
+      data.Error ||
+      null,
+
+    fault:
+      data.fault ||
+      null,
+
+    code:
+      data.code ||
+      data.Code ||
+      null
+  };
+}
 
 function parseCsvLine(line) {
-
   const values = [];
 
   let current = "";
-
   let quoted = false;
 
-  for (
-    let i = 0;
-    i < line.length;
-    i++
-  ) {
+  for (let i = 0; i < line.length; i++) {
 
     const ch = line[i];
 
@@ -250,15 +159,10 @@ function parseCsvLine(line) {
         quoted &&
         line[i + 1] === '"'
       ) {
-
         current += '"';
-
         i++;
-
       } else {
-
         quoted = !quoted;
-
       }
 
       continue;
@@ -268,7 +172,6 @@ function parseCsvLine(line) {
       ch === "," &&
       !quoted
     ) {
-
       values.push(
         current.trim()
       );
@@ -276,11 +179,8 @@ function parseCsvLine(line) {
       current = "";
 
     } else {
-
       current += ch;
-
     }
-
   }
 
   values.push(
@@ -290,11 +190,6 @@ function parseCsvLine(line) {
   return values;
 }
 
-
-// ============================================
-// SCRIPMASTER MAP
-// ============================================
-
 function loadSymbolMap(csvText) {
 
   const lines =
@@ -302,40 +197,26 @@ function loadSymbolMap(csvText) {
       .split(/\r?\n/)
       .filter(Boolean);
 
-  if (
-    lines.length < 2
-  ) {
-
+  if (lines.length < 2) {
     throw new Error(
       "Scripmaster CSV is empty."
     );
-
   }
 
   const header =
-    parseCsvLine(
-      lines[0]
-    );
+    parseCsvLine(lines[0]);
 
   const iSymbol =
-    header.indexOf(
-      "pSymbol"
-    );
+    header.indexOf("pSymbol");
 
   const iExchange =
-    header.indexOf(
-      "pExchSeg"
-    );
+    header.indexOf("pExchSeg");
 
   const iTrading =
-    header.indexOf(
-      "pTrdSymbol"
-    );
+    header.indexOf("pTrdSymbol");
 
   const iRef =
-    header.indexOf(
-      "pScripRefKey"
-    );
+    header.indexOf("pScripRefKey");
 
   if (
     iSymbol < 0 ||
@@ -343,11 +224,9 @@ function loadSymbolMap(csvText) {
     iTrading < 0 ||
     iRef < 0
   ) {
-
     throw new Error(
-      "Required Scripmaster fields missing: pSymbol/pExchSeg/pTrdSymbol/pScripRefKey."
+      "Required Scripmaster fields missing."
     );
-
   }
 
   const map = {};
@@ -359,9 +238,7 @@ function loadSymbolMap(csvText) {
   ) {
 
     const row =
-      parseCsvLine(
-        lines[i]
-      );
+      parseCsvLine(lines[i]);
 
     const exchange =
       String(
@@ -398,18 +275,12 @@ function loadSymbolMap(csvText) {
     const symbol =
       pScripRefKey
         .toUpperCase()
-        .replace(
-          /-EQ$/i,
-          ""
-        );
+        .replace(/-EQ$/i, "");
 
     const tradingSymbol =
       pTrdSymbol
         .toUpperCase()
-        .replace(
-          /-EQ$/i,
-          ""
-        );
+        .replace(/-EQ$/i, "");
 
     for (
       const target of NIFTY_50
@@ -424,24 +295,22 @@ function loadSymbolMap(csvText) {
       ) {
 
         map[cleanTarget] = {
-
           symbol:
             cleanTarget,
 
           neoSymbol:
             pSymbol,
 
-          pTrdSymbol,
+          pTrdSymbol:
+            pTrdSymbol,
 
-          pScripRefKey
-
+          pScripRefKey:
+            pScripRefKey
         };
 
         break;
       }
-
     }
-
   }
 
   return map;
@@ -449,15 +318,13 @@ function loadSymbolMap(csvText) {
 
 
 // ============================================
-// KOTAK TOTP LOGIN
+// STEP 1 — TOTP LOGIN
 // ============================================
 
 async function kotakLogin(totp) {
 
   const mobileNumber =
-    normalizeMobile(
-      MOBILE
-    );
+    normalizeMobile(MOBILE);
 
   if (
     !/^\+91\d{10}$/.test(
@@ -466,18 +333,15 @@ async function kotakLogin(totp) {
   ) {
 
     throw new Error(
-      "Invalid NEO_MOBILE. Use 10 digit registered mobile number."
+      "Invalid NEO_MOBILE."
     );
-
   }
 
   const response =
     await fetch(
       LOGIN_URL,
       {
-
-        method:
-          "POST",
+        method: "POST",
 
         headers: {
 
@@ -494,26 +358,21 @@ async function kotakLogin(totp) {
 
           Accept:
             "application/json"
-
         },
 
         body:
           JSON.stringify({
 
-            mobileNumber,
+            mobileNumber:
+              mobileNumber,
 
             ucc:
-              String(
-                UCC
-              ).trim(),
+              String(UCC).trim(),
 
             totp:
-              String(
-                totp
-              ).trim()
+              totp
 
           })
-
       }
     );
 
@@ -522,96 +381,114 @@ async function kotakLogin(totp) {
       response
     );
 
-  if (
-    !result.data
-  ) {
+  if (!result.data) {
 
-    throw new Error(
-      "TOTP LOGIN returned non-JSON response. HTTP " +
-      response.status +
-      ". " +
-      result.text.slice(
-        0,
-        500
-      )
-    );
+    return {
+      success: false,
 
+      stage:
+        "TOTP LOGIN",
+
+      status:
+        response.status,
+
+      error:
+        "Kotak TOTP login returned non-JSON response.",
+
+      rawResponse:
+        result.text.slice(
+          0,
+          1000
+        )
+    };
   }
 
-  if (
-    !response.ok
-  ) {
+  if (!response.ok) {
 
-    const message =
-      findField(
-        result.data,
-        [
-          "message",
-          "Message",
-          "description"
-        ]
-      ) ||
-      "Kotak TOTP login failed.";
+    return {
+      success: false,
 
-    throw new Error(
-      String(message)
-    );
+      stage:
+        "TOTP LOGIN",
 
+      status:
+        response.status,
+
+      error:
+        "Kotak TOTP login failed.",
+
+      kotakError:
+        safeKotakError(
+          result.data
+        )
+    };
   }
+
+  const root =
+    result.data?.data ||
+    result.data;
 
   const sid =
-    findField(
-      result.data,
-      [
-        "sid",
-        "Sid",
-        "sessionId",
-        "sessionID",
-        "viewSid"
-      ]
-    );
+    root?.sid ||
+    root?.Sid ||
+    root?.sessionId ||
+    root?.sessionID ||
+    root?.viewSid ||
+    result.data?.sid ||
+    result.data?.Sid ||
+    null;
 
   const auth =
-    findField(
-      result.data,
-      [
-        "Auth",
-        "auth",
-        "token",
-        "Token",
-        "viewToken"
-      ]
-    );
+    root?.Auth ||
+    root?.auth ||
+    root?.token ||
+    root?.Token ||
+    root?.viewToken ||
+    result.data?.Auth ||
+    result.data?.auth ||
+    result.data?.token ||
+    null;
 
-  if (
-    !sid ||
-    !auth
-  ) {
+  if (!sid || !auth) {
 
-    throw new Error(
-      "TOTP LOGIN succeeded but Sid/Auth were not found. Detected root fields: " +
-      safeKeys(
-        result.data
-      ).join(", ")
-    );
+    return {
+      success: false,
 
+      stage:
+        "TOTP LOGIN",
+
+      status:
+        response.status,
+
+      error:
+        "TOTP login response received, but Sid/Auth was not found.",
+
+      detectedFields:
+        Object.keys(
+          root || {}
+        )
+    };
   }
 
   return {
+    success: true,
 
     sid:
       String(sid),
 
     auth:
-      String(auth)
+      String(auth),
 
+    detectedFields:
+      Object.keys(
+        root || {}
+      )
   };
-
 }
 
 
 // ============================================
-// MPIN VALIDATION
+// STEP 2 — MPIN VALIDATION
 // ============================================
 
 async function kotakValidate(
@@ -622,9 +499,7 @@ async function kotakValidate(
     await fetch(
       VALIDATE_URL,
       {
-
-        method:
-          "POST",
+        method: "POST",
 
         headers: {
 
@@ -651,7 +526,6 @@ async function kotakValidate(
 
           Accept:
             "application/json"
-
         },
 
         body:
@@ -663,7 +537,6 @@ async function kotakValidate(
               ).trim()
 
           })
-
       }
     );
 
@@ -672,116 +545,172 @@ async function kotakValidate(
       response
     );
 
-  if (
-    !result.data
-  ) {
+  if (!result.data) {
 
-    throw new Error(
-      "MPIN VALIDATION returned non-JSON response. HTTP " +
-      response.status +
-      ". " +
-      result.text.slice(
-        0,
-        500
-      )
-    );
+    return {
+      success: false,
 
+      stage:
+        "MPIN VALIDATION",
+
+      status:
+        response.status,
+
+      error:
+        "Kotak MPIN validation returned non-JSON response.",
+
+      rawResponse:
+        result.text.slice(
+          0,
+          1000
+        )
+    };
   }
 
-  if (
-    !response.ok
-  ) {
+  const root =
+    result.data?.data ||
+    result.data;
 
-    const message =
-      findField(
-        result.data,
-        [
-          "message",
-          "Message",
-          "description"
-        ]
-      ) ||
-      "Kotak MPIN validation failed.";
+  if (!response.ok) {
 
-    throw new Error(
-      String(message)
-    );
+    return {
+      success: false,
 
+      stage:
+        "MPIN VALIDATION",
+
+      status:
+        response.status,
+
+      error:
+        "Kotak MPIN validation failed.",
+
+      kotakError:
+        safeKotakError(
+          result.data
+        ),
+
+      detectedFields:
+        Object.keys(
+          root || {}
+        )
+    };
   }
 
   const baseUrl =
-    findField(
-      result.data,
-      [
-        "baseUrl",
-        "base_url",
-        "BaseUrl",
-        "BaseURL"
-      ]
-    );
+    root?.baseUrl ||
+    root?.base_url ||
+    root?.BaseUrl ||
+    root?.BaseURL ||
+    null;
 
-  const sid =
-    findField(
-      result.data,
-      [
-        "sid",
-        "Sid",
-        "sessionId",
-        "sessionID",
-        "viewSid"
-      ]
-    ) ||
-    login.sid;
+  const tradeSid =
+    root?.sid ||
+    root?.Sid ||
+    root?.sessionId ||
+    root?.sessionID ||
+    login.sid ||
+    null;
 
-  const auth =
-    findField(
-      result.data,
-      [
-        "Auth",
-        "auth",
-        "token",
-        "Token",
-        "viewToken"
-      ]
-    ) ||
-    login.auth;
+  const tradeAuth =
+    root?.Auth ||
+    root?.auth ||
+    root?.token ||
+    root?.Token ||
+    login.auth ||
+    null;
+
+  if (!baseUrl) {
+
+    return {
+      success: false,
+
+      stage:
+        "MPIN VALIDATION",
+
+      status:
+        response.status,
+
+      error:
+        "MPIN validation response received, but baseUrl was not found.",
+
+      baseUrlFound:
+        false,
+
+      sidFound:
+        Boolean(tradeSid),
+
+      authFound:
+        Boolean(tradeAuth),
+
+      detectedFields:
+        Object.keys(
+          root || {}
+        ),
+
+      kotakError:
+        safeKotakError(
+          result.data
+        )
+    };
+  }
 
   if (
-    !baseUrl
+    !tradeSid ||
+    !tradeAuth
   ) {
 
-    throw new Error(
-      "MPIN validation succeeded but baseUrl was not returned. Detected fields: " +
-      safeKeys(
-        result.data
-      ).join(", ")
-    );
+    return {
+      success: false,
 
+      stage:
+        "MPIN VALIDATION",
+
+      status:
+        response.status,
+
+      error:
+        "baseUrl found, but session Sid/Auth is missing.",
+
+      baseUrlFound:
+        true,
+
+      sidFound:
+        Boolean(tradeSid),
+
+      authFound:
+        Boolean(tradeAuth),
+
+      detectedFields:
+        Object.keys(
+          root || {}
+        )
+    };
   }
 
   return {
+    success: true,
 
     baseUrl:
-      String(
-        baseUrl
-      ).replace(
-        /\/+$/,
-        ""
-      ),
+      String(baseUrl)
+        .replace(/\/+$/, ""),
 
     sid:
-      String(sid),
+      String(tradeSid),
 
     auth:
-      String(auth)
+      String(tradeAuth),
 
+    detectedFields:
+      Object.keys(
+        root || {}
+      )
   };
-
 }
 
 
 // ============================================
-// GET SCRIPMASTER
+// STEP 3 — SCRIPMASTER
 // ============================================
 
 async function getScripmaster() {
@@ -790,45 +719,93 @@ async function getScripmaster() {
     await fetch(
       SCRIPMASTER_URL,
       {
-
-        method:
-          "GET",
+        method: "GET",
 
         headers: {
-
           Accept:
             "text/csv"
+        },
 
-        }
-
+        cache:
+          "no-store"
       }
     );
 
   const text =
     await response.text();
 
-  if (
-    !response.ok
-  ) {
+  if (!response.ok) {
 
-    throw new Error(
-      "Scripmaster download failed. HTTP " +
-      response.status
-    );
+    return {
+      success: false,
 
+      stage:
+        "SCRIPMASTER",
+
+      status:
+        response.status,
+
+      error:
+        "Scripmaster download failed.",
+
+      rawResponse:
+        text.slice(
+          0,
+          1000
+        )
+    };
   }
 
-  return text;
+  if (
+    !text ||
+    text.length < 100
+  ) {
 
+    return {
+      success: false,
+
+      stage:
+        "SCRIPMASTER",
+
+      status:
+        response.status,
+
+      error:
+        "Scripmaster response is empty or too small.",
+
+      responseLength:
+        text.length
+    };
+  }
+
+  return {
+    success: true,
+
+    text,
+
+    status:
+      response.status,
+
+    responseLength:
+      text.length,
+
+    header:
+      text
+        .split(/\r?\n/)[0]
+        .slice(
+          0,
+          2000
+        )
+  };
 }
 
 
 // ============================================
-// GET LIVE QUOTES
+// STEP 4 — QUOTES
 // ============================================
 
 async function getQuotes(
-  baseUrl,
+  session,
   symbolMap
 ) {
 
@@ -850,14 +827,26 @@ async function getQuotes(
         ]
     );
 
-  if (
-    !resolved.length
-  ) {
+  if (!resolved.length) {
 
-    throw new Error(
-      "No Nifty 50 Neo symbols resolved."
-    );
+    return {
+      success: false,
 
+      stage:
+        "QUOTES",
+
+      status:
+        0,
+
+      error:
+        "No Nifty 50 Neo symbols were resolved.",
+
+      resolvedCount:
+        0,
+
+      missingSymbols:
+        missing
+    };
   }
 
   const neoSymbols =
@@ -872,7 +861,7 @@ async function getQuotes(
     );
 
   const quoteUrl =
-    baseUrl +
+    session.baseUrl +
     "/script-details/1.0/quotes/neosymbol/" +
     encodedSymbols +
     "/all";
@@ -881,26 +870,27 @@ async function getQuotes(
     await fetch(
       quoteUrl,
       {
-
-        method:
-          "GET",
+        method: "GET",
 
         headers: {
 
           // IMPORTANT:
-          // Plain Access Token.
-          // NO Bearer prefix.
-
+          // Quotes endpoint uses the
+          // consumer/access token.
           Authorization:
             String(
               ACCESS_TOKEN
             ).trim(),
 
+          "Content-Type":
+            "application/x-www-form-urlencoded",
+
           Accept:
             "application/json"
+        },
 
-        }
-
+        cache:
+          "no-store"
       }
     );
 
@@ -909,137 +899,63 @@ async function getQuotes(
       response
     );
 
-  if (
-    !result.data
-  ) {
+  if (!result.data) {
 
     return {
+      success: false,
 
-      success:
-        false,
+      stage:
+        "QUOTES",
 
       status:
         response.status,
 
       error:
-        "Kotak Neo returned non-JSON response.",
+        "Kotak Quotes returned non-JSON response.",
+
+      resolvedCount:
+        resolved.length,
+
+      missingSymbols:
+        missing,
 
       rawResponse:
         result.text.slice(
           0,
-          3000
-        ),
-
-      resolved,
-
-      missing
-
+          1500
+        )
     };
-
   }
 
-  if (
-    !response.ok
-  ) {
+  if (!response.ok) {
 
     return {
+      success: false,
 
-      success:
-        false,
+      stage:
+        "QUOTES",
 
       status:
         response.status,
 
       error:
-        "Kotak Neo Quotes request failed.",
+        "Kotak Quotes HTTP request failed.",
 
-      kotakResponse:
-        result.data,
+      resolvedCount:
+        resolved.length,
 
-      resolved,
+      missingSymbols:
+        missing,
 
-      missing
-
+      kotakError:
+        safeKotakError(
+          result.data
+        )
     };
-
-  }
-
-  let quoteArray = null;
-
-  if (
-    Array.isArray(
-      result.data
-    )
-  ) {
-
-    quoteArray =
-      result.data;
-
-  }
-
-  else if (
-    Array.isArray(
-      result.data.data
-    )
-  ) {
-
-    quoteArray =
-      result.data.data;
-
-  }
-
-  else if (
-    Array.isArray(
-      result.data.result
-    )
-  ) {
-
-    quoteArray =
-      result.data.result;
-
-  }
-
-  else if (
-    Array.isArray(
-      result.data?.data?.data
-    )
-  ) {
-
-    quoteArray =
-      result.data.data.data;
-
-  }
-
-  if (
-    !quoteArray
-  ) {
-
-    return {
-
-      success:
-        false,
-
-      status:
-        response.status,
-
-      error:
-        "Kotak responded successfully but no quote array was found.",
-
-      kotakResponse:
-        result.data,
-
-      resolved,
-
-      missing
-
-    };
-
   }
 
   return {
-
-    success:
-      true,
+    success: true,
 
     status:
       response.status,
@@ -1049,15 +965,13 @@ async function getQuotes(
     missing,
 
     data:
-      quoteArray
-
+      result.data
   };
-
 }
 
 
 // ============================================
-// MAIN API
+// MAIN HANDLER
 // ============================================
 
 export default async function handler(
@@ -1073,17 +987,18 @@ export default async function handler(
       res,
       405,
       {
-
-        success:
-          false,
+        success: false,
 
         error:
           "Use POST method."
-
       }
     );
-
   }
+
+
+  // ==========================================
+  // ENVIRONMENT CHECK
+  // ==========================================
 
   const missingEnv = [];
 
@@ -1115,19 +1030,24 @@ export default async function handler(
       res,
       500,
       {
+        success: false,
 
-        success:
-          false,
+        stage:
+          "ENVIRONMENT",
 
         error:
-          "Required environment variables missing.",
+          "Required Kotak environment variables are missing.",
 
-        missingEnv
-
+        missing:
+          missingEnv
       }
     );
-
   }
+
+
+  // ==========================================
+  // TOTP CHECK
+  // ==========================================
 
   const totp =
     String(
@@ -1144,69 +1064,136 @@ export default async function handler(
       res,
       400,
       {
+        success: false,
 
-        success:
-          false,
+        stage:
+          "TOTP INPUT",
 
         error:
           "Current 6-digit TOTP required."
-
       }
     );
-
   }
 
-  if (
-    !/^\d{6}$/.test(
-      String(
-        MPIN
-      ).trim()
-    )
-  ) {
-
-    return send(
-      res,
-      500,
-      {
-
-        success:
-          false,
-
-        error:
-          "NEO_MPIN must contain exactly 6 digits."
-
-      }
-    );
-
-  }
 
   try {
 
+    // ========================================
     // STEP 1
+    // ========================================
+
     const login =
       await kotakLogin(
         totp
       );
 
+    if (
+      !login.success
+    ) {
+
+      return send(
+        res,
+        502,
+        login
+      );
+    }
+
+
+    // ========================================
     // STEP 2
+    // ========================================
+
     const session =
       await kotakValidate(
         login
       );
 
+    if (
+      !session.success
+    ) {
+
+      return send(
+        res,
+        502,
+        session
+      );
+    }
+
+
+    // ========================================
     // STEP 3
-    const csv =
+    // ========================================
+
+    const scripmaster =
       await getScripmaster();
 
-    const symbolMap =
-      loadSymbolMap(
-        csv
+    if (
+      !scripmaster.success
+    ) {
+
+      return send(
+        res,
+        502,
+        scripmaster
+      );
+    }
+
+
+    // ========================================
+    // SYMBOL MAP
+    // ========================================
+
+    let symbolMap;
+
+    try {
+
+      symbolMap =
+        loadSymbolMap(
+          scripmaster.text
+        );
+
+    } catch (error) {
+
+      return send(
+        res,
+        502,
+        {
+          success: false,
+
+          stage:
+            "SCRIPMASTER PARSING",
+
+          error:
+            error.message,
+
+          scripmasterHeader:
+            scripmaster.header
+        }
+      );
+    }
+
+
+    const resolvedCount =
+      Object.keys(
+        symbolMap
+      ).length;
+
+    const missingSymbols =
+      NIFTY_50.filter(
+        symbol =>
+          !symbolMap[
+            symbol
+          ]
       );
 
+
+    // ========================================
     // STEP 4
+    // ========================================
+
     const quotes =
       await getQuotes(
-        session.baseUrl,
+        session,
         symbolMap
       );
 
@@ -1218,61 +1205,66 @@ export default async function handler(
         res,
         502,
         {
+          ...quotes,
 
-          success:
-            false,
-
-          source:
-            "KOTAK NEO",
-
-          step:
-            "QUOTES",
-
-          status:
-            quotes.status,
-
-          error:
-            quotes.error,
-
-          baseUrlFound:
-            Boolean(
-              session.baseUrl
-            ),
-
-          sidFound:
-            Boolean(
-              session.sid
-            ),
-
-          authFound:
-            Boolean(
-              session.auth
-            ),
+          totalNifty50:
+            NIFTY_50.length,
 
           resolvedCount:
-            quotes.resolved.length,
+            resolvedCount,
 
           missingSymbols:
-            quotes.missing,
-
-          kotakResponse:
-            quotes.kotakResponse,
-
-          rawResponse:
-            quotes.rawResponse
-
+            missingSymbols
         }
       );
+    }
+
+
+    // ========================================
+    // FINAL SUCCESS
+    // ========================================
+
+    const quoteData =
+      quotes.data;
+
+    let totalReceived =
+      null;
+
+    if (
+      Array.isArray(
+        quoteData
+      )
+    ) {
+
+      totalReceived =
+        quoteData.length;
+
+    } else if (
+      Array.isArray(
+        quoteData?.data
+      )
+    ) {
+
+      totalReceived =
+        quoteData.data.length;
+
+    } else if (
+      Array.isArray(
+        quoteData?.quotes
+      )
+    ) {
+
+      totalReceived =
+        quoteData.quotes.length;
 
     }
+
 
     return send(
       res,
       200,
       {
-
-        success:
-          true,
+        success: true,
 
         source:
           "KOTAK NEO",
@@ -1284,26 +1276,24 @@ export default async function handler(
           NIFTY_50.length,
 
         totalResolved:
-          quotes.resolved.length,
+          resolvedCount,
 
         totalReceived:
-          quotes.data.length,
+          totalReceived,
 
         missingSymbols:
-          quotes.missing,
+          missingSymbols,
 
         quotes:
-          quotes.data
-
+          quoteData
       }
     );
 
-  }
 
-  catch (error) {
+  } catch (error) {
 
     console.error(
-      "Prototype-1 Kotak Quotes:",
+      "Prototype-1 Quotes Error:",
       error
     );
 
@@ -1311,20 +1301,18 @@ export default async function handler(
       res,
       502,
       {
+        success: false,
 
-        success:
-          false,
+        stage:
+          "UNEXPECTED SERVER ERROR",
 
         source:
           "KOTAK NEO",
 
         error:
-          error.message ||
+          error?.message ||
           "Unexpected Kotak Neo error."
-
       }
     );
-
   }
-
 }
