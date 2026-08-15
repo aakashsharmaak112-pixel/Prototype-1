@@ -1,49 +1,49 @@
 // ============================================
 // PROTOTYPE-1
 // KOTAK NEO V2
-// SEARCH SCRIP -> QUOTE
+// DIRECT HDFCBANK QUOTE TEST
 // api/quotes.js
 // ============================================
 
-const AUTH_TOKEN = String(
-  process.env.NEO_ACCESS_TOKEN ||
-  process.env.NEO_TRADE_TOKEN ||
-  ""
+const ACCESS_TOKEN = String(
+  process.env.NEO_ACCESS_TOKEN || ""
 ).trim();
 
 const BASE_URL = String(
-  process.env.NEO_BASE_URL ||
-  ""
+  process.env.NEO_BASE_URL || ""
 ).trim().replace(/\/+$/, "");
+
+// HDFCBANK-EQ
+// Previously confirmed from Kotak response
+const HDFCBANK_TOKEN = "1333";
 
 function send(res, status, body) {
   return res.status(status).json(body);
 }
 
-async function request(
-  url,
-  method,
-  body,
-  stage
-) {
+async function getQuote() {
+  const neoSymbol =
+    "nse_cm|" + HDFCBANK_TOKEN;
+
+  const url =
+    BASE_URL +
+    "/script-details/1.0/quotes/neosymbol/" +
+    encodeURIComponent(neoSymbol) +
+    "/all";
+
   try {
     const response = await fetch(url, {
-      method,
+      method: "GET",
 
       headers: {
-        Authorization: AUTH_TOKEN,
+        Authorization: ACCESS_TOKEN,
+
         "Content-Type":
           "application/x-www-form-urlencoded",
+
         Accept:
           "application/json"
       },
-
-      ...(body
-        ? {
-            body:
-              new URLSearchParams(body)
-          }
-        : {}),
 
       cache: "no-store"
     });
@@ -61,12 +61,21 @@ async function request(
     } catch {}
 
     return {
-      stage,
+      success: true,
+
       url,
+
+      neoSymbol,
+
+      instrumentToken:
+        HDFCBANK_TOKEN,
+
       httpStatus:
         response.status,
+
       ok:
         response.ok,
+
       response:
         data ||
         text.slice(0, 3000)
@@ -74,162 +83,30 @@ async function request(
 
   } catch (error) {
     return {
-      stage,
+      success: false,
+
       url,
-      ok: false,
+
+      neoSymbol,
+
+      instrumentToken:
+        HDFCBANK_TOKEN,
+
       error:
         error?.message ||
         String(error),
 
       cause:
         error?.cause?.message ||
-        String(
-          error?.cause || ""
-        )
+        String(error?.cause || "")
     };
   }
 }
-
-// ============================================
-// SEARCH SCRIP
-// ============================================
-
-async function searchScrip() {
-
-  const url =
-    BASE_URL +
-    "/script-details/1.0/search/scrip";
-
-  return request(
-    url,
-    "POST",
-    {
-      exchange_segment:
-        "nse_cm",
-
-      symbol:
-        "HDFCBANK",
-
-      expiry:
-        "",
-
-      option_type:
-        "",
-
-      strike_price:
-        ""
-    },
-
-    "SEARCH_SCRIP"
-  );
-}
-
-// ============================================
-// QUOTE
-// ============================================
-
-async function getQuote(
-  instrumentToken
-) {
-
-  const neoSymbol =
-    "nse_cm|" +
-    String(
-      instrumentToken
-    );
-
-  const url =
-    BASE_URL +
-    "/script-details/1.0/quotes/neosymbol/" +
-    encodeURIComponent(
-      neoSymbol
-    ) +
-    "/all";
-
-  return request(
-    url,
-    "GET",
-    null,
-    "QUOTE"
-  );
-}
-
-// ============================================
-// MAIN
-// ============================================
-
-async function run() {
-
-  if (!AUTH_TOKEN) {
-    return {
-      success: false,
-
-      step:
-        "ENVIRONMENT",
-
-      error:
-        "NEO_ACCESS_TOKEN / NEO_TRADE_TOKEN missing."
-    };
-  }
-
-  if (!BASE_URL) {
-    return {
-      success: false,
-
-      step:
-        "ENVIRONMENT",
-
-      error:
-        "NEO_BASE_URL missing."
-    };
-  }
-
-  // ------------------------------------------
-  // 1. SEARCH HDFCBANK
-  // ------------------------------------------
-
-  const search =
-    await searchScrip();
-
-  if (!search.ok) {
-    return {
-      success: false,
-
-      step:
-        "SEARCH_SCRIP_FAILED",
-
-      details:
-        search
-    };
-  }
-
-  // ------------------------------------------
-  // 2. RETURN SEARCH RESULT FOR NOW
-  // ------------------------------------------
-
-  return {
-    success: true,
-
-    step:
-      "SEARCH_SCRIP_SUCCESS",
-
-    stock:
-      "HDFCBANK",
-
-    searchResponse:
-      search.response
-  };
-}
-
-// ============================================
-// VERCEL HANDLER
-// ============================================
 
 export default async function handler(
   req,
   res
 ) {
-
   if (
     req.method !== "GET" &&
     req.method !== "POST"
@@ -249,40 +126,66 @@ export default async function handler(
     );
   }
 
-  try {
-
-    const result =
-      await run();
-
+  if (!ACCESS_TOKEN) {
     return send(
       res,
-      result.success
-        ? 200
-        : 502,
-      result
-    );
-
-  } catch (error) {
-
-    return send(
-      res,
-      502,
+      500,
       {
         success: false,
 
         step:
-          "UNHANDLED_ERROR",
+          "ACCESS_TOKEN",
 
         error:
-          error?.message ||
-          String(error),
-
-        cause:
-          error?.cause?.message ||
-          String(
-            error?.cause || ""
-          )
+          "NEO_ACCESS_TOKEN missing."
       }
     );
   }
+
+  if (!BASE_URL) {
+    return send(
+      res,
+      500,
+      {
+        success: false,
+
+        step:
+          "BASE_URL",
+
+        error:
+          "NEO_BASE_URL missing."
+      }
+    );
+  }
+
+  const result =
+    await getQuote();
+
+  return send(
+    res,
+    result.ok
+      ? 200
+      : 502,
+    {
+      success:
+        result.ok,
+
+      step:
+        result.ok
+          ? "QUOTE_SUCCESS"
+          : "QUOTE_FAILED",
+
+      stock:
+        "HDFCBANK",
+
+      instrumentToken:
+        HDFCBANK_TOKEN,
+
+      baseUrl:
+        BASE_URL,
+
+      quote:
+        result
+    }
+  );
 }
