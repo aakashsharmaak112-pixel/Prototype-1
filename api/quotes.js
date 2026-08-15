@@ -4,8 +4,6 @@
 // api/quotes.js
 // ============================================
 
-// Kotak Neo v2 uses consumer_key for API authentication.
-// Keep the fallback for the existing Prototype-1 environment.
 const CONSUMER_KEY = String(
   process.env.NEO_CONSUMER_KEY ||
   process.env.NEO_ACCESS_TOKEN ||
@@ -15,12 +13,10 @@ const CONSUMER_KEY = String(
 const SCRIPMASTER_URL =
   "https://lapi.kotaksecurities.com/wso2-scripmaster/v1/prod/2026-08-12/transformed-v1/nse_cm-v1.csv";
 
-// Kotak Neo v2 production API
-const QUOTE_BASE_URL =
-  String(
-    process.env.NEO_QUOTE_BASE_URL ||
-    "https://mnapi.kotaksecurities.com"
-  ).replace(/\/+$/, "");
+const QUOTE_BASE_URL = String(
+  process.env.NEO_QUOTE_BASE_URL ||
+  "https://mnapi.kotaksecurities.com"
+).replace(/\/+$/, "");
 
 function send(res, status, body) {
   return res.status(status).json(body);
@@ -28,7 +24,6 @@ function send(res, status, body) {
 
 function parseCsvLine(line) {
   const values = [];
-
   let current = "";
   let quoted = false;
 
@@ -42,7 +37,6 @@ function parseCsvLine(line) {
       } else {
         quoted = !quoted;
       }
-
       continue;
     }
 
@@ -60,18 +54,13 @@ function parseCsvLine(line) {
 }
 
 async function getScripmaster() {
-  const response = await fetch(
-    SCRIPMASTER_URL,
-    {
-      method: "GET",
-
-      headers: {
-        Accept: "text/csv"
-      },
-
-      cache: "no-store"
-    }
-  );
+  const response = await fetch(SCRIPMASTER_URL, {
+    method: "GET",
+    headers: {
+      Accept: "text/csv"
+    },
+    cache: "no-store"
+  });
 
   const text = await response.text();
 
@@ -85,9 +74,7 @@ async function getScripmaster() {
   }
 
   if (!text.trim()) {
-    throw new Error(
-      "SCRIPMASTER CSV empty hai."
-    );
+    throw new Error("SCRIPMASTER CSV empty hai.");
   }
 
   return text;
@@ -106,17 +93,19 @@ function findHdfcBank(csvText) {
 
   const header = parseCsvLine(lines[0]);
 
-  const indexes = {
-    pSymbol: header.indexOf("pSymbol"),
-    pExchSeg: header.indexOf("pExchSeg"),
-    pTrdSymbol: header.indexOf("pTrdSymbol"),
-    pScripRefKey: header.indexOf("pScripRefKey")
-  };
+  const iSymbol =
+    header.indexOf("pSymbol");
 
-  if (
-    indexes.pSymbol < 0 ||
-    indexes.pExchSeg < 0
-  ) {
+  const iExchange =
+    header.indexOf("pExchSeg");
+
+  const iTrading =
+    header.indexOf("pTrdSymbol");
+
+  const iRef =
+    header.indexOf("pScripRefKey");
+
+  if (iSymbol < 0 || iExchange < 0) {
     throw new Error(
       "Required Scripmaster fields missing. Header: " +
       header.join(", ")
@@ -129,7 +118,7 @@ function findHdfcBank(csvText) {
     const row = parseCsvLine(lines[i]);
 
     const exchange = String(
-      row[indexes.pExchSeg] || ""
+      row[iExchange] || ""
     )
       .trim()
       .toLowerCase();
@@ -139,21 +128,17 @@ function findHdfcBank(csvText) {
     }
 
     const pSymbol = String(
-      row[indexes.pSymbol] || ""
+      row[iSymbol] || ""
     ).trim();
 
     const pTrdSymbol =
-      indexes.pTrdSymbol >= 0
-        ? String(
-            row[indexes.pTrdSymbol] || ""
-          ).trim()
+      iTrading >= 0
+        ? String(row[iTrading] || "").trim()
         : "";
 
     const pScripRefKey =
-      indexes.pScripRefKey >= 0
-        ? String(
-            row[indexes.pScripRefKey] || ""
-          ).trim()
+      iRef >= 0
+        ? String(row[iRef] || "").trim()
         : "";
 
     const tradingClean = pTrdSymbol
@@ -195,36 +180,34 @@ async function getQuote(instrumentToken) {
   const payload = {
     instrument_tokens: [
       {
-        instrument_token: String(
-          instrumentToken
-        ),
-        exchange_segment: "nse_cm"
+        instrument_token:
+          String(instrumentToken),
+
+        exchange_segment:
+          "nse_cm"
       }
     ],
 
     quote_type: "all"
   };
 
-  const response = await fetch(
-    url,
-    {
-      method: "POST",
+  const response = await fetch(url, {
+    method: "POST",
 
-      headers: {
-        Authorization: CONSUMER_KEY,
+    headers: {
+      Authorization: CONSUMER_KEY,
 
-        "Content-Type":
-          "application/json",
+      "Content-Type":
+        "application/json",
 
-        Accept:
-          "application/json"
-      },
+      Accept:
+        "application/json"
+    },
 
-      body: JSON.stringify(payload),
+    body: JSON.stringify(payload),
 
-      cache: "no-store"
-    }
-  );
+    cache: "no-store"
+  });
 
   const text = await response.text();
 
@@ -237,147 +220,124 @@ async function getQuote(instrumentToken) {
   } catch {}
 
   return {
+    url,
     httpStatus: response.status,
-
     ok: response.ok,
-
     request: payload,
-
     response:
       data ||
-      text.slice(0, 2000)
+      text.slice(0, 3000)
   };
 }
 
-export default async function handler(
-  req,
-  res
-) {
-  // ============================================
-  // METHOD
-  // ============================================
+async function runQuoteTest() {
+  if (!CONSUMER_KEY) {
+    return {
+      success: false,
 
-  if (req.method !== "POST") {
+      step:
+        "ENVIRONMENT",
+
+      error:
+        "NEO_CONSUMER_KEY missing. Existing NEO_ACCESS_TOKEN fallback bhi empty hai."
+    };
+  }
+
+  const csv =
+    await getScripmaster();
+
+  const candidates =
+    findHdfcBank(csv);
+
+  const quoteResults = [];
+
+  for (const candidate of candidates) {
+    const result =
+      await getQuote(
+        candidate.instrument_token
+      );
+
+    quoteResults.push({
+      candidate,
+      result
+    });
+
+    if (result.ok) {
+      break;
+    }
+  }
+
+  const working =
+    quoteResults.find(
+      item => item.result.ok
+    );
+
+  return {
+    success:
+      Boolean(working),
+
+    step:
+      working
+        ? "QUOTE_SUCCESS"
+        : "QUOTE_FAILED",
+
+    stock:
+      "HDFCBANK",
+
+    quoteBaseUrl:
+      QUOTE_BASE_URL,
+
+    candidates,
+
+    workingToken:
+      working
+        ? working.candidate
+            .instrument_token
+        : null,
+
+    workingResponse:
+      working
+        ? working.result.response
+        : null,
+
+    allResponses:
+      quoteResults
+  };
+}
+
+export default async function handler(req, res) {
+  // GET + POST allowed for testing.
+  // Browser GET will now execute the quote test.
+
+  if (
+    req.method !== "GET" &&
+    req.method !== "POST"
+  ) {
     return send(
       res,
       405,
       {
         success: false,
 
-        step: "METHOD",
+        step:
+          "METHOD",
 
         error:
-          "Use POST method."
-      }
-    );
-  }
-
-  // ============================================
-  // AUTH CONFIG
-  // ============================================
-
-  if (!CONSUMER_KEY) {
-    return send(
-      res,
-      500,
-      {
-        success: false,
-
-        step: "ENVIRONMENT",
-
-        error:
-          "NEO_CONSUMER_KEY missing."
+          "Use GET or POST method."
       }
     );
   }
 
   try {
-    // ==========================================
-    // 1. SCRIPMASTER
-    // ==========================================
-
-    const csv =
-      await getScripmaster();
-
-    // ==========================================
-    // 2. HDFCBANK TOKEN
-    // ==========================================
-
-    const candidates =
-      findHdfcBank(csv);
-
-    // ==========================================
-    // 3. TRY CANDIDATES
-    // ==========================================
-
-    const quoteResults = [];
-
-    for (
-      const candidate of candidates
-    ) {
-      const result =
-        await getQuote(
-          candidate.instrument_token
-        );
-
-      quoteResults.push({
-        candidate,
-        result
-      });
-
-      if (result.ok) {
-        break;
-      }
-    }
-
-    // ==========================================
-    // 4. WORKING RESPONSE
-    // ==========================================
-
-    const working =
-      quoteResults.find(
-        item =>
-          item.result.ok
-      );
-
-    // ==========================================
-    // 5. RESPONSE
-    // ==========================================
+    const result =
+      await runQuoteTest();
 
     return send(
       res,
-      working ? 200 : 502,
-      {
-        success:
-          Boolean(working),
-
-        step:
-          working
-            ? "QUOTE_SUCCESS"
-            : "QUOTE_FAILED",
-
-        stock:
-          "HDFCBANK",
-
-        quoteBaseUrl:
-          QUOTE_BASE_URL,
-
-        candidates,
-
-        workingToken:
-          working
-            ? working.candidate
-                .instrument_token
-            : null,
-
-        workingResponse:
-          working
-            ? working.result.response
-            : null,
-
-        allResponses:
-          quoteResults
-      }
+      result.success
+        ? 200
+        : 502,
+      result
     );
 
   } catch (error) {
@@ -388,7 +348,7 @@ export default async function handler(
         success: false,
 
         step:
-          "DIAGNOSTIC",
+          "QUOTE_DIAGNOSTIC",
 
         error:
           error?.message ||
