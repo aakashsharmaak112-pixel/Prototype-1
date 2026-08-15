@@ -1,350 +1,230 @@
 // ============================================
 // PROTOTYPE-1
-// MARKET DATA ENGINE
-// SERVER-SIDE KOTAK AUTH + LIVE QUOTES
+// MARKET DATA CLIENT - DIAGNOSTIC
+// market-data.js
 // ============================================
 
-const MARKET_DATA = {
-  source: "KOTAK NEO",
-  status: "NOT_CONNECTED",
-  lastUpdated: null,
-  stocks: {}
+window.MARKET_DATA = window.MARKET_DATA || {
+  stocks: {},
+  status: "IDLE",
+  error: null,
+  rawResponse: null
 };
 
-const MARKET_API_URL = "/api/quotes";
 
-function normalizeSymbol(symbol) {
-  if (!symbol) return "";
-
-  return String(symbol)
-    .replace(/-EQ$/i, "")
-    .trim()
-    .toUpperCase();
-}
-
-function toNumber(value) {
-  if (
-    value === null ||
-    value === undefined ||
-    value === ""
-  ) {
-    return 0;
-  }
-
-  const number =
-    Number(
-      String(value)
-        .replace(/,/g, "")
-        .replace(/%/g, "")
-        .trim()
-    );
-
-  return Number.isFinite(number)
-    ? number
-    : 0;
-}
-
-function extractQuotes(data) {
-
-  if (!data) return [];
-
-  if (Array.isArray(data)) {
-    return data;
-  }
-
-  if (
-    Array.isArray(
-      data.quotes
-    )
-  ) {
-    return data.quotes;
-  }
-
-  if (
-    Array.isArray(
-      data.neoResponse
-    )
-  ) {
-    return data.neoResponse;
-  }
-
-  if (
-    Array.isArray(
-      data.data
-    )
-  ) {
-    return data.data;
-  }
-
-  if (
-    Array.isArray(
-      data.results
-    )
-  ) {
-    return data.results;
-  }
-
-  if (
-    Array.isArray(
-      data.result
-    )
-  ) {
-    return data.result;
-  }
-
-  return [];
-}
-
-function normalizeNeoQuote(quote) {
-
-  if (
-    !quote ||
-    typeof quote !== "object"
-  ) {
-    return null;
-  }
-
-  const source =
-    quote.data &&
-    typeof quote.data === "object"
-      ? quote.data
-      : quote;
-
-  const symbol =
-    normalizeSymbol(
-      source.display_symbol ||
-      source.displaySymbol ||
-      source.symbol ||
-      source.trading_symbol ||
-      source.pTrdSymbol ||
-      source.pScripRefKey ||
-      source.neo_symbol
-    );
-
-  if (!symbol) {
-    return null;
-  }
-
-  const price =
-    toNumber(
-      source.ltp ??
-      source.LTP ??
-      source.last_price ??
-      source.lastPrice ??
-      source.close_price ??
-      source.close
-    );
-
-  if (price <= 0) {
-    return null;
-  }
-
-  const previousClose =
-    toNumber(
-      source.previous_close ??
-      source.prev_close ??
-      source.prevClose ??
-      source.previousClose ??
-      source.pc ??
-      source.PREVIOUS_CLOSE
-    );
-
-  let percentChange =
-    toNumber(
-      source.percentage_change ??
-      source.percent_change ??
-      source.percentChange ??
-      source.change_percent ??
-      source.changePercent ??
-      source.pChange ??
-      source.PERCENTAGE_CHANGE
-    );
-
-  let rupeeChange =
-    toNumber(
-      source.net_change ??
-      source.netChange ??
-      source.change ??
-      source.chg ??
-      source.NET_CHANGE
-    );
-
-  if (previousClose > 0) {
-
-    percentChange =
-      (
-        (price - previousClose) /
-        previousClose
-      ) * 100;
-
-    rupeeChange =
-      price -
-      previousClose;
-  }
-
-  return {
-    symbol,
-    price:
-      Number(
-        price.toFixed(2)
-      ),
-    change:
-      Number(
-        percentChange.toFixed(2)
-      ),
-    rupeeChange:
-      Number(
-        rupeeChange.toFixed(2)
-      )
-  };
-}
-
-function saveMarketData(data) {
-
-  const quotes =
-    extractQuotes(data);
-
-  if (!quotes.length) {
-
-    MARKET_DATA.status =
-      "ERROR";
-
-    return false;
-  }
-
-  const normalized = {};
-
-  quotes.forEach(
-    function(quote) {
-
-      const result =
-        normalizeNeoQuote(
-          quote
-        );
-
-      if (!result) {
-        return;
-      }
-
-      normalized[
-        result.symbol
-      ] = {
-        price:
-          result.price,
-        change:
-          result.change,
-        rupeeChange:
-          result.rupeeChange
-      };
-    }
-  );
-
-  const count =
-    Object.keys(
-      normalized
-    ).length;
-
-  if (!count) {
-
-    MARKET_DATA.status =
-      "ERROR";
-
-    return false;
-  }
-
-  MARKET_DATA.stocks =
-    normalized;
-
-  MARKET_DATA.lastUpdated =
-    new Date().toISOString();
-
-  MARKET_DATA.status =
-    "LIVE_DATA_LOADED";
-
-  return true;
-}
-
-function getMarketStock(symbol) {
-  return (
-    MARKET_DATA.stocks[
-      normalizeSymbol(symbol)
-    ] || null
-  );
-}
-
-function getAllMarketData() {
-  return MARKET_DATA.stocks;
-}
+// ============================================
+// MARKET STATUS
+// ============================================
 
 function getMarketStatus() {
+
   return {
-    source:
-      MARKET_DATA.source,
     status:
-      MARKET_DATA.status,
-    lastUpdated:
-      MARKET_DATA.lastUpdated,
+      window.MARKET_DATA.status,
+
     stockCount:
       Object.keys(
-        MARKET_DATA.stocks
-      ).length
+        window.MARKET_DATA.stocks || {}
+      ).length,
+
+    error:
+      window.MARKET_DATA.error
   };
+
 }
+
+
+// ============================================
+// EXTRACT QUOTES
+// ============================================
+
+function extractQuotes(payload) {
+
+  const candidates = [
+
+    payload,
+
+    payload?.data,
+
+    payload?.data?.data,
+
+    payload?.quotes,
+
+    payload?.data?.quotes
+
+  ];
+
+
+  for (const value of candidates) {
+
+    if (Array.isArray(value)) {
+
+      return value;
+
+    }
+
+  }
+
+
+  return [];
+
+}
+
+
+// ============================================
+// NORMALIZE QUOTE
+// ============================================
+
+function normalizeQuote(item) {
+
+  const symbol =
+    String(
+
+      item?.symbol ||
+
+      item?.tradingSymbol ||
+
+      item?.pTrdSymbol ||
+
+      item?.neoSymbol ||
+
+      ""
+
+    )
+      .toUpperCase()
+      .replace(/-EQ$/, "");
+
+
+  const price =
+    Number(
+
+      item?.ltp ??
+
+      item?.last_traded_price ??
+
+      item?.lastTradedPrice ??
+
+      item?.price ??
+
+      0
+
+    );
+
+
+  const change =
+    Number(
+
+      item?.change ??
+
+      item?.changePercent ??
+
+      item?.percentChange ??
+
+      0
+
+    );
+
+
+  return {
+
+    symbol,
+
+    price,
+
+    change,
+
+    raw:
+      item
+
+  };
+
+}
+
+
+// ============================================
+// FETCH LIVE MARKET DATA
+// ============================================
 
 async function fetchMarketData(totp) {
 
-  const cleanTotp =
-    String(
-      totp || ""
-    ).trim();
+  window.MARKET_DATA.status =
+    "LOADING";
+
+  window.MARKET_DATA.error =
+    null;
+
+  window.MARKET_DATA.rawResponse =
+    null;
+
+
+  // ==========================================
+  // TOTP CHECK
+  // ==========================================
 
   if (
     !/^\d{6}$/.test(
-      cleanTotp
+      String(totp || "").trim()
     )
   ) {
 
-    MARKET_DATA.status =
+    window.MARKET_DATA.status =
       "ERROR";
 
+    window.MARKET_DATA.error =
+      "Current 6-digit TOTP required.";
+
     return false;
+
   }
 
-  MARKET_DATA.status =
-    "LOADING";
 
   try {
 
+    // ========================================
+    // CALL BACKEND
+    // ========================================
+
     const response =
       await fetch(
-        MARKET_API_URL,
+        "/api/quotes",
         {
+
           method:
             "POST",
 
           headers: {
+
             "Content-Type":
               "application/json",
 
-            Accept:
+            "Accept":
               "application/json"
+
           },
 
           body:
             JSON.stringify({
-              totp:
-                cleanTotp
-            }),
 
-          cache:
-            "no-store"
+              totp:
+                String(totp).trim()
+
+            })
+
         }
       );
+
+
+    // ========================================
+    // READ RESPONSE
+    // ========================================
 
     const text =
       await response.text();
 
-    let data = null;
+
+    let data =
+      null;
+
 
     try {
 
@@ -355,77 +235,198 @@ async function fetchMarketData(totp) {
 
     } catch {
 
-      MARKET_DATA.status =
-        "ERROR";
+      data =
+        null;
 
-      return false;
     }
 
-    console.log(
-      "KOTAK QUOTES RESPONSE:",
-      data
-    );
+
+    window.MARKET_DATA.rawResponse =
+      data || text;
+
+
+    // ========================================
+    // API ERROR
+    // ========================================
 
     if (
       !response.ok ||
-      data?.success === false
+      !data?.success
     ) {
 
-      MARKET_DATA.status =
-        "ERROR";
+      const detail =
 
-      return false;
+        data?.error ||
+
+        data?.message ||
+
+        (
+          typeof text === "string"
+            ? text.slice(0, 1000)
+            : "Unknown API error"
+        );
+
+
+      const step =
+        data?.step
+          ? ` [${data.step}]`
+          : "";
+
+
+      const status =
+        data?.status ||
+        response.status;
+
+
+      throw new Error(
+
+        `API /api/quotes${step} HTTP ${status}: ${detail}`
+
+      );
+
     }
 
-    return saveMarketData(
-      data
+
+    // ========================================
+    // EXTRACT QUOTES
+    // ========================================
+
+    const quotes =
+      extractQuotes(data);
+
+
+    const stocks =
+      {};
+
+
+    // ========================================
+    // BUILD STOCK DATA
+    // ========================================
+
+    for (
+      const item of quotes
+    ) {
+
+      const q =
+        normalizeQuote(item);
+
+
+      if (q.symbol) {
+
+        stocks[q.symbol] = {
+
+          price:
+            q.price,
+
+          change:
+            q.change,
+
+          raw:
+            q.raw
+
+        };
+
+      }
+
+    }
+
+
+    window.MARKET_DATA.stocks =
+      stocks;
+
+
+    // ========================================
+    // NO STOCK DATA
+    // ========================================
+
+    if (
+      !Object.keys(stocks).length
+    ) {
+
+      throw new Error(
+
+        "API successful hai, lekin quotes array mein usable stock data nahi mila."
+
+      );
+
+    }
+
+
+    // ========================================
+    // SUCCESS
+    // ========================================
+
+    window.MARKET_DATA.status =
+      "LIVE";
+
+
+    console.log(
+
+      "Prototype-1 LIVE MARKET DATA:",
+
+      stocks
+
     );
+
+
+    return true;
+
 
   } catch (error) {
 
-    console.error(
-      "Market data error:",
-      error
-    );
+    // ========================================
+    // EXACT ERROR
+    // ========================================
 
-    MARKET_DATA.status =
+    window.MARKET_DATA.status =
       "ERROR";
 
+
+    window.MARKET_DATA.error =
+      error?.message ||
+      String(error);
+
+
+    console.error(
+
+      "Prototype-1 MARKET DATA ERROR:",
+
+      {
+
+        message:
+          window.MARKET_DATA.error,
+
+        response:
+          window.MARKET_DATA.rawResponse
+
+      }
+
+    );
+
+
     return false;
+
   }
+
 }
 
-async function connectLiveMarketData(totp) {
-  return fetchMarketData(totp);
-}
 
-if (
-  typeof window !==
-  "undefined"
-) {
+// ============================================
+// BROWSER ACCESS
+// ============================================
 
-  window.MARKET_DATA =
-    MARKET_DATA;
+window.fetchMarketData =
+  fetchMarketData;
 
-  window.saveMarketData =
-    saveMarketData;
 
-  window.getMarketStock =
-    getMarketStock;
+window.getMarketStatus =
+  getMarketStatus;
 
-  window.getAllMarketData =
-    getAllMarketData;
 
-  window.getMarketStatus =
-    getMarketStatus;
-
-  window.fetchMarketData =
-    fetchMarketData;
-
-  window.connectLiveMarketData =
-    connectLiveMarketData;
-}
+// ============================================
+// STARTUP LOG
+// ============================================
 
 console.log(
-  "PROTOTYPE-1 MARKET DATA ENGINE READY"
+  "Prototype-1 market-data.js diagnostic loaded."
 );
