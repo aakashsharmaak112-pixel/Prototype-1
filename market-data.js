@@ -1,432 +1,190 @@
 // ============================================
 // PROTOTYPE-1
-// MARKET DATA CLIENT - DIAGNOSTIC
-// market-data.js
+// MARKET DATA API
+// api/market-data.js
 // ============================================
 
-window.MARKET_DATA = window.MARKET_DATA || {
-  stocks: {},
-  status: "IDLE",
-  error: null,
-  rawResponse: null
-};
+const QUOTES_URL =
+  "https://prototype-1-rho-silk.vercel.app/api/quotes";
 
-
-// ============================================
-// MARKET STATUS
-// ============================================
-
-function getMarketStatus() {
-
-  return {
-    status:
-      window.MARKET_DATA.status,
-
-    stockCount:
-      Object.keys(
-        window.MARKET_DATA.stocks || {}
-      ).length,
-
-    error:
-      window.MARKET_DATA.error
-  };
-
+function send(res, status, body) {
+  return res.status(status).json(body);
 }
 
+export default async function handler(req, res) {
+  // --------------------------------------------
+  // METHOD
+  // --------------------------------------------
 
-// ============================================
-// EXTRACT QUOTES
-// ============================================
-
-function extractQuotes(payload) {
-
-  const candidates = [
-
-    payload,
-
-    payload?.data,
-
-    payload?.data?.data,
-
-    payload?.quotes,
-
-    payload?.data?.quotes
-
-  ];
-
-
-  for (const value of candidates) {
-
-    if (Array.isArray(value)) {
-
-      return value;
-
-    }
-
+  if (req.method !== "GET") {
+    return send(res, 405, {
+      success: false,
+      error: "Use GET method."
+    });
   }
-
-
-  return [];
-
-}
-
-
-// ============================================
-// NORMALIZE QUOTE
-// ============================================
-
-function normalizeQuote(item) {
-
-  const symbol =
-    String(
-
-      item?.symbol ||
-
-      item?.tradingSymbol ||
-
-      item?.pTrdSymbol ||
-
-      item?.neoSymbol ||
-
-      ""
-
-    )
-      .toUpperCase()
-      .replace(/-EQ$/, "");
-
-
-  const price =
-    Number(
-
-      item?.ltp ??
-
-      item?.last_traded_price ??
-
-      item?.lastTradedPrice ??
-
-      item?.price ??
-
-      0
-
-    );
-
-
-  const change =
-    Number(
-
-      item?.change ??
-
-      item?.changePercent ??
-
-      item?.percentChange ??
-
-      0
-
-    );
-
-
-  return {
-
-    symbol,
-
-    price,
-
-    change,
-
-    raw:
-      item
-
-  };
-
-}
-
-
-// ============================================
-// FETCH LIVE MARKET DATA
-// ============================================
-
-async function fetchMarketData(totp) {
-
-  window.MARKET_DATA.status =
-    "LOADING";
-
-  window.MARKET_DATA.error =
-    null;
-
-  window.MARKET_DATA.rawResponse =
-    null;
-
-
-  // ==========================================
-  // TOTP CHECK
-  // ==========================================
-
-  if (
-    !/^\d{6}$/.test(
-      String(totp || "").trim()
-    )
-  ) {
-
-    window.MARKET_DATA.status =
-      "ERROR";
-
-    window.MARKET_DATA.error =
-      "Current 6-digit TOTP required.";
-
-    return false;
-
-  }
-
 
   try {
+    // ------------------------------------------
+    // GET KOTAK NEO QUOTES
+    // ------------------------------------------
 
-    // ========================================
-    // CALL BACKEND
-    // ========================================
+    const response = await fetch(QUOTES_URL, {
+      method: "GET",
+      headers: {
+        Accept: "application/json"
+      },
+      cache: "no-store"
+    });
 
-    const response =
-      await fetch(
-        "/api/quotes",
-        {
+    const data = await response.json();
 
-          method:
-            "POST",
+    // ------------------------------------------
+    // QUOTES API ERROR
+    // ------------------------------------------
 
-          headers: {
-
-            "Content-Type":
-              "application/json",
-
-            "Accept":
-              "application/json"
-
-          },
-
-          body:
-            JSON.stringify({
-
-              totp:
-                String(totp).trim()
-
-            })
-
-        }
-      );
-
-
-    // ========================================
-    // READ RESPONSE
-    // ========================================
-
-    const text =
-      await response.text();
-
-
-    let data =
-      null;
-
-
-    try {
-
-      data =
-        text
-          ? JSON.parse(text)
-          : null;
-
-    } catch {
-
-      data =
-        null;
-
+    if (!response.ok || !data.success) {
+      return send(res, 502, {
+        success: false,
+        step: "QUOTES_API",
+        error: "Quotes API failed.",
+        quoteResponse: data
+      });
     }
 
+    // ------------------------------------------
+    // VALIDATE STOCK DATA
+    // ------------------------------------------
 
-    window.MARKET_DATA.rawResponse =
-      data || text;
-
-
-    // ========================================
-    // API ERROR
-    // ========================================
-
-    if (
-      !response.ok ||
-      !data?.success
-    ) {
-
-      const detail =
-
-        data?.error ||
-
-        data?.message ||
-
-        (
-          typeof text === "string"
-            ? text.slice(0, 1000)
-            : "Unknown API error"
-        );
-
-
-      const step =
-        data?.step
-          ? ` [${data.step}]`
-          : "";
-
-
-      const status =
-        data?.status ||
-        response.status;
-
-
-      throw new Error(
-
-        `API /api/quotes${step} HTTP ${status}: ${detail}`
-
-      );
-
+    if (!Array.isArray(data.stocks)) {
+      return send(res, 502, {
+        success: false,
+        step: "MARKET_DATA",
+        error: "stocks array missing."
+      });
     }
 
+    // ------------------------------------------
+    // CLEAN MARKET DATA
+    // ------------------------------------------
 
-    // ========================================
-    // EXTRACT QUOTES
-    // ========================================
+    const stocks = data.stocks
+      .filter(stock => stock.success)
+      .map((stock, index) => {
+        const ltp = Number(stock.ltp);
+        const change = Number(stock.change);
+        const perChange = Number(stock.perChange);
 
-    const quotes =
-      extractQuotes(data);
+        return {
+          rank: index + 1,
 
+          symbol: stock.symbol,
+          token: stock.token,
 
-    const stocks =
-      {};
+          exchange: stock.exchange,
+          displaySymbol: stock.displaySymbol,
 
+          ltp: Number.isFinite(ltp) ? ltp : 0,
+          change: Number.isFinite(change) ? change : 0,
+          perChange: Number.isFinite(perChange)
+            ? perChange
+            : 0,
 
-    // ========================================
-    // BUILD STOCK DATA
-    // ========================================
+          open: Number(stock.open) || 0,
+          high: Number(stock.high) || 0,
+          low: Number(stock.low) || 0,
+          close: Number(stock.close) || 0,
 
-    for (
-      const item of quotes
-    ) {
+          yearHigh: Number(stock.yearHigh) || 0,
+          yearLow: Number(stock.yearLow) || 0,
 
-      const q =
-        normalizeQuote(item);
+          lastTradedQuantity:
+            Number(stock.lastTradedQuantity) || 0,
 
+          avgCost:
+            Number(stock.avgCost) || 0,
 
-      if (q.symbol) {
-
-        stocks[q.symbol] = {
-
-          price:
-            q.price,
-
-          change:
-            q.change,
-
-          raw:
-            q.raw
-
+          lastUpdated:
+            stock.lastUpdated || null
         };
+      });
 
-      }
+    // ------------------------------------------
+    // SORT BY % CHANGE
+    // ------------------------------------------
 
-    }
-
-
-    window.MARKET_DATA.stocks =
-      stocks;
-
-
-    // ========================================
-    // NO STOCK DATA
-    // ========================================
-
-    if (
-      !Object.keys(stocks).length
-    ) {
-
-      throw new Error(
-
-        "API successful hai, lekin quotes array mein usable stock data nahi mila."
-
-      );
-
-    }
-
-
-    // ========================================
-    // SUCCESS
-    // ========================================
-
-    window.MARKET_DATA.status =
-      "LIVE";
-
-
-    console.log(
-
-      "Prototype-1 LIVE MARKET DATA:",
-
-      stocks
-
+    const sortedByChange = [...stocks].sort(
+      (a, b) => b.perChange - a.perChange
     );
 
+    // ------------------------------------------
+    // TOP 20
+    // ------------------------------------------
 
-    return true;
+    const top20 = sortedByChange
+      .slice(0, 20)
+      .map((stock, index) => ({
+        ...stock,
+        rank: index + 1
+      }));
 
+    // ------------------------------------------
+    // MARKET SUMMARY
+    // ------------------------------------------
+
+    const gainers = stocks.filter(
+      stock => stock.perChange > 0
+    ).length;
+
+    const losers = stocks.filter(
+      stock => stock.perChange < 0
+    ).length;
+
+    const unchanged = stocks.filter(
+      stock => stock.perChange === 0
+    ).length;
+
+    // ------------------------------------------
+    // FINAL RESPONSE
+    // ------------------------------------------
+
+    return send(res, 200, {
+      success: true,
+
+      step: "MARKET_DATA_SUCCESS",
+
+      source: "KOTAK NEO",
+
+      totalStocks: stocks.length,
+
+      expectedStocks: 50,
+
+      complete:
+        stocks.length === 50,
+
+      marketSummary: {
+        gainers,
+        losers,
+        unchanged
+      },
+
+      top20,
+
+      stocks,
+
+      fetchedAt:
+        new Date().toISOString()
+    });
 
   } catch (error) {
 
-    // ========================================
-    // EXACT ERROR
-    // ========================================
+    return send(res, 502, {
+      success: false,
 
-    window.MARKET_DATA.status =
-      "ERROR";
+      step: "MARKET_DATA_FAILED",
 
-
-    window.MARKET_DATA.error =
-      error?.message ||
-      String(error);
-
-
-    console.error(
-
-      "Prototype-1 MARKET DATA ERROR:",
-
-      {
-
-        message:
-          window.MARKET_DATA.error,
-
-        response:
-          window.MARKET_DATA.rawResponse
-
-      }
-
-    );
-
-
-    return false;
-
+      error:
+        error?.message ||
+        String(error)
+    });
   }
-
 }
-
-
-// ============================================
-// BROWSER ACCESS
-// ============================================
-
-window.fetchMarketData =
-  fetchMarketData;
-
-
-window.getMarketStatus =
-  getMarketStatus;
-
-
-// ============================================
-// STARTUP LOG
-// ============================================
-
-console.log(
-  "Prototype-1 market-data.js diagnostic loaded."
-);
