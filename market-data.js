@@ -1,119 +1,24 @@
 // ============================================
 // PROTOTYPE-1
 // MARKET DATA CLIENT
-// ROOT: market-data.js
+// LIVE KOTAK NEO DATA
 // ============================================
 
-const MARKET_API_URL = "/api/market-data";
+const MARKET_DATA_API =
+  "/api/market-data";
 
-const MARKET_DATA = {
-  stocks: {},
-  lastUpdated: null,
+// ============================================
+// MARKET DATA STATE
+// ============================================
+
+window.MARKET_DATA = {
+  success: false,
   source: null,
-  stockCount: 0,
-  success: false
+  stocks: {},
+  top20: [],
+  totalStocks: 0,
+  fetchedAt: null
 };
-
-
-// ============================================
-// SAVE MARKET DATA
-// ============================================
-
-function saveMarketData(data) {
-
-  if (!data || !Array.isArray(data.stocks)) {
-    return false;
-  }
-
-  const stocks = {};
-
-  data.stocks.forEach(function (stock) {
-
-    if (!stock || !stock.symbol) {
-      return;
-    }
-
-    stocks[stock.symbol] = {
-
-      symbol: stock.symbol,
-
-      token:
-        stock.token || "",
-
-      exchange:
-        stock.exchange || "",
-
-      displaySymbol:
-        stock.displaySymbol || stock.symbol,
-
-      // app.js expects these names
-      price:
-        Number(stock.ltp) || 0,
-
-      // Percentage change
-      change:
-        Number(stock.perChange) || 0,
-
-      // Original Kotak values
-      ltp:
-        Number(stock.ltp) || 0,
-
-      absoluteChange:
-        Number(stock.change) || 0,
-
-      perChange:
-        Number(stock.perChange) || 0,
-
-      open:
-        Number(stock.open) || 0,
-
-      high:
-        Number(stock.high) || 0,
-
-      low:
-        Number(stock.low) || 0,
-
-      close:
-        Number(stock.close) || 0,
-
-      yearHigh:
-        Number(stock.yearHigh) || 0,
-
-      yearLow:
-        Number(stock.yearLow) || 0,
-
-      lastTradedQuantity:
-        Number(stock.lastTradedQuantity) || 0,
-
-      avgCost:
-        Number(stock.avgCost) || 0,
-
-      lastUpdated:
-        stock.lastUpdated || null
-    };
-
-  });
-
-
-  MARKET_DATA.stocks =
-    stocks;
-
-  MARKET_DATA.stockCount =
-    Object.keys(stocks).length;
-
-  MARKET_DATA.lastUpdated =
-    data.fetchedAt ||
-    new Date().toISOString();
-
-  MARKET_DATA.source =
-    data.source ||
-    "KOTAK NEO";
-
-  MARKET_DATA.success =
-    true;
-
-  return true;
-}
 
 
 // ============================================
@@ -122,54 +27,38 @@ function saveMarketData(data) {
 
 async function fetchMarketData() {
 
+  console.log(
+    "Fetching live market data from:",
+    MARKET_DATA_API
+  );
+
   try {
 
-    console.log(
-      "Prototype-1: fetching /api/market-data"
+    const response = await fetch(
+      MARKET_DATA_API,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json"
+        },
+        cache: "no-store"
+      }
     );
 
 
-    const response =
-      await fetch(
-        MARKET_API_URL,
-        {
-          method: "GET",
-
-          headers: {
-            Accept:
-              "application/json"
-          },
-
-          cache: "no-store"
-        }
-      );
+    const data =
+      await response.json();
 
 
-    const text =
-      await response.text();
+    console.log(
+      "MARKET DATA API RESPONSE:",
+      data
+    );
 
 
-    let data;
-
-
-    try {
-
-      data =
-        JSON.parse(text);
-
-    } catch (parseError) {
-
-      console.error(
-        "Prototype-1: market-data returned non-JSON:",
-        text
-      );
-
-      MARKET_DATA.success =
-        false;
-
-      return false;
-    }
-
+    // ----------------------------------------
+    // API ERROR
+    // ----------------------------------------
 
     if (
       !response.ok ||
@@ -177,57 +66,215 @@ async function fetchMarketData() {
     ) {
 
       console.error(
-        "Prototype-1: market-data API failed:",
+        "Market Data API Error:",
         data
       );
 
-      MARKET_DATA.success =
+      window.MARKET_DATA.success =
         false;
 
       return false;
     }
 
 
-    const saved =
-      saveMarketData(data);
+    // ----------------------------------------
+    // VALIDATE STOCK ARRAY
+    // ----------------------------------------
 
-
-    if (!saved) {
+    if (
+      !Array.isArray(data.stocks)
+    ) {
 
       console.error(
-        "Prototype-1: invalid market data response."
+        "stocks array missing:",
+        data
       );
 
-      MARKET_DATA.success =
+      window.MARKET_DATA.success =
         false;
 
       return false;
     }
+
+
+    // ----------------------------------------
+    // CONVERT ARRAY → SYMBOL MAP
+    // ----------------------------------------
+
+    const stockMap = {};
+
+
+    data.stocks.forEach(
+      function(stock) {
+
+        if (
+          !stock ||
+          !stock.symbol
+        ) {
+          return;
+        }
+
+
+        const price =
+          Number(stock.ltp) || 0;
+
+
+        const change =
+          Number(stock.perChange) || 0;
+
+
+        stockMap[stock.symbol] = {
+
+          symbol:
+            stock.symbol,
+
+          token:
+            stock.token,
+
+          exchange:
+            stock.exchange,
+
+          displaySymbol:
+            stock.displaySymbol,
+
+          price:
+            price,
+
+          ltp:
+            price,
+
+          change:
+            change,
+
+          perChange:
+            change,
+
+          absoluteChange:
+            Number(stock.change) || 0,
+
+          open:
+            Number(stock.open) || 0,
+
+          high:
+            Number(stock.high) || 0,
+
+          low:
+            Number(stock.low) || 0,
+
+          close:
+            Number(stock.close) || 0,
+
+          yearHigh:
+            Number(stock.yearHigh) || 0,
+
+          yearLow:
+            Number(stock.yearLow) || 0,
+
+          lastTradedQuantity:
+            Number(
+              stock.lastTradedQuantity
+            ) || 0,
+
+          avgCost:
+            Number(stock.avgCost) || 0,
+
+          lastUpdated:
+            stock.lastUpdated || null
+
+        };
+
+      }
+    );
+
+
+    // ----------------------------------------
+    // SAVE GLOBAL MARKET DATA
+    // ----------------------------------------
+
+    window.MARKET_DATA = {
+
+      success:
+        true,
+
+      source:
+        data.source || "KOTAK NEO",
+
+      stocks:
+        stockMap,
+
+      top20:
+        Array.isArray(data.top20)
+          ? data.top20
+          : [],
+
+      totalStocks:
+        Object.keys(stockMap).length,
+
+      fetchedAt:
+        data.fetchedAt || null
+
+    };
 
 
     console.log(
-      "Prototype-1: live market data loaded:",
-      MARKET_DATA.stockCount,
+      "LIVE MARKET DATA LOADED:",
+      window.MARKET_DATA.totalStocks,
       "stocks"
     );
 
 
-    return (
-      MARKET_DATA.stockCount > 0
-    );
+    // ----------------------------------------
+    // VERIFY 50 STOCKS
+    // ----------------------------------------
 
-  } catch (error) {
+    if (
+      window.MARKET_DATA.totalStocks !== 50
+    ) {
+
+      console.warn(
+        "Expected 50 stocks but received:",
+        window.MARKET_DATA.totalStocks
+      );
+
+    }
+
+
+    return true;
+
+  }
+
+  catch (error) {
 
     console.error(
-      "Prototype-1: fetchMarketData error:",
+      "fetchMarketData() failed:",
       error
     );
 
-    MARKET_DATA.success =
+
+    window.MARKET_DATA.success =
       false;
 
+
     return false;
+
   }
+
+}
+
+
+// ============================================
+// GET MARKET DATA
+// ============================================
+
+function getMarketData() {
+
+  return (
+    window.MARKET_DATA &&
+    window.MARKET_DATA.stocks
+  )
+    ? window.MARKET_DATA.stocks
+    : {};
+
 }
 
 
@@ -237,42 +284,43 @@ async function fetchMarketData() {
 
 function getMarketStatus() {
 
+  const stocks =
+    getMarketData();
+
+
   return {
 
-    success:
-      MARKET_DATA.success,
+    connected:
+      window.MARKET_DATA?.success === true,
 
     stockCount:
-      MARKET_DATA.stockCount,
+      Object.keys(stocks).length,
 
     source:
-      MARKET_DATA.source,
+      window.MARKET_DATA?.source ||
+      null,
 
-    lastUpdated:
-      MARKET_DATA.lastUpdated
+    fetchedAt:
+      window.MARKET_DATA?.fetchedAt ||
+      null
+
   };
-}
-
-
-// ============================================
-// GET ALL MARKET DATA
-// ============================================
-
-function getAllMarketData() {
-
-  return MARKET_DATA.stocks;
 
 }
 
 
 // ============================================
-// GET ONE STOCK
+// GET SINGLE STOCK
 // ============================================
 
 function getMarketStock(symbol) {
 
+  const stocks =
+    getMarketData();
+
+
   return (
-    MARKET_DATA.stocks[symbol] ||
+    stocks[symbol] ||
     null
   );
 
@@ -280,34 +328,57 @@ function getMarketStock(symbol) {
 
 
 // ============================================
-// BROWSER GLOBALS
+// GET ALL STOCKS
 // ============================================
 
-if (
-  typeof window !== "undefined"
-) {
+function getAllMarketData() {
 
-  window.MARKET_DATA =
-    MARKET_DATA;
+  return getMarketData();
 
-  window.fetchMarketData =
-    fetchMarketData;
-
-  window.getMarketStatus =
-    getMarketStatus;
-
-  window.getAllMarketData =
-    getAllMarketData;
-
-  window.getMarketStock =
-    getMarketStock;
 }
 
 
 // ============================================
-// STARTUP
+// BROWSER ACCESS
+// ============================================
+
+window.fetchMarketData =
+  fetchMarketData;
+
+window.getMarketData =
+  getMarketData;
+
+window.getMarketStatus =
+  getMarketStatus;
+
+window.getMarketStock =
+  getMarketStock;
+
+window.getAllMarketData =
+  getAllMarketData;
+
+
+// ============================================
+// STARTUP LOG
 // ============================================
 
 console.log(
-  "Prototype-1 market-data.js loaded."
+  "================================"
+);
+
+console.log(
+  "PROTOTYPE-1 MARKET DATA CLIENT"
+);
+
+console.log(
+  "API:",
+  MARKET_DATA_API
+);
+
+console.log(
+  "fetchMarketData(): READY"
+);
+
+console.log(
+  "================================"
 );
