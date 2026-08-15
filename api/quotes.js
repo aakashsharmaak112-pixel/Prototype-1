@@ -1,6 +1,7 @@
 // ============================================
 // PROTOTYPE-1
-// KOTAK NEO LIVE QUOTES - DIAGNOSTIC VERSION
+// KOTAK NEO LIVE QUOTES
+// SERVER-SIDE AUTHENTICATION FLOW
 // api/quotes.js
 // ============================================
 
@@ -74,7 +75,7 @@ function send(res, status, body) {
   return res.status(status).json(body);
 }
 
-async function readResponse(response) {
+async function readJson(response) {
   const text = await response.text();
 
   let data = null;
@@ -103,62 +104,16 @@ function normalizeMobile(value) {
   return mobile;
 }
 
-function safeKotakError(data) {
-  if (!data) {
-    return null;
-  }
-
-  if (typeof data === "string") {
-    return data.slice(0, 1000);
-  }
-
-  if (Array.isArray(data)) {
-    return data.slice(0, 5);
-  }
-
-  return {
-    message:
-      data.message ||
-      data.Message ||
-      null,
-
-    description:
-      data.description ||
-      data.Description ||
-      null,
-
-    error:
-      data.error ||
-      data.Error ||
-      null,
-
-    fault:
-      data.fault ||
-      null,
-
-    code:
-      data.code ||
-      data.Code ||
-      null
-  };
-}
-
 function parseCsvLine(line) {
   const values = [];
-
   let current = "";
   let quoted = false;
 
   for (let i = 0; i < line.length; i++) {
-
     const ch = line[i];
 
     if (ch === '"') {
-
-      if (
-        quoted &&
-        line[i + 1] === '"'
-      ) {
+      if (quoted && line[i + 1] === '"') {
         current += '"';
         i++;
       } else {
@@ -168,55 +123,34 @@ function parseCsvLine(line) {
       continue;
     }
 
-    if (
-      ch === "," &&
-      !quoted
-    ) {
-      values.push(
-        current.trim()
-      );
-
+    if (ch === "," && !quoted) {
+      values.push(current.trim());
       current = "";
-
     } else {
       current += ch;
     }
   }
 
-  values.push(
-    current.trim()
-  );
+  values.push(current.trim());
 
   return values;
 }
 
 function loadSymbolMap(csvText) {
-
-  const lines =
-    csvText
-      .split(/\r?\n/)
-      .filter(Boolean);
+  const lines = csvText
+    .split(/\r?\n/)
+    .filter(Boolean);
 
   if (lines.length < 2) {
-    throw new Error(
-      "Scripmaster CSV is empty."
-    );
+    throw new Error("Scripmaster CSV is empty.");
   }
 
-  const header =
-    parseCsvLine(lines[0]);
+  const header = parseCsvLine(lines[0]);
 
-  const iSymbol =
-    header.indexOf("pSymbol");
-
-  const iExchange =
-    header.indexOf("pExchSeg");
-
-  const iTrading =
-    header.indexOf("pTrdSymbol");
-
-  const iRef =
-    header.indexOf("pScripRefKey");
+  const iSymbol = header.indexOf("pSymbol");
+  const iExchange = header.indexOf("pExchSeg");
+  const iTrading = header.indexOf("pTrdSymbol");
+  const iRef = header.indexOf("pScripRefKey");
 
   if (
     iSymbol < 0 ||
@@ -225,48 +159,29 @@ function loadSymbolMap(csvText) {
     iRef < 0
   ) {
     throw new Error(
-      "Required Scripmaster fields missing."
+      "Required Scripmaster fields missing. " +
+      "Required: pSymbol, pExchSeg, pTrdSymbol, pScripRefKey"
     );
   }
 
   const map = {};
 
-  for (
-    let i = 1;
-    i < lines.length;
-    i++
-  ) {
+  for (let i = 1; i < lines.length; i++) {
+    const row = parseCsvLine(lines[i]);
 
-    const row =
-      parseCsvLine(lines[i]);
+    const exchange = String(row[iExchange] || "")
+      .trim()
+      .toLowerCase();
 
-    const exchange =
-      String(
-        row[iExchange] || ""
-      )
-        .trim()
-        .toLowerCase();
-
-    if (
-      exchange !== "nse_cm"
-    ) {
+    if (exchange !== "nse_cm") {
       continue;
     }
 
-    const pSymbol =
-      String(
-        row[iSymbol] || ""
-      ).trim();
+    const pSymbol = String(row[iSymbol] || "").trim();
 
-    const pTrdSymbol =
-      String(
-        row[iTrading] || ""
-      ).trim();
+    const pTrdSymbol = String(row[iTrading] || "").trim();
 
-    const pScripRefKey =
-      String(
-        row[iRef] || ""
-      ).trim();
+    const pScripRefKey = String(row[iRef] || "").trim();
 
     if (!pSymbol) {
       continue;
@@ -282,30 +197,18 @@ function loadSymbolMap(csvText) {
         .toUpperCase()
         .replace(/-EQ$/i, "");
 
-    for (
-      const target of NIFTY_50
-    ) {
-
-      const cleanTarget =
-        target.toUpperCase();
+    for (const target of NIFTY_50) {
+      const cleanTarget = target.toUpperCase();
 
       if (
         symbol === cleanTarget ||
         tradingSymbol === cleanTarget
       ) {
-
         map[cleanTarget] = {
-          symbol:
-            cleanTarget,
-
-          neoSymbol:
-            pSymbol,
-
-          pTrdSymbol:
-            pTrdSymbol,
-
-          pScripRefKey:
-            pScripRefKey
+          symbol: cleanTarget,
+          neoSymbol: pSymbol,
+          pTrdSymbol,
+          pScripRefKey
         };
 
         break;
@@ -316,112 +219,65 @@ function loadSymbolMap(csvText) {
   return map;
 }
 
-
-// ============================================
-// STEP 1 — TOTP LOGIN
-// ============================================
-
 async function kotakLogin(totp) {
+  const mobileNumber = normalizeMobile(MOBILE);
 
-  const mobileNumber =
-    normalizeMobile(MOBILE);
-
-  if (
-    !/^\+91\d{10}$/.test(
-      mobileNumber
-    )
-  ) {
-
-    throw new Error(
-      "Invalid NEO_MOBILE."
-    );
+  if (!/^\+91\d{10}$/.test(mobileNumber)) {
+    throw new Error("Invalid NEO_MOBILE.");
   }
 
-  const response =
-    await fetch(
-      LOGIN_URL,
-      {
-        method: "POST",
+  const response = await fetch(
+    LOGIN_URL,
+    {
+      method: "POST",
 
-        headers: {
+      headers: {
+        Authorization:
+          String(ACCESS_TOKEN).trim(),
 
-          Authorization:
-            String(
-              ACCESS_TOKEN
-            ).trim(),
+        "neo-fin-key":
+          "neotradeapi",
 
-          "neo-fin-key":
-            "neotradeapi",
+        "Content-Type":
+          "application/json",
 
-          "Content-Type":
-            "application/json",
+        Accept:
+          "application/json"
+      },
 
-          Accept:
-            "application/json"
-        },
+      body: JSON.stringify({
+        mobileNumber,
+        ucc: String(UCC).trim(),
+        totp
+      })
+    }
+  );
 
-        body:
-          JSON.stringify({
-
-            mobileNumber:
-              mobileNumber,
-
-            ucc:
-              String(UCC).trim(),
-
-            totp:
-              totp
-
-          })
-      }
-    );
-
-  const result =
-    await readResponse(
-      response
-    );
+  const result = await readJson(response);
 
   if (!result.data) {
-
-    return {
-      success: false,
-
-      stage:
-        "TOTP LOGIN",
-
-      status:
-        response.status,
-
-      error:
-        "Kotak TOTP login returned non-JSON response.",
-
-      rawResponse:
-        result.text.slice(
-          0,
-          1000
-        )
-    };
+    throw new Error(
+      "Kotak TOTP login returned non-JSON response. " +
+      "HTTP " +
+      response.status +
+      ". Raw: " +
+      result.text.slice(0, 500)
+    );
   }
 
   if (!response.ok) {
+    const message =
+      result.data?.error?.[0]?.message ||
+      result.data?.error?.message ||
+      result.data?.message ||
+      "Kotak TOTP login failed.";
 
-    return {
-      success: false,
-
-      stage:
-        "TOTP LOGIN",
-
-      status:
-        response.status,
-
-      error:
-        "Kotak TOTP login failed.",
-
-      kotakError:
-        safeKotakError(
-          result.data
-        )
-    };
+    throw new Error(
+      message +
+      " [HTTP " +
+      response.status +
+      "]"
+    );
   }
 
   const root =
@@ -431,422 +287,165 @@ async function kotakLogin(totp) {
   const sid =
     root?.sid ||
     root?.Sid ||
-    root?.sessionId ||
-    root?.sessionID ||
-    root?.viewSid ||
-    result.data?.sid ||
-    result.data?.Sid ||
-    null;
+    root?.viewSid;
 
   const auth =
+    root?.token ||
     root?.Auth ||
     root?.auth ||
-    root?.token ||
-    root?.Token ||
-    root?.viewToken ||
-    result.data?.Auth ||
-    result.data?.auth ||
-    result.data?.token ||
-    null;
+    root?.viewToken;
 
   if (!sid || !auth) {
-
-    return {
-      success: false,
-
-      stage:
-        "TOTP LOGIN",
-
-      status:
-        response.status,
-
-      error:
-        "TOTP login response received, but Sid/Auth was not found.",
-
-      detectedFields:
-        Object.keys(
-          root || {}
-        )
-    };
+    throw new Error(
+      "Kotak TOTP login response received but Sid/Auth missing. " +
+      "Response: " +
+      JSON.stringify(result.data).slice(0, 1000)
+    );
   }
 
   return {
-    success: true,
-
-    sid:
-      String(sid),
-
-    auth:
-      String(auth),
-
-    detectedFields:
-      Object.keys(
-        root || {}
-      )
+    sid,
+    auth
   };
 }
 
+async function kotakValidate(session) {
+  const response = await fetch(
+    VALIDATE_URL,
+    {
+      method: "POST",
 
-// ============================================
-// STEP 2 — MPIN VALIDATION
-// ============================================
+      headers: {
+        Authorization:
+          String(ACCESS_TOKEN).trim(),
 
-async function kotakValidate(
-  login
-) {
+        "neo-fin-key":
+          "neotradeapi",
 
-  const response =
-    await fetch(
-      VALIDATE_URL,
-      {
-        method: "POST",
+        Sid:
+          String(session.sid).trim(),
 
-        headers: {
+        Auth:
+          String(session.auth).trim(),
 
-          Authorization:
-            String(
-              ACCESS_TOKEN
-            ).trim(),
+        "Content-Type":
+          "application/json",
 
-          "neo-fin-key":
-            "neotradeapi",
+        Accept:
+          "application/json"
+      },
 
-          Sid:
-            String(
-              login.sid
-            ).trim(),
+      body: JSON.stringify({
+        mpin:
+          String(MPIN).trim()
+      })
+    }
+  );
 
-          Auth:
-            String(
-              login.auth
-            ).trim(),
-
-          "Content-Type":
-            "application/json",
-
-          Accept:
-            "application/json"
-        },
-
-        body:
-          JSON.stringify({
-
-            mpin:
-              String(
-                MPIN
-              ).trim()
-
-          })
-      }
-    );
-
-  const result =
-    await readResponse(
-      response
-    );
+  const result = await readJson(response);
 
   if (!result.data) {
+    throw new Error(
+      "Kotak MPIN validation returned non-JSON response. " +
+      "HTTP " +
+      response.status +
+      ". Raw: " +
+      result.text.slice(0, 500)
+    );
+  }
 
-    return {
-      success: false,
+  if (!response.ok) {
+    const message =
+      result.data?.error?.[0]?.message ||
+      result.data?.error?.message ||
+      result.data?.message ||
+      "Kotak MPIN validation failed.";
 
-      stage:
-        "MPIN VALIDATION",
-
-      status:
-        response.status,
-
-      error:
-        "Kotak MPIN validation returned non-JSON response.",
-
-      rawResponse:
-        result.text.slice(
-          0,
-          1000
-        )
-    };
+    throw new Error(
+      message +
+      " [HTTP " +
+      response.status +
+      "]"
+    );
   }
 
   const root =
     result.data?.data ||
     result.data;
 
-  if (!response.ok) {
-
-    return {
-      success: false,
-
-      stage:
-        "MPIN VALIDATION",
-
-      status:
-        response.status,
-
-      error:
-        "Kotak MPIN validation failed.",
-
-      kotakError:
-        safeKotakError(
-          result.data
-        ),
-
-      detectedFields:
-        Object.keys(
-          root || {}
-        )
-    };
-  }
-
   const baseUrl =
     root?.baseUrl ||
     root?.base_url ||
     root?.BaseUrl ||
-    root?.BaseURL ||
-    null;
-
-  const tradeSid =
-    root?.sid ||
-    root?.Sid ||
-    root?.sessionId ||
-    root?.sessionID ||
-    login.sid ||
-    null;
-
-  const tradeAuth =
-    root?.Auth ||
-    root?.auth ||
-    root?.token ||
-    root?.Token ||
-    login.auth ||
-    null;
+    root?.BaseURL;
 
   if (!baseUrl) {
-
-    return {
-      success: false,
-
-      stage:
-        "MPIN VALIDATION",
-
-      status:
-        response.status,
-
-      error:
-        "MPIN validation response received, but baseUrl was not found.",
-
-      baseUrlFound:
-        false,
-
-      sidFound:
-        Boolean(tradeSid),
-
-      authFound:
-        Boolean(tradeAuth),
-
-      detectedFields:
-        Object.keys(
-          root || {}
-        ),
-
-      kotakError:
-        safeKotakError(
-          result.data
-        )
-    };
-  }
-
-  if (
-    !tradeSid ||
-    !tradeAuth
-  ) {
-
-    return {
-      success: false,
-
-      stage:
-        "MPIN VALIDATION",
-
-      status:
-        response.status,
-
-      error:
-        "baseUrl found, but session Sid/Auth is missing.",
-
-      baseUrlFound:
-        true,
-
-      sidFound:
-        Boolean(tradeSid),
-
-      authFound:
-        Boolean(tradeAuth),
-
-      detectedFields:
-        Object.keys(
-          root || {}
-        )
-    };
+    throw new Error(
+      "MPIN validation succeeded but baseUrl was not returned. " +
+      "Response: " +
+      JSON.stringify(result.data).slice(0, 1000)
+    );
   }
 
   return {
-    success: true,
-
     baseUrl:
-      String(baseUrl)
-        .replace(/\/+$/, ""),
-
-    sid:
-      String(tradeSid),
-
-    auth:
-      String(tradeAuth),
-
-    detectedFields:
-      Object.keys(
-        root || {}
-      )
+      String(baseUrl).replace(/\/+$/, "")
   };
 }
-
-
-// ============================================
-// STEP 3 — SCRIPMASTER
-// ============================================
 
 async function getScripmaster() {
+  const response = await fetch(
+    SCRIPMASTER_URL,
+    {
+      method: "GET",
 
-  const response =
-    await fetch(
-      SCRIPMASTER_URL,
-      {
-        method: "GET",
+      headers: {
+        Accept: "text/csv"
+      },
 
-        headers: {
-          Accept:
-            "text/csv"
-        },
+      cache: "no-store"
+    }
+  );
 
-        cache:
-          "no-store"
-      }
-    );
-
-  const text =
-    await response.text();
+  const text = await response.text();
 
   if (!response.ok) {
-
-    return {
-      success: false,
-
-      stage:
-        "SCRIPMASTER",
-
-      status:
-        response.status,
-
-      error:
-        "Scripmaster download failed.",
-
-      rawResponse:
-        text.slice(
-          0,
-          1000
-        )
-    };
+    throw new Error(
+      "Scripmaster download failed. HTTP " +
+      response.status +
+      ". Raw: " +
+      text.slice(0, 500)
+    );
   }
 
-  if (
-    !text ||
-    text.length < 100
-  ) {
-
-    return {
-      success: false,
-
-      stage:
-        "SCRIPMASTER",
-
-      status:
-        response.status,
-
-      error:
-        "Scripmaster response is empty or too small.",
-
-      responseLength:
-        text.length
-    };
+  if (!text.trim()) {
+    throw new Error(
+      "Scripmaster returned empty response."
+    );
   }
 
-  return {
-    success: true,
-
-    text,
-
-    status:
-      response.status,
-
-    responseLength:
-      text.length,
-
-    header:
-      text
-        .split(/\r?\n/)[0]
-        .slice(
-          0,
-          2000
-        )
-  };
+  return text;
 }
 
-
-// ============================================
-// STEP 4 — QUOTES
-// ============================================
-
-async function getQuotes(
-  session,
-  symbolMap
-) {
-
+async function getQuotes(baseUrl, symbolMap) {
   const resolved =
     NIFTY_50
       .map(
         symbol =>
-          symbolMap[
-            symbol
-          ]
+          symbolMap[symbol]
       )
       .filter(Boolean);
 
   const missing =
     NIFTY_50.filter(
       symbol =>
-        !symbolMap[
-          symbol
-        ]
+        !symbolMap[symbol]
     );
 
   if (!resolved.length) {
-
-    return {
-      success: false,
-
-      stage:
-        "QUOTES",
-
-      status:
-        0,
-
-      error:
-        "No Nifty 50 Neo symbols were resolved.",
-
-      resolvedCount:
-        0,
-
-      missingSymbols:
-        missing
-    };
+    throw new Error(
+      "No Nifty 50 Neo symbols resolved from Scripmaster."
+    );
   }
 
   const neoSymbols =
@@ -861,7 +460,7 @@ async function getQuotes(
     );
 
   const quoteUrl =
-    session.baseUrl +
+    baseUrl +
     "/script-details/1.0/quotes/neosymbol/" +
     encodedSymbols +
     "/all";
@@ -873,14 +472,8 @@ async function getQuotes(
         method: "GET",
 
         headers: {
-
-          // IMPORTANT:
-          // Quotes endpoint uses the
-          // consumer/access token.
           Authorization:
-            String(
-              ACCESS_TOKEN
-            ).trim(),
+            String(ACCESS_TOKEN).trim(),
 
           "Content-Type":
             "application/x-www-form-urlencoded",
@@ -895,424 +488,100 @@ async function getQuotes(
     );
 
   const result =
-    await readResponse(
-      response
-    );
+    await readJson(response);
 
   if (!result.data) {
-
     return {
       success: false,
-
-      stage:
-        "QUOTES",
-
-      status:
-        response.status,
+      status: response.status,
 
       error:
-        "Kotak Quotes returned non-JSON response.",
-
-      resolvedCount:
-        resolved.length,
-
-      missingSymbols:
-        missing,
+        "Kotak Neo returned non-JSON response.",
 
       rawResponse:
-        result.text.slice(
-          0,
-          1500
-        )
+        result.text,
+
+      resolved,
+      missing
     };
   }
 
   if (!response.ok) {
-
     return {
       success: false,
-
-      stage:
-        "QUOTES",
-
-      status:
-        response.status,
+      status: response.status,
 
       error:
-        "Kotak Quotes HTTP request failed.",
+        "Kotak Neo Quotes request failed.",
 
-      resolvedCount:
-        resolved.length,
+      kotakResponse:
+        result.data,
 
-      missingSymbols:
-        missing,
-
-      kotakError:
-        safeKotakError(
-          result.data
-        )
+      resolved,
+      missing
     };
   }
 
   return {
     success: true,
-
-    status:
-      response.status,
-
-    resolved,
+    status: response.status,
 
     missing,
+    resolved,
 
     data:
       result.data
   };
 }
 
+export default async function handler(req, res) {
 
-// ============================================
-// MAIN HANDLER
-// ============================================
+  // ============================================
+  // METHOD CHECK
+  // ============================================
 
-export default async function handler(
-  req,
-  res
-) {
-
-  if (
-    req.method !== "POST"
-  ) {
-
-    return send(
-      res,
-      405,
-      {
-        success: false,
-
-        error:
-          "Use POST method."
-      }
-    );
+  if (req.method !== "POST") {
+    return send(res, 405, {
+      success: false,
+      error:
+        "Use POST method."
+    });
   }
 
-
-  // ==========================================
+  // ============================================
   // ENVIRONMENT CHECK
-  // ==========================================
+  // ============================================
 
-  const missingEnv = [];
-
-  if (!ACCESS_TOKEN)
-    missingEnv.push(
-      "NEO_ACCESS_TOKEN"
-    );
-
-  if (!MOBILE)
-    missingEnv.push(
-      "NEO_MOBILE"
-    );
-
-  if (!UCC)
-    missingEnv.push(
-      "NEO_UCC"
-    );
-
-  if (!MPIN)
-    missingEnv.push(
-      "NEO_MPIN"
-    );
-
-  if (
-    missingEnv.length
-  ) {
-
-    return send(
-      res,
-      500,
-      {
-        success: false,
-
-        stage:
-          "ENVIRONMENT",
-
-        error:
-          "Required Kotak environment variables are missing.",
-
-        missing:
-          missingEnv
-      }
-    );
+  if (!ACCESS_TOKEN) {
+    return send(res, 500, {
+      success: false,
+      step:
+        "ENVIRONMENT",
+      error:
+        "NEO_ACCESS_TOKEN missing."
+    });
   }
 
-
-  // ==========================================
-  // TOTP CHECK
-  // ==========================================
-
-  const totp =
-    String(
-      req.body?.totp || ""
-    ).trim();
-
-  if (
-    !/^\d{6}$/.test(
-      totp
-    )
-  ) {
-
-    return send(
-      res,
-      400,
-      {
-        success: false,
-
-        stage:
-          "TOTP INPUT",
-
-        error:
-          "Current 6-digit TOTP required."
-      }
-    );
+  if (!MOBILE) {
+    return send(res, 500, {
+      success: false,
+      step:
+        "ENVIRONMENT",
+      error:
+        "NEO_MOBILE missing."
+    });
   }
 
-
-  try {
-
-    // ========================================
-    // STEP 1
-    // ========================================
-
-    const login =
-      await kotakLogin(
-        totp
-      );
-
-    if (
-      !login.success
-    ) {
-
-      return send(
-        res,
-        502,
-        login
-      );
-    }
-
-
-    // ========================================
-    // STEP 2
-    // ========================================
-
-    const session =
-      await kotakValidate(
-        login
-      );
-
-    if (
-      !session.success
-    ) {
-
-      return send(
-        res,
-        502,
-        session
-      );
-    }
-
-
-    // ========================================
-    // STEP 3
-    // ========================================
-
-    const scripmaster =
-      await getScripmaster();
-
-    if (
-      !scripmaster.success
-    ) {
-
-      return send(
-        res,
-        502,
-        scripmaster
-      );
-    }
-
-
-    // ========================================
-    // SYMBOL MAP
-    // ========================================
-
-    let symbolMap;
-
-    try {
-
-      symbolMap =
-        loadSymbolMap(
-          scripmaster.text
-        );
-
-    } catch (error) {
-
-      return send(
-        res,
-        502,
-        {
-          success: false,
-
-          stage:
-            "SCRIPMASTER PARSING",
-
-          error:
-            error.message,
-
-          scripmasterHeader:
-            scripmaster.header
-        }
-      );
-    }
-
-
-    const resolvedCount =
-      Object.keys(
-        symbolMap
-      ).length;
-
-    const missingSymbols =
-      NIFTY_50.filter(
-        symbol =>
-          !symbolMap[
-            symbol
-          ]
-      );
-
-
-    // ========================================
-    // STEP 4
-    // ========================================
-
-    const quotes =
-      await getQuotes(
-        session,
-        symbolMap
-      );
-
-    if (
-      !quotes.success
-    ) {
-
-      return send(
-        res,
-        502,
-        {
-          ...quotes,
-
-          totalNifty50:
-            NIFTY_50.length,
-
-          resolvedCount:
-            resolvedCount,
-
-          missingSymbols:
-            missingSymbols
-        }
-      );
-    }
-
-
-    // ========================================
-    // FINAL SUCCESS
-    // ========================================
-
-    const quoteData =
-      quotes.data;
-
-    let totalReceived =
-      null;
-
-    if (
-      Array.isArray(
-        quoteData
-      )
-    ) {
-
-      totalReceived =
-        quoteData.length;
-
-    } else if (
-      Array.isArray(
-        quoteData?.data
-      )
-    ) {
-
-      totalReceived =
-        quoteData.data.length;
-
-    } else if (
-      Array.isArray(
-        quoteData?.quotes
-      )
-    ) {
-
-      totalReceived =
-        quoteData.quotes.length;
-
-    }
-
-
-    return send(
-      res,
-      200,
-      {
-        success: true,
-
-        source:
-          "KOTAK NEO",
-
-        marketData:
-          "LIVE",
-
-        totalRequested:
-          NIFTY_50.length,
-
-        totalResolved:
-          resolvedCount,
-
-        totalReceived:
-          totalReceived,
-
-        missingSymbols:
-          missingSymbols,
-
-        quotes:
-          quoteData
-      }
-    );
-
-
-  } catch (error) {
-
-    console.error(
-      "Prototype-1 Quotes Error:",
-      error
-    );
-
-    return send(
-      res,
-      502,
-      {
-        success: false,
-
-        stage:
-          "UNEXPECTED SERVER ERROR",
-
-        source:
-          "KOTAK NEO",
-
-        error:
-          error?.message ||
-          "Unexpected Kotak Neo error."
-      }
-    );
+  if (!UCC) {
+    return send(res, 500, {
+      success: false,
+      step:
+        "ENVIRONMENT",
+      error:
+        "NEO_UCC missing."
+    });
   }
-}
+
+  if (!MPIN) {
+    return send(res, 500, {
+      success: false,
