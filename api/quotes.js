@@ -1,33 +1,29 @@
 // ============================================
 // PROTOTYPE-1
-// KOTAK NEO QUOTES DIAGNOSTIC
+// KOTAK NEO V2 QUOTES
 // api/quotes.js
 // ============================================
 
-const ACCESS_TOKEN = String(
-  process.env.NEO_ACCESS_TOKEN || ""
+// Kotak Neo v2 uses consumer_key for API authentication.
+// Keep the fallback for the existing Prototype-1 environment.
+const CONSUMER_KEY = String(
+  process.env.NEO_CONSUMER_KEY ||
+  process.env.NEO_ACCESS_TOKEN ||
+  ""
 ).trim();
 
 const SCRIPMASTER_URL =
   "https://lapi.kotaksecurities.com/wso2-scripmaster/v1/prod/2026-08-12/transformed-v1/nse_cm-v1.csv";
 
+// Kotak Neo v2 production API
+const QUOTE_BASE_URL =
+  String(
+    process.env.NEO_QUOTE_BASE_URL ||
+    "https://mnapi.kotaksecurities.com"
+  ).replace(/\/+$/, "");
+
 function send(res, status, body) {
   return res.status(status).json(body);
-}
-
-async function readResponse(response) {
-  const text = await response.text();
-
-  let data = null;
-
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {}
-
-  return {
-    text,
-    data
-  };
 }
 
 function parseCsvLine(line) {
@@ -40,10 +36,7 @@ function parseCsvLine(line) {
     const ch = line[i];
 
     if (ch === '"') {
-      if (
-        quoted &&
-        line[i + 1] === '"'
-      ) {
+      if (quoted && line[i + 1] === '"') {
         current += '"';
         i++;
       } else {
@@ -53,50 +46,36 @@ function parseCsvLine(line) {
       continue;
     }
 
-    if (
-      ch === "," &&
-      !quoted
-    ) {
-      values.push(
-        current.trim()
-      );
-
+    if (ch === "," && !quoted) {
+      values.push(current.trim());
       current = "";
     } else {
       current += ch;
     }
   }
 
-  values.push(
-    current.trim()
-  );
+  values.push(current.trim());
 
   return values;
 }
 
 async function getScripmaster() {
+  const response = await fetch(
+    SCRIPMASTER_URL,
+    {
+      method: "GET",
 
-  const response =
-    await fetch(
-      SCRIPMASTER_URL,
-      {
-        method: "GET",
+      headers: {
+        Accept: "text/csv"
+      },
 
-        headers: {
-          Accept:
-            "text/csv"
-        },
+      cache: "no-store"
+    }
+  );
 
-        cache:
-          "no-store"
-      }
-    );
-
-  const text =
-    await response.text();
+  const text = await response.text();
 
   if (!response.ok) {
-
     throw new Error(
       "SCRIPMASTER failed. HTTP " +
       response.status +
@@ -106,7 +85,6 @@ async function getScripmaster() {
   }
 
   if (!text.trim()) {
-
     throw new Error(
       "SCRIPMASTER CSV empty hai."
     );
@@ -115,121 +93,84 @@ async function getScripmaster() {
   return text;
 }
 
-function findHdfcRows(csvText) {
-
-  const lines =
-    csvText
-      .split(/\r?\n/)
-      .filter(Boolean);
+function findHdfcBank(csvText) {
+  const lines = csvText
+    .split(/\r?\n/)
+    .filter(Boolean);
 
   if (lines.length < 2) {
-
     throw new Error(
-      "SCRIPMASTER CSV empty hai."
+      "SCRIPMASTER CSV mein data nahi mila."
     );
   }
 
-  const header =
-    parseCsvLine(
-      lines[0]
-    );
+  const header = parseCsvLine(lines[0]);
 
-  const iSymbol =
-    header.indexOf(
-      "pSymbol"
-    );
-
-  const iExchange =
-    header.indexOf(
-      "pExchSeg"
-    );
-
-  const iTrading =
-    header.indexOf(
-      "pTrdSymbol"
-    );
-
-  const iRef =
-    header.indexOf(
-      "pScripRefKey"
-    );
+  const indexes = {
+    pSymbol: header.indexOf("pSymbol"),
+    pExchSeg: header.indexOf("pExchSeg"),
+    pTrdSymbol: header.indexOf("pTrdSymbol"),
+    pScripRefKey: header.indexOf("pScripRefKey")
+  };
 
   if (
-    iSymbol < 0 ||
-    iExchange < 0 ||
-    iTrading < 0 ||
-    iRef < 0
+    indexes.pSymbol < 0 ||
+    indexes.pExchSeg < 0
   ) {
-
     throw new Error(
       "Required Scripmaster fields missing. Header: " +
       header.join(", ")
     );
   }
 
-  const rows = [];
+  const candidates = [];
 
-  for (
-    let i = 1;
-    i < lines.length;
-    i++
-  ) {
+  for (let i = 1; i < lines.length; i++) {
+    const row = parseCsvLine(lines[i]);
 
-    const row =
-      parseCsvLine(
-        lines[i]
-      );
+    const exchange = String(
+      row[indexes.pExchSeg] || ""
+    )
+      .trim()
+      .toLowerCase();
 
-    const exchange =
-      String(
-        row[iExchange] || ""
-      )
-        .trim()
-        .toLowerCase();
-
-    if (
-      exchange !== "nse_cm"
-    ) {
+    if (exchange !== "nse_cm") {
       continue;
     }
 
-    const pSymbol =
-      String(
-        row[iSymbol] || ""
-      ).trim();
+    const pSymbol = String(
+      row[indexes.pSymbol] || ""
+    ).trim();
 
     const pTrdSymbol =
-      String(
-        row[iTrading] || ""
-      ).trim();
+      indexes.pTrdSymbol >= 0
+        ? String(
+            row[indexes.pTrdSymbol] || ""
+          ).trim()
+        : "";
 
     const pScripRefKey =
-      String(
-        row[iRef] || ""
-      ).trim();
+      indexes.pScripRefKey >= 0
+        ? String(
+            row[indexes.pScripRefKey] || ""
+          ).trim()
+        : "";
 
-    const ref =
-      pScripRefKey
-        .toUpperCase()
-        .replace(
-          /-EQ$/i,
-          ""
-        );
+    const tradingClean = pTrdSymbol
+      .toUpperCase()
+      .replace(/-EQ$/i, "");
 
-    const trading =
-      pTrdSymbol
-        .toUpperCase()
-        .replace(
-          /-EQ$/i,
-          ""
-        );
+    const refClean = pScripRefKey
+      .toUpperCase()
+      .replace(/-EQ$/i, "");
 
     if (
-      ref === "HDFCBANK" ||
-      trading === "HDFCBANK"
+      tradingClean === "HDFCBANK" ||
+      refClean === "HDFCBANK"
     ) {
-
-      rows.push({
+      candidates.push({
+        instrument_token: pSymbol,
+        exchange_segment: "nse_cm",
         pSymbol,
         pTrdSymbol,
         pScripRefKey
@@ -237,101 +178,74 @@ function findHdfcRows(csvText) {
     }
   }
 
-  if (!rows.length) {
-
+  if (!candidates.length) {
     throw new Error(
-      "HDFCBANK Scripmaster row nahi mila."
+      "HDFCBANK ka NSE-CM Scripmaster token nahi mila."
     );
   }
 
-  return rows;
+  return candidates;
 }
 
-function unique(values) {
-
-  return [
-    ...new Set(
-      values
-        .map(
-          value =>
-            String(
-              value || ""
-            ).trim()
-        )
-        .filter(Boolean)
-    )
-  ];
-}
-
-async function testQuote(
-  baseUrl,
-  identifier
-) {
-
-  const cleanBaseUrl =
-    String(baseUrl)
-      .replace(
-        /\/+$/,
-        ""
-      );
-
+async function getQuote(instrumentToken) {
   const url =
-    cleanBaseUrl +
-    "/script-details/1.0/quotes/neosymbol/" +
-    encodeURIComponent(
-      identifier
-    ) +
-    "/all";
+    QUOTE_BASE_URL +
+    "/script-details/1.0/quotes";
 
-  const response =
-    await fetch(
-      url,
+  const payload = {
+    instrument_tokens: [
       {
-        method: "GET",
-
-        headers: {
-
-          Authorization:
-            ACCESS_TOKEN,
-
-          "Content-Type":
-            "application/x-www-form-urlencoded",
-
-          Accept:
-            "application/json"
-        },
-
-        cache:
-          "no-store"
+        instrument_token: String(
+          instrumentToken
+        ),
+        exchange_segment: "nse_cm"
       }
-    );
+    ],
 
-  const result =
-    await readResponse(
-      response
-    );
+    quote_type: "all"
+  };
+
+  const response = await fetch(
+    url,
+    {
+      method: "POST",
+
+      headers: {
+        Authorization: CONSUMER_KEY,
+
+        "Content-Type":
+          "application/json",
+
+        Accept:
+          "application/json"
+      },
+
+      body: JSON.stringify(payload),
+
+      cache: "no-store"
+    }
+  );
+
+  const text = await response.text();
+
+  let data = null;
+
+  try {
+    data = text
+      ? JSON.parse(text)
+      : null;
+  } catch {}
 
   return {
+    httpStatus: response.status,
 
-    identifier,
+    ok: response.ok,
 
-    httpStatus:
-      response.status,
-
-    ok:
-      response.ok,
-
-    json:
-      Boolean(
-        result.data
-      ),
+    request: payload,
 
     response:
-      result.data ||
-      result.text.slice(
-        0,
-        1200
-      )
+      data ||
+      text.slice(0, 2000)
   };
 }
 
@@ -339,23 +253,18 @@ export default async function handler(
   req,
   res
 ) {
-
   // ============================================
   // METHOD
   // ============================================
 
-  if (
-    req.method !== "POST"
-  ) {
-
+  if (req.method !== "POST") {
     return send(
       res,
       405,
       {
         success: false,
 
-        step:
-          "METHOD",
+        step: "METHOD",
 
         error:
           "Use POST method."
@@ -364,173 +273,119 @@ export default async function handler(
   }
 
   // ============================================
-  // ACCESS TOKEN
+  // AUTH CONFIG
   // ============================================
 
-  if (!ACCESS_TOKEN) {
-
+  if (!CONSUMER_KEY) {
     return send(
       res,
       500,
       {
         success: false,
 
-        step:
-          "ENVIRONMENT",
+        step: "ENVIRONMENT",
 
         error:
-          "NEO_ACCESS_TOKEN missing."
+          "NEO_CONSUMER_KEY missing."
       }
     );
   }
 
   try {
-
     // ==========================================
-    // 1. DOWNLOAD SCRIPMASTER
+    // 1. SCRIPMASTER
     // ==========================================
 
     const csv =
       await getScripmaster();
 
     // ==========================================
-    // 2. FIND HDFCBANK
+    // 2. HDFCBANK TOKEN
     // ==========================================
 
-    const rows =
-      findHdfcRows(
-        csv
-      );
+    const candidates =
+      findHdfcBank(csv);
 
     // ==========================================
-    // 3. BUILD POSSIBLE IDENTIFIERS
+    // 3. TRY CANDIDATES
     // ==========================================
 
-    const identifiers =
-      unique(
-        rows.flatMap(
-          row => [
-            row.pSymbol,
-            row.pScripRefKey,
-            row.pTrdSymbol
-          ]
-        )
-      );
-
-    // ==========================================
-    // 4. BASE URL
-    // ==========================================
-
-    const baseUrl =
-      process.env.NEO_QUOTE_BASE_URL ||
-      "https://mis.kotaksecurities.com";
-
-    // ==========================================
-    // 5. TEST IDENTIFIERS
-    // ==========================================
-
-    const results = [];
+    const quoteResults = [];
 
     for (
-      const identifier of
-      identifiers.slice(0, 6)
+      const candidate of candidates
     ) {
-
       const result =
-        await testQuote(
-          baseUrl,
-          identifier
+        await getQuote(
+          candidate.instrument_token
         );
 
-      results.push(
+      quoteResults.push({
+        candidate,
         result
-      );
+      });
 
-      if (
-        result.ok &&
-        result.json
-      ) {
+      if (result.ok) {
         break;
       }
     }
 
     // ==========================================
-    // 6. FIND WORKING IDENTIFIER
+    // 4. WORKING RESPONSE
     // ==========================================
 
     const working =
-      results.find(
+      quoteResults.find(
         item =>
-          item.ok &&
-          item.json
+          item.result.ok
       );
 
     // ==========================================
-    // RESPONSE
+    // 5. RESPONSE
     // ==========================================
 
     return send(
       res,
-      working
-        ? 200
-        : 502,
+      working ? 200 : 502,
       {
-
         success:
-          Boolean(
-            working
-          ),
+          Boolean(working),
 
         step:
           working
-            ? "QUOTE_IDENTIFIER_FOUND"
-            : "QUOTE_IDENTIFIER_TEST",
+            ? "QUOTE_SUCCESS"
+            : "QUOTE_FAILED",
 
         stock:
           "HDFCBANK",
 
-        testedIdentifiers:
-          results.map(
-            item => ({
+        quoteBaseUrl:
+          QUOTE_BASE_URL,
 
-              identifier:
-                item.identifier,
+        candidates,
 
-              httpStatus:
-                item.httpStatus,
-
-              ok:
-                item.ok,
-
-              json:
-                item.json
-            })
-          ),
-
-        workingIdentifier:
+        workingToken:
           working
-            ? working.identifier
+            ? working.candidate
+                .instrument_token
             : null,
 
         workingResponse:
           working
-            ? working.response
+            ? working.result.response
             : null,
 
         allResponses:
-          results
+          quoteResults
       }
     );
 
   } catch (error) {
-
     return send(
       res,
       502,
       {
-
-        success:
-          false,
+        success: false,
 
         step:
           "DIAGNOSTIC",
