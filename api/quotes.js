@@ -1,14 +1,26 @@
 // ============================================
 // PROTOTYPE-1
 // KOTAK NEO LIVE QUOTES
-// DIAGNOSTIC VERSION
+// FINAL CHUNKED QUOTES FLOW
 // api/quotes.js
 // ============================================
 
-const ACCESS_TOKEN = process.env.NEO_ACCESS_TOKEN;
-const MOBILE = process.env.NEO_MOBILE;
-const UCC = process.env.NEO_UCC;
-const MPIN = process.env.NEO_MPIN;
+const ACCESS_TOKEN =
+  process.env.NEO_ACCESS_TOKEN;
+
+const MOBILE =
+  process.env.NEO_MOBILE;
+
+const UCC =
+  process.env.NEO_UCC;
+
+const MPIN =
+  process.env.NEO_MPIN;
+
+
+// ============================================
+// KOTAK V2 LOGIN
+// ============================================
 
 const LOGIN_URL =
   "https://mis.kotaksecurities.com/login/1.0/tradeApiLogin";
@@ -16,10 +28,36 @@ const LOGIN_URL =
 const VALIDATE_URL =
   "https://mis.kotaksecurities.com/login/1.0/tradeApiValidate";
 
+
+// ============================================
+// SCRIPMASTER
+// ============================================
+
 const SCRIPMASTER_URL =
   "https://lapi.kotaksecurities.com/wso2-scripmaster/v1/prod/2026-08-12/transformed-v1/nse_cm-v1.csv";
 
+
+// ============================================
+// QUOTES
+// ============================================
+
+const QUOTES_PATH =
+  "/script-details/1.0/quotes/neosymbol/";
+
+
+// ============================================
+// CHUNK SIZE
+// ============================================
+
+const QUOTE_CHUNK_SIZE = 10;
+
+
+// ============================================
+// NIFTY 50
+// ============================================
+
 const NIFTY_50 = [
+
   "ADANIENT",
   "ADANIPORTS",
   "APOLLOHOSP",
@@ -69,90 +107,229 @@ const NIFTY_50 = [
   "TITAN",
   "TRENT",
   "ULTRACEMCO"
+
 ];
 
-function send(res, status, body) {
-  return res.status(status).json(body);
+
+// ============================================
+// RESPONSE
+// ============================================
+
+function send(
+  res,
+  status,
+  body
+) {
+
+  return res
+    .status(status)
+    .json(body);
+
 }
 
-async function readResponse(response) {
-  const text = await response.text();
+
+// ============================================
+// READ RESPONSE
+// ============================================
+
+async function readResponse(
+  response
+) {
+
+  const text =
+    await response.text();
 
   let data = null;
 
   try {
-    data = text ? JSON.parse(text) : null;
+
+    data =
+      text
+        ? JSON.parse(text)
+        : null;
+
   } catch {
+
     data = null;
+
   }
 
   return {
+
     text,
+
     data
+
   };
+
 }
 
-function normalizeMobile(value) {
-  const mobile = String(value || "")
-    .trim()
-    .replace(/[^\d+]/g, "");
 
-  if (/^\d{10}$/.test(mobile)) {
-    return "+91" + mobile;
+// ============================================
+// MOBILE NORMALIZER
+// ============================================
+
+function normalizeMobile(
+  value
+) {
+
+  const mobile =
+    String(value || "")
+      .trim()
+      .replace(
+        /[^\d+]/g,
+        ""
+      );
+
+  if (
+    /^\d{10}$/.test(
+      mobile
+    )
+  ) {
+
+    return (
+      "+91" +
+      mobile
+    );
+
   }
 
   return mobile;
+
 }
 
-function parseCsvLine(line) {
+
+// ============================================
+// CSV PARSER
+// ============================================
+
+function parseCsvLine(
+  line
+) {
+
   const values = [];
+
   let current = "";
+
   let quoted = false;
 
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
 
-    if (ch === '"') {
-      if (quoted && line[i + 1] === '"') {
+  for (
+    let i = 0;
+    i < line.length;
+    i++
+  ) {
+
+    const ch =
+      line[i];
+
+
+    if (
+      ch === '"'
+    ) {
+
+      if (
+        quoted &&
+        line[i + 1] === '"'
+      ) {
+
         current += '"';
+
         i++;
+
       } else {
-        quoted = !quoted;
+
+        quoted =
+          !quoted;
+
       }
 
       continue;
+
     }
 
-    if (ch === "," && !quoted) {
-      values.push(current.trim());
+
+    if (
+      ch === "," &&
+      !quoted
+    ) {
+
+      values.push(
+        current.trim()
+      );
+
       current = "";
+
     } else {
+
       current += ch;
+
     }
+
   }
 
-  values.push(current.trim());
+
+  values.push(
+    current.trim()
+  );
+
 
   return values;
+
 }
 
-function loadSymbolMap(csvText) {
-  const lines = csvText
-    .split(/\r?\n/)
-    .filter(Boolean);
 
-  if (lines.length < 2) {
+// ============================================
+// LOAD SCRIPMASTER
+// ============================================
+
+function loadSymbolMap(
+  csvText
+) {
+
+  const lines =
+    csvText
+      .split(/\r?\n/)
+      .filter(Boolean);
+
+
+  if (
+    lines.length < 2
+  ) {
+
     throw new Error(
       "SCRIPMASTER: CSV empty hai."
     );
+
   }
 
-  const header = parseCsvLine(lines[0]);
 
-  const iSymbol = header.indexOf("pSymbol");
-  const iExchange = header.indexOf("pExchSeg");
-  const iTrading = header.indexOf("pTrdSymbol");
-  const iRef = header.indexOf("pScripRefKey");
+  const header =
+    parseCsvLine(
+      lines[0]
+    );
+
+
+  const iSymbol =
+    header.indexOf(
+      "pSymbol"
+    );
+
+  const iExchange =
+    header.indexOf(
+      "pExchSeg"
+    );
+
+  const iTrading =
+    header.indexOf(
+      "pTrdSymbol"
+    );
+
+  const iRef =
+    header.indexOf(
+      "pScripRefKey"
+    );
+
 
   if (
     iSymbol < 0 ||
@@ -160,92 +337,171 @@ function loadSymbolMap(csvText) {
     iTrading < 0 ||
     iRef < 0
   ) {
+
     throw new Error(
-      "SCRIPMASTER: Required fields missing. " +
-      "Header: " +
-      header.join(", ")
+      "SCRIPMASTER: Required fields missing."
     );
+
   }
+
 
   const map = {};
 
-  for (let i = 1; i < lines.length; i++) {
-    const row = parseCsvLine(lines[i]);
+
+  for (
+    let i = 1;
+    i < lines.length;
+    i++
+  ) {
+
+    const row =
+      parseCsvLine(
+        lines[i]
+      );
+
 
     const exchange =
-      String(row[iExchange] || "")
+      String(
+        row[iExchange] || ""
+      )
         .trim()
         .toLowerCase();
 
-    if (exchange !== "nse_cm") {
+
+    if (
+      exchange !== "nse_cm"
+    ) {
+
       continue;
+
     }
 
+
     const pSymbol =
-      String(row[iSymbol] || "").trim();
+      String(
+        row[iSymbol] || ""
+      ).trim();
+
 
     const pTrdSymbol =
-      String(row[iTrading] || "").trim();
+      String(
+        row[iTrading] || ""
+      ).trim();
+
 
     const pScripRefKey =
-      String(row[iRef] || "").trim();
+      String(
+        row[iRef] || ""
+      ).trim();
+
 
     if (!pSymbol) {
       continue;
     }
 
+
     const symbol =
       pScripRefKey
         .toUpperCase()
-        .replace(/-EQ$/i, "");
+        .replace(
+          /-EQ$/i,
+          ""
+        );
+
 
     const tradingSymbol =
       pTrdSymbol
         .toUpperCase()
-        .replace(/-EQ$/i, "");
+        .replace(
+          /-EQ$/i,
+          ""
+        );
 
-    for (const target of NIFTY_50) {
+
+    for (
+      const target of NIFTY_50
+    ) {
+
       const cleanTarget =
         target.toUpperCase();
+
 
       if (
         symbol === cleanTarget ||
         tradingSymbol === cleanTarget
       ) {
+
         map[cleanTarget] = {
-          symbol: cleanTarget,
-          neoSymbol: pSymbol,
+
+          symbol:
+            cleanTarget,
+
+          neoSymbol:
+            pSymbol,
+
           pTrdSymbol,
+
           pScripRefKey
+
         };
 
+
         break;
+
       }
+
     }
+
   }
 
+
   return map;
+
 }
 
-async function kotakLogin(totp) {
-  const mobileNumber =
-    normalizeMobile(MOBILE);
 
-  if (!/^\+91\d{10}$/.test(mobileNumber)) {
+// ============================================
+// STEP 1
+// TOTP LOGIN
+// ============================================
+
+async function kotakLogin(
+  totp
+) {
+
+  const mobileNumber =
+    normalizeMobile(
+      MOBILE
+    );
+
+
+  if (
+    !/^\+91\d{10}$/.test(
+      mobileNumber
+    )
+  ) {
+
     throw new Error(
       "TOTP_LOGIN: NEO_MOBILE invalid hai."
     );
+
   }
+
 
   const response =
     await fetch(
       LOGIN_URL,
       {
-        method: "POST",
+
+        method:
+          "POST",
 
         headers: {
+
           Authorization:
-            String(ACCESS_TOKEN).trim(),
+            String(
+              ACCESS_TOKEN
+            ).trim(),
 
           "neo-fin-key":
             "neotradeapi",
@@ -255,128 +511,222 @@ async function kotakLogin(totp) {
 
           Accept:
             "application/json"
+
         },
 
-        body: JSON.stringify({
-          mobileNumber,
-          ucc:
-            String(UCC).trim(),
-          totp
-        })
+        body:
+          JSON.stringify({
+
+            mobileNumber,
+
+            ucc:
+              String(
+                UCC
+              ).trim(),
+
+            totp:
+              String(
+                totp
+              ).trim()
+
+          })
+
       }
     );
 
+
   const result =
-    await readResponse(response);
-
-  if (!result.data) {
-    throw new Error(
-      "TOTP_LOGIN: Kotak ne JSON nahi diya. HTTP " +
-      response.status +
-      ". Response: " +
-      result.text.slice(0, 800)
+    await readResponse(
+      response
     );
+
+
+  if (
+    !result.data
+  ) {
+
+    throw new Error(
+      "TOTP_LOGIN: Kotak non-JSON response. HTTP " +
+      response.status
+    );
+
   }
 
-  if (!response.ok) {
+
+  if (
+    !response.ok
+  ) {
+
+    const message =
+      result
+        .data
+        ?.error?.[0]
+        ?.message ||
+      result
+        .data
+        ?.message ||
+      "Kotak TOTP login failed.";
+
+
     throw new Error(
-      "TOTP_LOGIN FAILED: HTTP " +
-      response.status +
-      ". " +
-      JSON.stringify(result.data).slice(0, 1200)
+      "TOTP_LOGIN: " +
+      message
     );
+
   }
+
 
   const root =
-    result.data?.data ||
+    result
+      .data
+      ?.data ||
     result.data;
+
 
   const sid =
     root?.sid ||
     root?.Sid ||
-    root?.sessionId ||
-    root?.sessionID ||
     root?.viewSid;
+
 
   const auth =
     root?.token ||
     root?.Auth ||
     root?.auth ||
-    root?.Token ||
     root?.viewToken;
 
-  if (!sid || !auth) {
+
+  if (
+    !sid ||
+    !auth
+  ) {
+
     throw new Error(
-      "TOTP_LOGIN: Response mila lekin Sid/Auth nahi mila. " +
-      "Detected fields: " +
-      Object.keys(root || {}).join(", ")
+      "TOTP_LOGIN: Sid/Auth missing."
     );
+
   }
 
+
   return {
-    sid,
-    auth
+
+    sid:
+      String(
+        sid
+      ),
+
+    auth:
+      String(
+        auth
+      )
+
   };
+
 }
 
-async function kotakValidate(session) {
+
+// ============================================
+// STEP 2
+// MPIN VALIDATION
+// ============================================
+
+async function kotakValidate(
+  session
+) {
+
   const response =
     await fetch(
       VALIDATE_URL,
       {
-        method: "POST",
+
+        method:
+          "POST",
 
         headers: {
+
           Authorization:
-            String(ACCESS_TOKEN).trim(),
+            String(
+              ACCESS_TOKEN
+            ).trim(),
 
           "neo-fin-key":
             "neotradeapi",
 
           Sid:
-            String(session.sid).trim(),
+            session.sid,
 
           Auth:
-            String(session.auth).trim(),
+            session.auth,
 
           "Content-Type":
             "application/json",
 
           Accept:
             "application/json"
+
         },
 
-        body: JSON.stringify({
-          mpin:
-            String(MPIN).trim()
-        })
+        body:
+          JSON.stringify({
+
+            mpin:
+              String(
+                MPIN
+              ).trim()
+
+          })
+
       }
     );
 
+
   const result =
-    await readResponse(response);
-
-  if (!result.data) {
-    throw new Error(
-      "MPIN_VALIDATE: Kotak ne JSON nahi diya. HTTP " +
-      response.status +
-      ". Response: " +
-      result.text.slice(0, 800)
+    await readResponse(
+      response
     );
+
+
+  if (
+    !result.data
+  ) {
+
+    throw new Error(
+      "MPIN_VALIDATE: Kotak non-JSON response. HTTP " +
+      response.status
+    );
+
   }
 
-  if (!response.ok) {
+
+  if (
+    !response.ok
+  ) {
+
+    const message =
+      result
+        .data
+        ?.error?.[0]
+        ?.message ||
+      result
+        .data
+        ?.message ||
+      "Kotak MPIN validation failed.";
+
+
     throw new Error(
-      "MPIN_VALIDATE FAILED: HTTP " +
-      response.status +
-      ". " +
-      JSON.stringify(result.data).slice(0, 1200)
+      "MPIN_VALIDATE: " +
+      message
     );
+
   }
+
 
   const root =
-    result.data?.data ||
+    result
+      .data
+      ?.data ||
     result.data;
+
 
   const baseUrl =
     root?.baseUrl ||
@@ -384,465 +734,734 @@ async function kotakValidate(session) {
     root?.BaseUrl ||
     root?.BaseURL;
 
-  if (!baseUrl) {
+
+  if (
+    !baseUrl
+  ) {
+
     throw new Error(
-      "MPIN_VALIDATE: Validation response mila lekin baseUrl nahi mila. " +
-      "Detected fields: " +
-      Object.keys(root || {}).join(", ")
+      "MPIN_VALIDATE: baseUrl missing."
     );
+
   }
 
+
   return {
+
     baseUrl:
-      String(baseUrl)
-        .replace(/\/+$/, "")
+      String(
+        baseUrl
+      ).replace(
+        /\/+$/,
+        ""
+      )
+
   };
+
 }
 
+
+// ============================================
+// STEP 3
+// SCRIPMASTER
+// ============================================
+
 async function getScripmaster() {
+
   const response =
     await fetch(
       SCRIPMASTER_URL,
       {
-        method: "GET",
+
+        method:
+          "GET",
 
         headers: {
+
           Accept:
             "text/csv"
+
         },
 
         cache:
           "no-store"
+
       }
     );
+
 
   const text =
     await response.text();
 
-  if (!response.ok) {
+
+  if (
+    !response.ok
+  ) {
+
     throw new Error(
-      "SCRIPMASTER DOWNLOAD FAILED: HTTP " +
-      response.status +
-      ". " +
-      text.slice(0, 800)
+      "SCRIPMASTER: download failed HTTP " +
+      response.status
     );
+
   }
 
-  if (!text.trim()) {
+
+  if (
+    !text.trim()
+  ) {
+
     throw new Error(
-      "SCRIPMASTER: Empty response."
+      "SCRIPMASTER: empty response."
     );
+
   }
+
 
   return text;
+
 }
+
+
+// ============================================
+// CHUNK ARRAY
+// ============================================
+
+function chunkArray(
+  array,
+  size
+) {
+
+  const result = [];
+
+
+  for (
+    let i = 0;
+    i < array.length;
+    i += size
+  ) {
+
+    result.push(
+      array.slice(
+        i,
+        i + size
+      )
+    );
+
+  }
+
+
+  return result;
+
+}
+
+
+// ============================================
+// STEP 4
+// KOTAK QUOTES
+// ============================================
 
 async function getQuotes(
   baseUrl,
-  symbolMap
+  resolved
 ) {
-  const resolved =
-    NIFTY_50
-      .map(
-        symbol =>
-          symbolMap[symbol]
-      )
-      .filter(Boolean);
 
-  const missing =
-    NIFTY_50.filter(
-      symbol =>
-        !symbolMap[symbol]
+  const chunks =
+    chunkArray(
+      resolved,
+      QUOTE_CHUNK_SIZE
     );
 
-  if (!resolved.length) {
-    throw new Error(
-      "QUOTES: Nifty 50 ka koi symbol resolve nahi hua."
-    );
-  }
 
-  const neoSymbols =
-    resolved.map(
-      item =>
-        item.neoSymbol
-    );
+  const allQuotes = [];
 
-  const encodedSymbols =
-    encodeURIComponent(
-      neoSymbols.join(",")
-    );
+  const failedChunks = [];
 
-  const quoteUrl =
-    baseUrl +
-    "/script-details/1.0/quotes/neosymbol/" +
-    encodedSymbols +
-    "/all";
 
-  const response =
-    await fetch(
-      quoteUrl,
-      {
-        method: "GET",
+  for (
+    let i = 0;
+    i < chunks.length;
+    i++
+  ) {
 
-        headers: {
-          Authorization:
-            String(ACCESS_TOKEN).trim(),
+    const chunk =
+      chunks[i];
 
-          "Content-Type":
-            "application/x-www-form-urlencoded",
 
-          Accept:
-            "application/json"
-        },
+    const neoSymbols =
+      chunk.map(
+        item =>
+          item.neoSymbol
+      );
 
-        cache:
-          "no-store"
+
+    const encodedSymbols =
+      encodeURIComponent(
+        neoSymbols.join(",")
+      );
+
+
+    const quoteUrl =
+      baseUrl +
+      QUOTES_PATH +
+      encodedSymbols +
+      "/all";
+
+
+    try {
+
+      const response =
+        await fetch(
+          quoteUrl,
+          {
+
+            method:
+              "GET",
+
+            headers: {
+
+              Authorization:
+                String(
+                  ACCESS_TOKEN
+                ).trim(),
+
+              "Content-Type":
+                "application/x-www-form-urlencoded",
+
+              Accept:
+                "application/json"
+
+            },
+
+            cache:
+              "no-store"
+
+          }
+        );
+
+
+      const result =
+        await readResponse(
+          response
+        );
+
+
+      if (
+        !result.data
+      ) {
+
+        failedChunks.push({
+
+          chunk:
+            i + 1,
+
+          symbols:
+            chunk.map(
+              item =>
+                item.symbol
+            ),
+
+          status:
+            response.status,
+
+          error:
+            "Non-JSON response",
+
+          rawResponse:
+            result.text.slice(
+              0,
+              1000
+            )
+
+        });
+
+
+        continue;
+
       }
-    );
 
-  const result =
-    await readResponse(response);
 
-  if (!result.data) {
-    return {
-      success: false,
+      if (
+        !response.ok
+      ) {
 
-      status:
-        response.status,
+        failedChunks.push({
 
-      error:
-        "QUOTES: Kotak ne non-JSON response diya.",
+          chunk:
+            i + 1,
 
-      rawResponse:
-        result.text.slice(0, 2000),
+          symbols:
+            chunk.map(
+              item =>
+                item.symbol
+            ),
 
-      resolved,
-      missing
-    };
+          status:
+            response.status,
+
+          error:
+            "Kotak Quotes request failed",
+
+          kotakResponse:
+            result.data
+
+        });
+
+
+        continue;
+
+      }
+
+
+      let quotes = [];
+
+
+      if (
+        Array.isArray(
+          result.data
+        )
+      ) {
+
+        quotes =
+          result.data;
+
+      }
+
+      else if (
+        Array.isArray(
+          result.data.data
+        )
+      ) {
+
+        quotes =
+          result.data.data;
+
+      }
+
+      else if (
+        Array.isArray(
+          result.data.result
+        )
+      ) {
+
+        quotes =
+          result.data.result;
+
+      }
+
+
+      allQuotes.push(
+        ...quotes
+      );
+
+
+    } catch (error) {
+
+      failedChunks.push({
+
+        chunk:
+          i + 1,
+
+        symbols:
+          chunk.map(
+            item =>
+              item.symbol
+          ),
+
+        status:
+          0,
+
+        error:
+          error.message
+
+      });
+
+    }
+
   }
 
-  if (!response.ok) {
-    return {
-      success: false,
-
-      status:
-        response.status,
-
-      error:
-        "QUOTES FAILED: HTTP " +
-        response.status,
-
-      kotakResponse:
-        result.data,
-
-      resolved,
-      missing
-    };
-  }
 
   return {
-    success: true,
 
-    status:
-      response.status,
+    quotes:
+      allQuotes,
 
-    missing,
-    resolved,
+    failedChunks
 
-    data:
-      result.data
   };
+
 }
+
+
+// ============================================
+// MAIN HANDLER
+// ============================================
 
 export default async function handler(
   req,
   res
 ) {
 
-  // ============================================
-  // POST CHECK
-  // ============================================
+  if (
+    req.method !== "POST"
+  ) {
 
-  if (req.method !== "POST") {
-    return send(res, 405, {
-      success: false,
+    return send(
+      res,
+      405,
+      {
 
-      step:
-        "METHOD",
+        success:
+          false,
 
-      error:
-        "Use POST method."
-    });
+        error:
+          "Use POST method."
+
+      }
+    );
+
   }
 
-  // ============================================
+
+  // ==========================================
   // ENVIRONMENT
-  // ============================================
+  // ==========================================
 
-  if (!ACCESS_TOKEN) {
-    return send(res, 500, {
-      success: false,
+  const missing = [];
 
-      step:
-        "ENVIRONMENT",
 
-      error:
-        "NEO_ACCESS_TOKEN missing."
-    });
+  if (!ACCESS_TOKEN)
+    missing.push(
+      "NEO_ACCESS_TOKEN"
+    );
+
+
+  if (!MOBILE)
+    missing.push(
+      "NEO_MOBILE"
+    );
+
+
+  if (!UCC)
+    missing.push(
+      "NEO_UCC"
+    );
+
+
+  if (!MPIN)
+    missing.push(
+      "NEO_MPIN"
+    );
+
+
+  if (
+    missing.length
+  ) {
+
+    return send(
+      res,
+      500,
+      {
+
+        success:
+          false,
+
+        step:
+          "ENVIRONMENT",
+
+        error:
+          "Missing Kotak environment variables.",
+
+        missing
+
+      }
+    );
+
   }
 
-  if (!MOBILE) {
-    return send(res, 500, {
-      success: false,
 
-      step:
-        "ENVIRONMENT",
-
-      error:
-        "NEO_MOBILE missing."
-    });
-  }
-
-  if (!UCC) {
-    return send(res, 500, {
-      success: false,
-
-      step:
-        "ENVIRONMENT",
-
-      error:
-        "NEO_UCC missing."
-    });
-  }
-
-  if (!MPIN) {
-    return send(res, 500, {
-      success: false,
-
-      step:
-        "ENVIRONMENT",
-
-      error:
-        "NEO_MPIN missing."
-    });
-  }
-
-  // ============================================
+  // ==========================================
   // TOTP
-  // ============================================
+  // ==========================================
 
   const totp =
     String(
-      req.body?.totp || ""
+      req.body?.totp ||
+      ""
     ).trim();
 
-  if (!/^\d{6}$/.test(totp)) {
-    return send(res, 400, {
-      success: false,
 
-      step:
-        "TOTP_INPUT",
+  if (
+    !/^\d{6}$/.test(
+      totp
+    )
+  ) {
 
-      error:
-        "Current 6-digit TOTP required."
-    });
+    return send(
+      res,
+      400,
+      {
+
+        success:
+          false,
+
+        step:
+          "TOTP_INPUT",
+
+        error:
+          "Current 6-digit TOTP required."
+
+      }
+    );
+
   }
 
-  // ============================================
-  // EXACT STEP TRACKING
-  // ============================================
 
-  let currentStep =
+  let step =
     "START";
+
 
   try {
 
-    // ==========================================
-    // 1. TOTP LOGIN
-    // ==========================================
+    // ----------------------------------------
+    // TOTP
+    // ----------------------------------------
 
-    currentStep =
+    step =
       "TOTP_LOGIN";
 
+
     const login =
-      await kotakLogin(totp);
+      await kotakLogin(
+        totp
+      );
 
-    // ==========================================
-    // 2. MPIN VALIDATION
-    // ==========================================
 
-    currentStep =
+    // ----------------------------------------
+    // MPIN
+    // ----------------------------------------
+
+    step =
       "MPIN_VALIDATE";
 
+
     const session =
-      await kotakValidate(login);
+      await kotakValidate(
+        login
+      );
 
-    // ==========================================
-    // 3. SCRIPMASTER
-    // ==========================================
 
-    currentStep =
+    // ----------------------------------------
+    // SCRIPMASTER
+    // ----------------------------------------
+
+    step =
       "SCRIPMASTER";
+
 
     const csv =
       await getScripmaster();
 
-    // ==========================================
-    // 4. SYMBOL MAPPING
-    // ==========================================
 
-    currentStep =
+    // ----------------------------------------
+    // SYMBOL MAP
+    // ----------------------------------------
+
+    step =
       "SYMBOL_MAPPING";
 
-    const symbolMap =
-      loadSymbolMap(csv);
 
-    const resolvedSymbols =
-      Object.keys(symbolMap);
+    const symbolMap =
+      loadSymbolMap(
+        csv
+      );
+
+
+    const resolved =
+      NIFTY_50
+        .map(
+          symbol =>
+            symbolMap[
+              symbol
+            ]
+        )
+        .filter(Boolean);
+
 
     const missingSymbols =
       NIFTY_50.filter(
         symbol =>
-          !symbolMap[symbol]
+          !symbolMap[
+            symbol
+          ]
       );
 
-    if (!resolvedSymbols.length) {
-      return send(res, 502, {
-        success: false,
 
-        source:
-          "KOTAK NEO",
+    if (
+      !resolved.length
+    ) {
 
-        step:
-          currentStep,
+      return send(
+        res,
+        502,
+        {
 
-        error:
-          "Scripmaster se Nifty 50 symbols resolve nahi hue.",
+          success:
+            false,
 
-        resolvedCount:
-          0,
+          source:
+            "KOTAK NEO",
 
-        missingSymbols
-      });
+          step,
+
+          error:
+            "No Nifty 50 symbols resolved.",
+
+          resolvedCount:
+            0,
+
+          missingSymbols
+
+        }
+      );
+
     }
 
-    // ==========================================
-    // 5. QUOTES
-    // ==========================================
 
-    currentStep =
+    // ----------------------------------------
+    // QUOTES
+    // ----------------------------------------
+
+    step =
       "QUOTES";
 
-    const quotes =
+
+    const quoteResult =
       await getQuotes(
         session.baseUrl,
-        symbolMap
+        resolved
       );
 
-    if (!quotes.success) {
 
-      return send(res, 502, {
+    // ----------------------------------------
+    // ALL CHUNKS FAILED
+    // ----------------------------------------
 
-        success: false,
+    if (
+      quoteResult.quotes.length === 0
+    ) {
+
+      return send(
+        res,
+        502,
+        {
+
+          success:
+            false,
+
+          source:
+            "KOTAK NEO",
+
+          step,
+
+          error:
+            "All Kotak Quotes chunks failed.",
+
+          requestedCount:
+            resolved.length,
+
+          receivedCount:
+            0,
+
+          missingSymbols,
+
+          chunkSize:
+            QUOTE_CHUNK_SIZE,
+
+          totalChunks:
+            Math.ceil(
+              resolved.length /
+              QUOTE_CHUNK_SIZE
+            ),
+
+          failedChunks:
+            quoteResult.failedChunks
+
+        }
+      );
+
+    }
+
+
+    // ----------------------------------------
+    // PARTIAL / FULL SUCCESS
+    // ----------------------------------------
+
+    return send(
+      res,
+      200,
+      {
+
+        success:
+          true,
 
         source:
           "KOTAK NEO",
 
-        step:
-          currentStep,
+        marketData:
+          "LIVE",
 
-        status:
-          quotes.status,
+        totalRequested:
+          NIFTY_50.length,
 
-        error:
-          quotes.error,
+        totalResolved:
+          resolved.length,
 
-        resolvedCount:
-          quotes.resolved?.length || 0,
+        totalReceived:
+          quoteResult
+            .quotes
+            .length,
 
-        missingSymbols:
-          quotes.missing || [],
+        missingSymbols,
 
-        kotakResponse:
-          quotes.kotakResponse || null,
+        partialFailures:
+          quoteResult
+            .failedChunks
+            .length,
 
-        rawResponse:
-          quotes.rawResponse || null
+        failedChunks:
+          quoteResult
+            .failedChunks,
 
-      });
-    }
+        quotes:
+          quoteResult
+            .quotes
 
-    // ==========================================
-    // SUCCESS
-    // ==========================================
+      }
+    );
 
-    return send(res, 200, {
-
-      success:
-        true,
-
-      source:
-        "KOTAK NEO",
-
-      step:
-        "SUCCESS",
-
-      marketData:
-        "LIVE",
-
-      totalRequested:
-        NIFTY_50.length,
-
-      totalResolved:
-        quotes.resolved.length,
-
-      totalReceived:
-        Array.isArray(
-          quotes.data
-        )
-          ? quotes.data.length
-          : null,
-
-      missingSymbols:
-        quotes.missing,
-
-      quotes:
-        quotes.data
-
-    });
 
   } catch (error) {
 
-    console.error(
-      "Prototype-1 Quotes Error:",
-      currentStep,
-      error
+    return send(
+      res,
+      502,
+      {
+
+        success:
+          false,
+
+        source:
+          "KOTAK NEO",
+
+        step,
+
+        error:
+          error?.message ||
+          String(error)
+
+      }
     );
 
-    // ==========================================
-    // IMPORTANT:
-    // EXACT ERROR WILL BE RETURNED TO FRONTEND
-    // ==========================================
-
-    return send(res, 502, {
-
-      success:
-        false,
-
-      source:
-        "KOTAK NEO",
-
-      step:
-        currentStep,
-
-      error:
-        error?.message ||
-        String(error),
-
-      errorName:
-        error?.name ||
-        null
-
-    });
   }
+
 }
