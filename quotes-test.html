@@ -1,127 +1,354 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+// ============================================
+// PROTOTYPE-1
+// KOTAK NEO QUOTES API
+// api/quotes.js
+// ============================================
 
-  <title>Prototype-1 | Live Quotes Test</title>
+const ACCESS_TOKEN = String(
+  process.env.NEO_ACCESS_TOKEN || ""
+).trim();
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 440px;
-      margin: 40px auto;
-      padding: 20px;
+const BASE_URL =
+  String(
+    process.env.NEO_QUOTE_BASE_URL ||
+      "https://cis.kotaksecurities.com"
+  ).replace(/\/+$/, "");
+
+// ============================================
+// NIFTY 50 STOCKS
+// ============================================
+
+const STOCKS = [
+  ["ADANIENT", "25"],
+  ["ADANIPORTS", "15083"],
+  ["APOLLOHOSP", "157"],
+  ["ASIANPAINT", "236"],
+  ["AXISBANK", "5900"],
+  ["BAJAJ-AUTO", "16669"],
+  ["BAJFINANCE", "317"],
+  ["BAJAJFINSV", "16675"],
+  ["BEL", "383"],
+  ["BHARTIARTL", "10604"],
+  ["CIPLA", "694"],
+  ["COALINDIA", "20374"],
+  ["DRREDDY", "881"],
+  ["EICHERMOT", "910"],
+  ["ETERNAL", "5097"],
+  ["GRASIM", "1232"],
+  ["HCLTECH", "7229"],
+  ["HDFCBANK", "1333"],
+  ["HDFCLIFE", "467"],
+  ["HEROMOTOCO", "1348"],
+  ["HINDALCO", "1363"],
+  ["HINDUNILVR", "1394"],
+  ["ICICIBANK", "4963"],
+  ["INDUSINDBK", "5258"],
+  ["INFY", "1594"],
+  ["ITC", "1660"],
+  ["JIOFIN", "18143"],
+  ["JSWSTEEL", "11723"],
+  ["KOTAKBANK", "1922"],
+  ["LT", "11483"],
+  ["M&M", "2031"],
+  ["MARUTI", "10999"],
+  ["NESTLEIND", "17963"],
+  ["NTPC", "11630"],
+  ["ONGC", "2475"],
+  ["POWERGRID", "14977"],
+  ["RELIANCE", "2885"],
+  ["SBILIFE", "21808"],
+  ["SBIN", "3045"],
+  ["SHRIRAMFIN", "4306"],
+  ["SUNPHARMA", "3351"],
+  ["TATACONSUM", "3432"],
+  ["TATAMOTORS", "3456"],
+  ["TATASTEEL", "3499"],
+  ["TCS", "11536"],
+  ["TECHM", "13538"],
+  ["TITAN", "3506"],
+  ["TRENT", "1964"],
+  ["ULTRACEMCO", "11532"],
+  ["WIPRO", "3787"]
+];
+
+// ============================================
+// HELPERS
+// ============================================
+
+function send(res, status, body) {
+  return res.status(status).json(body);
+}
+
+function number(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+// ============================================
+// SINGLE QUOTE
+// ============================================
+
+async function getQuote(symbol, token) {
+  const neoSymbol =
+    `nse_cm|${token}`;
+
+  const url =
+    `${BASE_URL}/script-details/1.0/quotes/neosymbol/` +
+    `${encodeURIComponent(neoSymbol)}/all`;
+
+  const started =
+    Date.now();
+
+  try {
+    const response =
+      await fetch(url, {
+        method: "GET",
+
+        headers: {
+          Authorization:
+            ACCESS_TOKEN,
+
+          Accept:
+            "application/json"
+        },
+
+        cache:
+          "no-store"
+      });
+
+    const text =
+      await response.text();
+
+    let data = null;
+
+    try {
+      data =
+        text
+          ? JSON.parse(text)
+          : null;
+    } catch {}
+
+    if (
+      !response.ok ||
+      !Array.isArray(data) ||
+      !data.length
+    ) {
+      return {
+        success: false,
+        symbol,
+        token,
+        exchange: "nse_cm",
+        httpStatus:
+          response.status,
+
+        error:
+          data ||
+          text.slice(0, 500),
+
+        responseTimeMs:
+          Date.now() - started
+      };
     }
 
-    h2 {
-      margin-bottom: 8px;
+    const quote =
+      data[0];
+
+    return {
+      success: true,
+
+      symbol,
+      token,
+
+      exchange:
+        quote.exchange ||
+        "nse_cm",
+
+      displaySymbol:
+        quote.display_symbol ||
+        `${symbol}-EQ`,
+
+      ltp:
+        number(quote.ltp),
+
+      change:
+        number(quote.change),
+
+      perChange:
+        number(quote.per_change),
+
+      open:
+        number(quote.ohlc?.open),
+
+      high:
+        number(quote.ohlc?.high),
+
+      low:
+        number(quote.ohlc?.low),
+
+      close:
+        number(quote.ohlc?.close),
+
+      lastTradedQuantity:
+        number(
+          quote.last_traded_quantity
+        ),
+
+      avgCost:
+        number(
+          quote.avg_cost
+        ),
+
+      yearHigh:
+        number(
+          quote.year_high
+        ),
+
+      yearLow:
+        number(
+          quote.year_low
+        ),
+
+      lastUpdated:
+        quote.lstup_time ||
+        null,
+
+      responseTimeMs:
+        Date.now() - started
+    };
+
+  } catch (error) {
+
+    return {
+      success: false,
+
+      symbol,
+      token,
+
+      exchange:
+        "nse_cm",
+
+      error:
+        error?.message ||
+        String(error),
+
+      responseTimeMs:
+        Date.now() - started
+    };
+  }
+}
+
+// ============================================
+// HANDLER
+// ============================================
+
+export default async function handler(
+  req,
+  res
+) {
+
+  // ------------------------------------------
+  // METHOD
+  // ------------------------------------------
+
+  if (req.method !== "GET") {
+    return send(res, 405, {
+      success: false,
+      step: "METHOD",
+      error: "Use GET method."
+    });
+  }
+
+  // ------------------------------------------
+  // TOKEN
+  // ------------------------------------------
+
+  if (!ACCESS_TOKEN) {
+    return send(res, 500, {
+      success: false,
+      step: "ENVIRONMENT",
+      error:
+        "NEO_ACCESS_TOKEN missing."
+    });
+  }
+
+  // ------------------------------------------
+  // START
+  // ------------------------------------------
+
+  const started =
+    Date.now();
+
+  const stocks = [];
+  const errors = [];
+
+  // ------------------------------------------
+  // FETCH 50 QUOTES
+  // ------------------------------------------
+
+  for (
+    const [symbol, token]
+    of STOCKS
+  ) {
+
+    const result =
+      await getQuote(
+        symbol,
+        token
+      );
+
+    if (result.success) {
+      stocks.push(result);
+    } else {
+      errors.push(result);
     }
+  }
 
-    input {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 14px;
-      margin: 15px 0;
-      font-size: 22px;
-      text-align: center;
-      letter-spacing: 5px;
+  // ------------------------------------------
+  // FINAL RESULT
+  // ------------------------------------------
+
+  const totalRequested =
+    STOCKS.length;
+
+  const totalReceived =
+    stocks.length;
+
+  const totalErrors =
+    errors.length;
+
+  const success =
+    totalReceived ===
+    totalRequested;
+
+  return send(
+    res,
+    success ? 200 : 502,
+    {
+      success,
+
+      step:
+        success
+          ? "ALL_QUOTES_SUCCESS"
+          : "QUOTES_COMPLETED_WITH_ERRORS",
+
+      source:
+        "KOTAK NEO",
+
+      baseUrl:
+        BASE_URL,
+
+      totalRequested,
+
+      totalReceived,
+
+      totalErrors,
+
+      durationMs:
+        Date.now() - started,
+
+      stocks,
+
+      errors
     }
-
-    button {
-      width: 100%;
-      padding: 14px;
-      font-size: 18px;
-      cursor: pointer;
-    }
-
-    pre {
-      margin-top: 20px;
-      white-space: pre-wrap;
-      word-break: break-word;
-      overflow-wrap: anywhere;
-    }
-  </style>
-</head>
-
-<body>
-
-  <h2>Kotak Neo Live Quotes Test</h2>
-
-  <p>
-    Current Google Authenticator TOTP enter karo.
-  </p>
-
-  <input
-    id="totp"
-    type="text"
-    inputmode="numeric"
-    maxlength="6"
-    autocomplete="one-time-code"
-    placeholder="6-digit TOTP"
-  >
-
-  <button onclick="getQuotes()">
-    Test Live Quotes
-  </button>
-
-  <pre id="status"></pre>
-
-  <script>
-
-    async function getQuotes() {
-
-      const totp =
-        document.getElementById("totp").value.trim();
-
-      const status =
-        document.getElementById("status");
-
-      if (!/^\d{6}$/.test(totp)) {
-        status.textContent =
-          "Please enter the current 6-digit TOTP.";
-        return;
-      }
-
-      status.textContent =
-        "Creating fresh Kotak session and getting live quotes...";
-
-      try {
-
-        const response =
-          await fetch("/api/quotes", {
-
-            method: "POST",
-
-            headers: {
-              "Content-Type": "application/json"
-            },
-
-            body: JSON.stringify({
-              totp: totp
-            })
-
-          });
-
-        const data =
-          await response.json();
-
-        status.textContent =
-          JSON.stringify(data, null, 2);
-
-        document.getElementById("totp").value = "";
-
-      } catch (error) {
-
-        status.textContent =
-          "Request failed: " +
-          error.message;
-
-      }
-
-    }
-
-  </script>
-
-</body>
-</html>
+  );
+}
