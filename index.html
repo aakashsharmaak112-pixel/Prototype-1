@@ -67,6 +67,11 @@
       border-radius: 10px;
       font-size: 16px;
       margin-bottom: 12px;
+      outline: none;
+    }
+
+    .input-box:focus {
+      border-color: #19c37d;
     }
 
     .button {
@@ -132,6 +137,7 @@
       align-items: center;
       padding: 13px 0;
       border-bottom: 1px solid #252d38;
+      gap: 10px;
     }
 
     .stock:last-child {
@@ -142,6 +148,7 @@
       display: flex;
       align-items: center;
       gap: 12px;
+      min-width: 0;
     }
 
     .rank {
@@ -170,6 +177,7 @@
     .stock-change {
       text-align: right;
       font-weight: bold;
+      flex-shrink: 0;
     }
 
     .positive {
@@ -210,6 +218,18 @@
       word-break: break-word;
     }
 
+    .success-box {
+      display: none;
+      background: #10291f;
+      border: 1px solid #1f694b;
+      color: #7cf0b8;
+      padding: 12px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
     .note {
       color: #8994a3;
       font-size: 12px;
@@ -225,18 +245,6 @@
       line-height: 1.6;
     }
 
-    .investment-summary {
-      background: #0d1218;
-      border-radius: 10px;
-      padding: 14px;
-      margin-bottom: 14px;
-    }
-
-    .investment-title {
-      font-weight: bold;
-      margin-bottom: 8px;
-    }
-
   </style>
 
 </head>
@@ -247,9 +255,7 @@
 <div class="container">
 
 
-  <!-- ====================================== -->
   <!-- HEADER -->
-  <!-- ====================================== -->
 
   <div class="header">
 
@@ -262,9 +268,7 @@
   </div>
 
 
-  <!-- ====================================== -->
   <!-- INVESTMENT + KOTAK -->
-  <!-- ====================================== -->
 
   <div class="card">
 
@@ -277,6 +281,7 @@
       class="input-box"
       type="number"
       min="1"
+      step="1"
       placeholder="Enter amount e.g. 10000"
     >
 
@@ -302,6 +307,12 @@
     ></div>
 
 
+    <div
+      id="successBox"
+      class="success-box"
+    ></div>
+
+
     <button
       id="connectButton"
       type="button"
@@ -322,9 +333,7 @@
   </div>
 
 
-  <!-- ====================================== -->
   <!-- ENGINE STATUS -->
-  <!-- ====================================== -->
 
   <div class="card">
 
@@ -396,9 +405,7 @@
   </div>
 
 
-  <!-- ====================================== -->
   <!-- CURRENT TOP 20 -->
-  <!-- ====================================== -->
 
   <div class="card">
 
@@ -426,9 +433,7 @@
   </div>
 
 
-  <!-- ====================================== -->
   <!-- AI WATCHLIST -->
-  <!-- ====================================== -->
 
   <div class="card">
 
@@ -508,9 +513,7 @@
   </div>
 
 
-  <!-- ====================================== -->
   <!-- AI RECOMMENDATION -->
-  <!-- ====================================== -->
 
   <div class="card">
 
@@ -532,9 +535,7 @@
   </div>
 
 
-  <!-- ====================================== -->
   <!-- FOOTER -->
-  <!-- ====================================== -->
 
   <div class="footer">
 
@@ -554,15 +555,675 @@
 </div>
 
 
-<!-- ========================================= -->
-<!-- IMPORTANT SCRIPT ORDER                    -->
-<!-- ========================================= -->
+<!-- ================================================= -->
+<!-- ORIGINAL PROJECT SCRIPTS                           -->
+<!-- ================================================= -->
 
-<script src="market-data.js"></script>
+<script src="./market-data.js"></script>
 
-<script src="ranking-engine.js"></script>
+<script src="./ranking-engine.js"></script>
 
-<script src="app.js"></script>
+<script src="./app.js"></script>
+
+
+<!-- ================================================= -->
+<!-- STABLE CONNECT CONTROLLER                         -->
+<!-- ================================================= -->
+
+<script>
+
+(function () {
+
+  "use strict";
+
+
+  document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+
+      const connectButton =
+        document.getElementById(
+          "connectButton"
+        );
+
+
+      const totpInput =
+        document.getElementById(
+          "totp"
+        );
+
+
+      const status =
+        document.getElementById(
+          "marketStatus"
+        );
+
+
+      const top20List =
+        document.getElementById(
+          "top20List"
+        );
+
+
+      const errorBox =
+        document.getElementById(
+          "errorBox"
+        );
+
+
+      const successBox =
+        document.getElementById(
+          "successBox"
+        );
+
+
+      if (!connectButton) {
+
+        console.error(
+          "Prototype-1: connectButton not found."
+        );
+
+        return;
+
+      }
+
+
+      console.log(
+        "Prototype-1: Connect controller ready."
+      );
+
+
+      connectButton.addEventListener(
+        "click",
+        async function () {
+
+
+          console.log(
+            "Prototype-1: CONNECT BUTTON CLICKED"
+          );
+
+
+          hideMessages();
+
+
+          const totp =
+            String(
+              totpInput?.value || ""
+            ).trim();
+
+
+          if (!/^\d{6}$/.test(totp)) {
+
+
+            showError(
+              "Current 6-digit Kotak Neo TOTP enter karein."
+            );
+
+
+            if (status) {
+
+              status.innerText =
+                "TOTP REQUIRED";
+
+              status.className =
+                "status-pending";
+
+            }
+
+
+            if (top20List) {
+
+              top20List.innerHTML =
+                `
+                <p class="note">
+                  Valid 6-digit TOTP enter karein.
+                </p>
+                `;
+
+            }
+
+
+            if (totpInput) {
+
+              totpInput.focus();
+
+            }
+
+
+            return;
+
+          }
+
+
+          if (
+            typeof window.fetchMarketData !==
+            "function"
+          ) {
+
+
+            showError(
+              "market-data.js load nahi hua. Page refresh karke dobara try karein."
+            );
+
+
+            if (status) {
+
+              status.innerText =
+                "ENGINE ERROR";
+
+              status.className =
+                "status-error";
+
+            }
+
+
+            return;
+
+          }
+
+
+          connectButton.disabled =
+            true;
+
+
+          connectButton.innerText =
+            "Connecting...";
+
+
+          if (status) {
+
+            status.innerText =
+              "LOADING";
+
+            status.className =
+              "status-pending";
+
+          }
+
+
+          if (top20List) {
+
+            top20List.innerHTML =
+              `
+              <p class="note">
+                Kotak Neo se live market data load ho raha hai...
+              </p>
+              `;
+
+          }
+
+
+          try {
+
+
+            console.log(
+              "Prototype-1: Calling fetchMarketData()"
+            );
+
+
+            const result =
+              await window.fetchMarketData(
+                totp
+              );
+
+
+            console.log(
+              "Prototype-1: fetch result =",
+              result
+            );
+
+
+            if (!result) {
+
+              throw new Error(
+                "Kotak Neo se live market data receive nahi hua."
+              );
+
+            }
+
+
+            const market =
+              window.MARKET_DATA;
+
+
+            const stockMap =
+              market &&
+              market.stocks &&
+              typeof market.stocks === "object"
+                ? market.stocks
+                : {};
+
+
+            const rawStocks =
+              Object.values(
+                stockMap
+              );
+
+
+            if (!rawStocks.length) {
+
+              throw new Error(
+                "Live response mila, lekin stocks frontend mein map nahi hue."
+              );
+
+            }
+
+
+            const enrichedStocks =
+              rawStocks
+                .map(
+                  function (stock) {
+
+                    const cleanSymbol =
+                      String(
+                        stock.symbol ||
+                        stock.displaySymbol ||
+                        ""
+                      )
+                        .replace(
+                          /-EQ$/i,
+                          ""
+                        )
+                        .toUpperCase();
+
+
+                    const master =
+                      Array.isArray(
+                        window.NIFTY_50_STOCKS
+                      )
+                        ? window.NIFTY_50_STOCKS.find(
+                            function (item) {
+
+                              return (
+                                String(
+                                  item.symbol
+                                )
+                                  .toUpperCase()
+                                  ===
+                                cleanSymbol
+                              );
+
+                            }
+                          )
+                        : null;
+
+
+                    return {
+
+                      symbol:
+                        cleanSymbol,
+
+                      name:
+                        master?.name ||
+                        stock.name ||
+                        cleanSymbol,
+
+                      sector:
+                        master?.sector ||
+                        stock.sector ||
+                        "Nifty 50",
+
+                      price:
+                        Number(
+                          stock.price ||
+                          stock.ltp
+                        ) || 0,
+
+                      change:
+                        Number(
+                          stock.perChange ??
+                          stock.change
+                        ) || 0
+
+                    };
+
+                  }
+                )
+                .filter(
+                  function (stock) {
+
+                    return (
+                      stock.symbol &&
+                      stock.price > 0
+                    );
+
+                  }
+                );
+
+
+            if (!enrichedStocks.length) {
+
+              throw new Error(
+                "Valid live stock prices nahi mile."
+              );
+
+            }
+
+
+            enrichedStocks.sort(
+              function (a, b) {
+
+                return (
+                  b.change -
+                  a.change
+                );
+
+              }
+            );
+
+
+            const top20 =
+              enrichedStocks.slice(
+                0,
+                20
+              );
+
+
+            window.TOP_20_STOCKS =
+              top20;
+
+
+            window.REAL_TOP_20 =
+              top20;
+
+
+            renderTop20(
+              top20
+            );
+
+
+            if (status) {
+
+              status.innerText =
+                `LIVE • ${
+                  rawStocks.length
+                }/50`;
+
+              status.className =
+                "status-ready";
+
+            }
+
+
+            if (successBox) {
+
+              successBox.innerText =
+                `Live market data connected successfully. ${rawStocks.length}/50 stocks received.`;
+
+              successBox.style.display =
+                "block";
+
+            }
+
+
+            console.log(
+              "Prototype-1: LIVE MARKET DATA READY",
+              top20
+            );
+
+
+          }
+
+          catch (error) {
+
+
+            console.error(
+              "Prototype-1 CONNECT ERROR:",
+              error
+            );
+
+
+            if (status) {
+
+              status.innerText =
+                "ERROR";
+
+              status.className =
+                "status-error";
+
+            }
+
+
+            if (top20List) {
+
+              top20List.innerHTML =
+                `
+                <p class="note">
+                  Live market data load nahi hua.
+                </p>
+                `;
+
+            }
+
+
+            showError(
+              error?.message ||
+              "Live market data connect karte waqt error aaya."
+            );
+
+
+          }
+
+          finally {
+
+
+            connectButton.disabled =
+              false;
+
+
+            connectButton.innerText =
+              "Connect Live Market Data";
+
+
+          }
+
+        }
+      );
+
+
+      function renderTop20(
+        stocks
+      ) {
+
+
+        if (!top20List) {
+
+          return;
+
+        }
+
+
+        top20List.innerHTML =
+          "";
+
+
+        stocks.forEach(
+          function (
+            stock,
+            index
+          ) {
+
+
+            const row =
+              document.createElement(
+                "div"
+              );
+
+
+            row.className =
+              "stock";
+
+
+            const change =
+              Number(
+                stock.change
+              ) || 0;
+
+
+            const changeClass =
+              change >= 0
+                ? "positive"
+                : "negative";
+
+
+            const sign =
+              change >= 0
+                ? "+"
+                : "";
+
+
+            row.innerHTML =
+              `
+
+              <div class="stock-left">
+
+                <div class="rank">
+                  ${index + 1}
+                </div>
+
+                <div>
+
+                  <div class="stock-name">
+                    ${escapeHTML(
+                      stock.name
+                    )}
+                  </div>
+
+                  <div class="stock-sector">
+                    ${escapeHTML(
+                      stock.symbol
+                    )}
+                    • Nifty 50
+                  </div>
+
+                </div>
+
+              </div>
+
+
+              <div class="stock-change">
+
+                <div class="${changeClass}">
+                  ${sign}${change.toFixed(2)}%
+                </div>
+
+                <div class="stock-sector">
+                  ₹${Number(
+                    stock.price
+                  ).toLocaleString(
+                    "en-IN",
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    }
+                  )}
+                </div>
+
+              </div>
+
+              `;
+
+
+            top20List.appendChild(
+              row
+            );
+
+          }
+        );
+
+      }
+
+
+      function hideMessages() {
+
+
+        if (errorBox) {
+
+          errorBox.style.display =
+            "none";
+
+          errorBox.innerText =
+            "";
+
+        }
+
+
+        if (successBox) {
+
+          successBox.style.display =
+            "none";
+
+          successBox.innerText =
+            "";
+
+        }
+
+      }
+
+
+      function showError(
+        message
+      ) {
+
+
+        if (!errorBox) {
+
+          return;
+
+        }
+
+
+        errorBox.innerText =
+          String(
+            message
+          );
+
+
+        errorBox.style.display =
+          "block";
+
+      }
+
+
+      function escapeHTML(
+        value
+      ) {
+
+
+        return String(
+          value || ""
+        )
+          .replace(
+            /&/g,
+            "&amp;"
+          )
+          .replace(
+            /</g,
+            "&lt;"
+          )
+          .replace(
+            />/g,
+            "&gt;"
+          )
+          .replace(
+            /"/g,
+            "&quot;"
+          )
+          .replace(
+            /'/g,
+            "&#039;"
+          );
+
+      }
+
+
+    }
+  );
+
+})();
+
+</script>
 
 
 </body>
