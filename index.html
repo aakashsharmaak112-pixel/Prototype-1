@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+
   <meta charset="UTF-8">
 
   <meta
@@ -12,6 +13,7 @@
   <title>Prototype-1 | AI Stock Assistant</title>
 
   <style>
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -222,15 +224,32 @@
       padding: 15px 0 25px;
       line-height: 1.6;
     }
+
+    .investment-summary {
+      background: #0d1218;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+
+    .investment-title {
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
   </style>
 
 </head>
+
 
 <body>
 
 <div class="container">
 
+
+  <!-- ====================================== -->
   <!-- HEADER -->
+  <!-- ====================================== -->
 
   <div class="header">
 
@@ -243,11 +262,15 @@
   </div>
 
 
+  <!-- ====================================== -->
   <!-- INVESTMENT + KOTAK -->
+  <!-- ====================================== -->
 
   <div class="card">
 
-    <h2>💰 Investment Amount</h2>
+    <h2>
+      💰 Investment Amount
+    </h2>
 
     <input
       id="amount"
@@ -257,7 +280,10 @@
       placeholder="Enter amount e.g. 10000"
     >
 
-    <h2>🔐 Kotak Neo TOTP</h2>
+
+    <h2>
+      🔐 Kotak Neo TOTP
+    </h2>
 
     <input
       id="totp"
@@ -269,10 +295,12 @@
       autocomplete="one-time-code"
     >
 
+
     <div
       id="errorBox"
       class="error-box"
     ></div>
+
 
     <button
       id="connectButton"
@@ -281,6 +309,7 @@
     >
       Connect Live Market Data
     </button>
+
 
     <button
       id="analyzeButton"
@@ -293,13 +322,19 @@
   </div>
 
 
+  <!-- ====================================== -->
   <!-- ENGINE STATUS -->
+  <!-- ====================================== -->
 
   <div class="card">
 
-    <h2>📊 Engine Status</h2>
+    <h2>
+      📊 Engine Status
+    </h2>
+
 
     <div class="summary">
+
 
       <div class="stat">
 
@@ -313,6 +348,7 @@
 
       </div>
 
+
       <div class="stat">
 
         <small>
@@ -324,6 +360,7 @@
         </strong>
 
       </div>
+
 
       <div class="stat">
 
@@ -340,6 +377,7 @@
 
       </div>
 
+
       <div class="stat">
 
         <small>
@@ -352,18 +390,22 @@
 
       </div>
 
+
     </div>
 
   </div>
 
 
-  <!-- TOP 20 -->
+  <!-- ====================================== -->
+  <!-- CURRENT TOP 20 -->
+  <!-- ====================================== -->
 
   <div class="card">
 
     <h2>
       🏆 Current Top 20
     </h2>
+
 
     <div id="top20List">
 
@@ -375,6 +417,7 @@
 
     </div>
 
+
     <p class="note">
       Live ranking available market data
       ke basis par calculate ho rahi hai.
@@ -383,7 +426,9 @@
   </div>
 
 
+  <!-- ====================================== -->
   <!-- AI WATCHLIST -->
+  <!-- ====================================== -->
 
   <div class="card">
 
@@ -391,7 +436,9 @@
       ⭐ AI Watchlist
     </h2>
 
+
     <div id="watchlist">
+
 
       <div class="stock">
 
@@ -413,6 +460,7 @@
 
       </div>
 
+
       <div class="stock">
 
         <div>
@@ -432,6 +480,7 @@
         </span>
 
       </div>
+
 
       <div class="stock">
 
@@ -453,12 +502,15 @@
 
       </div>
 
+
     </div>
 
   </div>
 
 
+  <!-- ====================================== -->
   <!-- AI RECOMMENDATION -->
+  <!-- ====================================== -->
 
   <div class="card">
 
@@ -466,754 +518,53 @@
       🤖 AI Recommendation
     </h2>
 
-    <p
+
+    <div
       id="recommendation"
       class="recommendation"
     >
+
       Investment amount enter karke
       “Analyze Investment” dabaiye.
-    </p>
+
+    </div>
 
   </div>
 
 
+  <!-- ====================================== -->
   <!-- FOOTER -->
+  <!-- ====================================== -->
 
   <div class="footer">
 
     Prototype-1
+
     <br>
 
     AI analysis based on available data.
+
     <br>
 
     Investment ka final decision aapka hai.
 
   </div>
 
+
 </div>
 
 
 <!-- ========================================= -->
-<!-- SCRIPT LOAD ORDER                         -->
-<!-- IMPORTANT: ROOT MARKET-DATA FIRST        -->
+<!-- IMPORTANT SCRIPT ORDER                    -->
 <!-- ========================================= -->
 
-<script src="./market-data.js"></script>
+<script src="market-data.js"></script>
 
-<script src="./ranking-engine.js"></script>
+<script src="ranking-engine.js"></script>
 
-<script src="./app.js"></script>
+<script src="app.js"></script>
 
-
-<!-- ========================================= -->
-<!-- DASHBOARD CONTROLLER                      -->
-<!-- ========================================= -->
-
-<script>
-
-document.addEventListener(
-  "DOMContentLoaded",
-  function () {
-
-    console.log(
-      "Prototype-1 dashboard loaded."
-    );
-
-    console.log(
-      "market-data.js loaded:",
-      typeof window.fetchMarketData === "function"
-    );
-
-    console.log(
-      "ranking-engine.js loaded:",
-      typeof window.runAppRanking === "function"
-    );
-
-
-    const connectButton =
-      document.getElementById(
-        "connectButton"
-      );
-
-    const analyzeButton =
-      document.getElementById(
-        "analyzeButton"
-      );
-
-    const totpInput =
-      document.getElementById(
-        "totp"
-      );
-
-    const amountInput =
-      document.getElementById(
-        "amount"
-      );
-
-    const status =
-      document.getElementById(
-        "marketStatus"
-      );
-
-    const list =
-      document.getElementById(
-        "top20List"
-      );
-
-    const recommendation =
-      document.getElementById(
-        "recommendation"
-      );
-
-    const stockCount =
-      document.getElementById(
-        "stockCount"
-      );
-
-    const errorBox =
-      document.getElementById(
-        "errorBox"
-      );
-
-
-    // ========================================
-    // ERROR
-    // ========================================
-
-    function clearError() {
-
-      errorBox.style.display =
-        "none";
-
-      errorBox.innerText =
-        "";
-
-    }
-
-
-    function showError(message) {
-
-      errorBox.innerText =
-        message || "Unknown error.";
-
-      errorBox.style.display =
-        "block";
-
-    }
-
-
-    // ========================================
-    // STOCK COUNT
-    // ========================================
-
-    if (
-      window.NIFTY_50_STOCKS &&
-      Array.isArray(
-        window.NIFTY_50_STOCKS
-      )
-    ) {
-
-      stockCount.innerText =
-        window.NIFTY_50_STOCKS.length;
-
-    }
-
-
-    // ========================================
-    // ANALYZE
-    // ========================================
-
-    analyzeButton.addEventListener(
-      "click",
-      function () {
-
-        clearError();
-
-        const amount =
-          Number(
-            amountInput.value
-          );
-
-        if (
-          !amount ||
-          amount <= 0
-        ) {
-
-          recommendation.innerText =
-            "Please valid investment amount enter karein.";
-
-          return;
-
-        }
-
-
-        if (
-          typeof window.analyzeInvestmentAmount ===
-          "function"
-        ) {
-
-          try {
-
-            const result =
-              window.analyzeInvestmentAmount(
-                amount
-              );
-
-            if (
-              result &&
-              result.success
-            ) {
-
-              recommendation.innerText =
-                result.message;
-
-              return;
-
-            }
-
-          } catch (error) {
-
-            console.error(
-              "Investment analysis error:",
-              error
-            );
-
-          }
-
-        }
-
-
-        if (amount < 5000) {
-
-          recommendation.innerText =
-            "₹" +
-            amount.toLocaleString("en-IN") +
-            " ke liye limited quality stocks aur risk control par focus karna better hoga.";
-
-        }
-
-        else if (amount < 25000) {
-
-          recommendation.innerText =
-            "₹" +
-            amount.toLocaleString("en-IN") +
-            " ke liye diversification aur risk management ko priority di jayegi.";
-
-        }
-
-        else {
-
-          recommendation.innerText =
-            "₹" +
-            amount.toLocaleString("en-IN") +
-            " ke liye multiple sectors mein diversification aur risk management ko priority di jayegi.";
-
-        }
-
-      }
-    );
-
-
-    // ========================================
-    // BUILD TOP 20 FROM LIVE DATA
-    // ========================================
-
-    function buildTop20Directly() {
-
-      if (
-        !window.NIFTY_50_STOCKS ||
-        !Array.isArray(
-          window.NIFTY_50_STOCKS
-        )
-      ) {
-
-        console.error(
-          "NIFTY_50_STOCKS not available."
-        );
-
-        return [];
-
-      }
-
-
-      if (
-        !window.MARKET_DATA ||
-        !window.MARKET_DATA.stocks
-      ) {
-
-        console.error(
-          "MARKET_DATA not available."
-        );
-
-        return [];
-
-      }
-
-
-      const liveData =
-        window.MARKET_DATA.stocks;
-
-      const rankings = [];
-
-
-      window.NIFTY_50_STOCKS.forEach(
-        function (stock) {
-
-          const symbol =
-            String(
-              stock.symbol || ""
-            )
-              .replace(
-                /-EQ$/i,
-                ""
-              )
-              .toUpperCase();
-
-          const data =
-            liveData[
-              symbol
-            ] || {};
-
-          const price =
-            Number(
-              data.price
-            ) || 0;
-
-          const change =
-            Number(
-              data.change
-            ) || 0;
-
-
-          if (
-            price <= 0
-          ) {
-
-            return;
-
-          }
-
-
-          rankings.push({
-
-            symbol:
-              symbol,
-
-            name:
-              stock.name || symbol,
-
-            sector:
-              stock.sector || "Nifty 50",
-
-            price:
-              price,
-
-            change:
-              change,
-
-            score:
-              change
-
-          });
-
-        }
-      );
-
-
-      rankings.sort(
-        function (a, b) {
-
-          return b.score - a.score;
-
-        }
-      );
-
-
-      return rankings.slice(
-        0,
-        20
-      );
-
-    }
-
-
-    // ========================================
-    // DISPLAY TOP 20
-    // ========================================
-
-    function loadTop20() {
-
-      const top20 =
-        buildTop20Directly();
-
-
-      console.log(
-        "Calculated Top 20:",
-        top20
-      );
-
-
-      if (
-        !top20.length
-      ) {
-
-        status.innerText =
-          "NO DATA";
-
-        status.className =
-          "status-error";
-
-        list.innerHTML =
-          '<p class="note">Live market data received, but Nifty 50 symbols match nahi hue.</p>';
-
-        return;
-
-      }
-
-
-      status.innerText =
-        "LIVE";
-
-      status.className =
-        "status-ready";
-
-
-      list.innerHTML =
-        "";
-
-
-      top20.forEach(
-        function (stock, index) {
-
-          const row =
-            document.createElement(
-              "div"
-            );
-
-          row.className =
-            "stock";
-
-
-          const change =
-            Number(
-              stock.change
-            ) || 0;
-
-
-          const changeClass =
-            change >= 0
-              ? "positive"
-              : "negative";
-
-
-          const changeText =
-            (
-              change >= 0
-                ? "+"
-                : ""
-            ) +
-            change.toFixed(2) +
-            "%";
-
-
-          row.innerHTML = `
-
-            <div class="stock-left">
-
-              <div class="rank">
-                ${index + 1}
-              </div>
-
-              <div>
-
-                <div class="stock-name">
-                  ${escapeHtml(
-                    stock.name
-                  )}
-                </div>
-
-                <div class="stock-sector">
-                  ${escapeHtml(
-                    stock.symbol
-                  )}
-                  •
-                  ${escapeHtml(
-                    stock.sector
-                  )}
-                </div>
-
-              </div>
-
-            </div>
-
-            <div class="stock-change">
-
-              <div class="${changeClass}">
-                ${changeText}
-              </div>
-
-              <div class="stock-sector">
-                ₹${Number(
-                  stock.price
-                ).toLocaleString("en-IN")}
-              </div>
-
-            </div>
-
-          `;
-
-
-          list.appendChild(
-            row
-          );
-
-        }
-      );
-
-    }
-
-
-    // ========================================
-    // ESCAPE HTML
-    // ========================================
-
-    function escapeHtml(value) {
-
-      return String(
-        value || ""
-      )
-        .replace(
-          /&/g,
-          "&amp;"
-        )
-        .replace(
-          /</g,
-          "&lt;"
-        )
-        .replace(
-          />/g,
-          "&gt;"
-        )
-        .replace(
-          /"/g,
-          "&quot;"
-        )
-        .replace(
-          /'/g,
-          "&#039;"
-        );
-
-    }
-
-
-    // ========================================
-    // CONNECT LIVE MARKET DATA
-    // ========================================
-
-    connectButton.addEventListener(
-      "click",
-      async function () {
-
-        clearError();
-
-
-        const totp =
-          String(
-            totpInput.value || ""
-          ).trim();
-
-
-        if (
-          !/^\d{6}$/.test(totp)
-        ) {
-
-          status.innerText =
-            "TOTP REQUIRED";
-
-          status.className =
-            "status-pending";
-
-
-          list.innerHTML =
-            '<p class="note">Current 6-digit TOTP enter karein.</p>';
-
-
-          totpInput.focus();
-
-          return;
-
-        }
-
-
-        // ====================================
-        // VERIFY FRONTEND ENGINE
-        // ====================================
-
-        if (
-          typeof window.fetchMarketData !==
-          "function"
-        ) {
-
-          status.innerText =
-            "ENGINE ERROR";
-
-          status.className =
-            "status-error";
-
-
-          showError(
-            "Root market-data.js load nahi hua."
-          );
-
-          return;
-
-        }
-
-
-        connectButton.disabled =
-          true;
-
-        connectButton.innerText =
-          "Connecting...";
-
-
-        status.innerText =
-          "LOADING";
-
-        status.className =
-          "status-pending";
-
-
-        list.innerHTML =
-          '<p class="note">Kotak Neo se live market data load ho raha hai...</p>';
-
-
-        try {
-
-          /*
-           * IMPORTANT:
-           * Existing root market-data.js
-           * API /api/market-data use karta hai.
-           *
-           * TOTP argument compatibility ke liye
-           * pass kiya ja raha hai.
-           */
-
-          const success =
-            await window.fetchMarketData(
-              totp
-            );
-
-
-          console.log(
-            "fetchMarketData result:",
-            success
-          );
-
-          console.log(
-            "MARKET_DATA:",
-            window.MARKET_DATA
-          );
-
-
-          if (
-            success === true
-          ) {
-
-            loadTop20();
-
-          }
-
-          else {
-
-            status.innerText =
-              "ERROR";
-
-            status.className =
-              "status-error";
-
-
-            list.innerHTML =
-              '<p class="note">Kotak Neo market data request failed.</p>';
-
-
-            showError(
-              "Market data fetch failed. Browser console mein exact response check karein."
-            );
-
-          }
-
-        }
-
-        catch (error) {
-
-          console.error(
-            "Market connection error:",
-            error
-          );
-
-
-          status.innerText =
-            "ERROR";
-
-          status.className =
-            "status-error";
-
-
-          showError(
-            error.message ||
-            "Unexpected connection error."
-          );
-
-        }
-
-        finally {
-
-          connectButton.disabled =
-            false;
-
-          connectButton.innerText =
-            "Connect Live Market Data";
-
-        }
-
-      }
-    );
-
-
-    // ========================================
-    // INITIAL CHECK
-    // ========================================
-
-    if (
-      typeof window.fetchMarketData ===
-      "function"
-    ) {
-
-      console.log(
-        "✅ market-data.js connected"
-      );
-
-    }
-
-    else {
-
-      console.error(
-        "❌ market-data.js NOT loaded"
-      );
-
-    }
-
-
-    console.log(
-      "Prototype-1 dashboard ready."
-    );
-
-  }
-);
-
-</script>
 
 </body>
+
 </html>
