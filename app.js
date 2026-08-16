@@ -1,7 +1,7 @@
 // ============================================
 // PROTOTYPE-1
 // APP CONTROLLER
-// REAL KOTAK NEO MARKET DATA
+// LIVE MARKET DATA + RANKING ENGINE
 // ============================================
 
 
@@ -64,7 +64,7 @@ const NIFTY_50_SYMBOLS = [
 
 
 // ============================================
-// STOCK DISPLAY NAMES
+// DISPLAY NAMES
 // ============================================
 
 const STOCK_NAMES = {
@@ -211,7 +211,7 @@ document.addEventListener(
 
 
     console.log(
-      "Prototype-1 app.js READY"
+      "Prototype-1 event listeners ready."
     );
 
   }
@@ -273,10 +273,10 @@ function normalizeSymbol(symbol) {
 
 
 // ============================================
-// GET LIVE STOCK DATA
+// CONVERT MARKET DATA
 // ============================================
 
-function getLiveStocks() {
+function getMatchedStocks() {
 
   if (
     !window.MARKET_DATA ||
@@ -284,7 +284,7 @@ function getLiveStocks() {
   ) {
 
     console.error(
-      "window.MARKET_DATA.stocks missing"
+      "MARKET_DATA.stocks not available."
     );
 
     return [];
@@ -292,18 +292,18 @@ function getLiveStocks() {
   }
 
 
-  const source =
+  const liveData =
     window.MARKET_DATA.stocks;
 
 
-  const stocks = [];
+  const liveMap = {};
 
 
-  Object.keys(source).forEach(
+  Object.keys(liveData).forEach(
     function (key) {
 
       const raw =
-        source[key];
+        liveData[key];
 
       if (!raw) {
         return;
@@ -347,7 +347,7 @@ function getLiveStocks() {
       }
 
 
-      stocks.push({
+      liveMap[symbol] = {
 
         symbol:
           symbol,
@@ -359,56 +359,20 @@ function getLiveStocks() {
         price:
           price,
 
+        ltp:
+          price,
+
         change:
           Number.isFinite(change)
             ? change
             : 0,
 
-        ltp:
-          price,
+        perChange:
+          Number.isFinite(change)
+            ? change
+            : 0
 
-        displaySymbol:
-          raw.displaySymbol ||
-          symbol
-
-      });
-
-    }
-  );
-
-
-  return stocks;
-
-}
-
-
-// ============================================
-// BUILD TOP 20
-// ============================================
-
-function buildTop20Directly() {
-
-  const liveStocks =
-    getLiveStocks();
-
-
-  console.log(
-    "Live stocks received:",
-    liveStocks.length
-  );
-
-
-  const liveMap = {};
-
-
-  liveStocks.forEach(
-    function (stock) {
-
-      liveMap[
-        normalizeSymbol(
-          stock.symbol
-        )
-      ] = stock;
+      };
 
     }
   );
@@ -436,7 +400,7 @@ function buildTop20Directly() {
 
         console.warn(
           "Nifty symbol not matched:",
-          symbol
+          normalized
         );
 
         return;
@@ -444,26 +408,9 @@ function buildTop20Directly() {
       }
 
 
-      matched.push({
-
-        symbol:
-          normalized,
-
-        name:
-          STOCK_NAMES[normalized] ||
-          stock.name ||
-          normalized,
-
-        price:
-          stock.price,
-
-        change:
-          stock.change,
-
-        displaySymbol:
-          stock.displaySymbol
-
-      });
+      matched.push(
+        stock
+      );
 
     }
   );
@@ -475,26 +422,61 @@ function buildTop20Directly() {
   );
 
 
-  // ========================================
-  // SORT BY % CHANGE
-  // ========================================
+  return matched;
 
-  matched.sort(
-    function (a, b) {
+}
 
-      return (
-        Number(b.change) -
-        Number(a.change)
-      );
 
-    }
+// ============================================
+// BUILD TOP 20 USING RANKING ENGINE
+// ============================================
+
+function buildTop20Directly() {
+
+  const matchedStocks =
+    getMatchedStocks();
+
+
+  if (!matchedStocks.length) {
+
+    return [];
+
+  }
+
+
+  // ------------------------------------------
+  // IMPORTANT:
+  // USE RANKING ENGINE
+  // ------------------------------------------
+
+  if (
+    !window.RANKING_ENGINE ||
+    typeof window.RANKING_ENGINE.getTop20 !==
+      "function"
+  ) {
+
+    console.error(
+      "RANKING_ENGINE.getTop20() not available."
+    );
+
+    return [];
+
+  }
+
+
+  const top20 =
+    window.RANKING_ENGINE.getTop20(
+      matchedStocks
+    );
+
+
+  console.log(
+    "Ranking Engine Top 20:",
+    top20
   );
 
 
-  return matched.slice(
-    0,
-    20
-  );
+  return top20;
 
 }
 
@@ -507,12 +489,6 @@ function loadTop20() {
 
   const top20 =
     buildTop20Directly();
-
-
-  console.log(
-    "FINAL TOP 20:",
-    top20
-  );
 
 
   if (
@@ -536,8 +512,8 @@ function loadTop20() {
         `
         <p class="note">
           Live market data received,
-          but Nifty 50 symbols could not
-          be matched.
+          but Ranking Engine could not
+          calculate Top 20.
         </p>
         `;
 
@@ -554,7 +530,7 @@ function loadTop20() {
       "LIVE • " +
       (
         window.MARKET_DATA.totalStocks ||
-        top20.length
+        50
       ) +
       "/50";
 
@@ -578,8 +554,18 @@ function loadTop20() {
 
       const change =
         Number(
-          stock.change
-        ) || 0;
+          stock.change ??
+          stock.perChange ??
+          0
+        );
+
+
+      const price =
+        Number(
+          stock.price ??
+          stock.ltp ??
+          0
+        );
 
 
       const changeClass =
@@ -643,9 +629,7 @@ function loadTop20() {
           </div>
 
           <div class="stock-sector">
-            ₹${Number(
-              stock.price
-            ).toLocaleString(
+            ₹${price.toLocaleString(
               "en-IN",
               {
                 minimumFractionDigits: 2,
@@ -664,6 +648,20 @@ function loadTop20() {
       );
 
     }
+  );
+
+
+  // ------------------------------------------
+  // SAVE TOP 20 GLOBALLY
+  // ------------------------------------------
+
+  window.TOP_20_STOCKS =
+    top20;
+
+
+  console.log(
+    "TOP_20_STOCKS saved:",
+    window.TOP_20_STOCKS
   );
 
 }
@@ -692,10 +690,6 @@ function setupConnectButton() {
           totpInput?.value || ""
         ).trim();
 
-
-      // --------------------------------------
-      // TOTP CHECK
-      // --------------------------------------
 
       if (
         !/^\d{6}$/.test(totp)
@@ -730,10 +724,6 @@ function setupConnectButton() {
 
       }
 
-
-      // --------------------------------------
-      // MARKET DATA ENGINE CHECK
-      // --------------------------------------
 
       if (
         typeof window.fetchMarketData !==
@@ -793,12 +783,6 @@ function setupConnectButton() {
 
       try {
 
-        /*
-         * IMPORTANT:
-         * fetchMarketData() already handles
-         * /api/quotes.
-         */
-
         const result =
           await window.fetchMarketData(
             totp
@@ -821,7 +805,6 @@ function setupConnectButton() {
 
 
         loadTop20();
-
 
       }
 
@@ -1026,5 +1009,5 @@ window.NIFTY_50_SYMBOLS =
 
 
 console.log(
-  "Prototype-1 app.js loaded successfully."
+  "Prototype-1 app.js READY — Ranking Engine Connected"
 );
