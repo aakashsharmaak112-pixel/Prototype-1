@@ -1,509 +1,905 @@
 // ============================================
 // PROTOTYPE-1
 // APP CONTROLLER
-// LIVE MARKET DATA + RANKING ENGINE
+// app.js
 // ============================================
 
+(function () {
 
-// ============================================
-// NIFTY 50 SYMBOLS
-// ============================================
-
-const NIFTY_50_SYMBOLS = [
-  "ADANIENT",
-  "ADANIPORTS",
-  "APOLLOHOSP",
-  "ASIANPAINT",
-  "AXISBANK",
-  "BAJAJ-AUTO",
-  "BAJFINANCE",
-  "BAJAJFINSV",
-  "BEL",
-  "BHARTIARTL",
-  "CIPLA",
-  "COALINDIA",
-  "DRREDDY",
-  "EICHERMOT",
-  "ETERNAL",
-  "GRASIM",
-  "HCLTECH",
-  "HDFCBANK",
-  "HDFCLIFE",
-  "HEROMOTOCO",
-  "HINDALCO",
-  "HINDUNILVR",
-  "ICICIBANK",
-  "INDUSINDBK",
-  "INFY",
-  "ITC",
-  "JIOFIN",
-  "JSWSTEEL",
-  "KOTAKBANK",
-  "LT",
-  "M&M",
-  "MARUTI",
-  "NESTLEIND",
-  "NTPC",
-  "ONGC",
-  "POWERGRID",
-  "RELIANCE",
-  "SBILIFE",
-  "SBIN",
-  "SHRIRAMFIN",
-  "SUNPHARMA",
-  "TATACONSUM",
-  "TATAMOTORS",
-  "TATASTEEL",
-  "TCS",
-  "TECHM",
-  "TITAN",
-  "TRENT",
-  "ULTRACEMCO",
-  "WIPRO"
-];
+  "use strict";
 
 
-// ============================================
-// DISPLAY NAMES
-// ============================================
+  // ==========================================
+  // ELEMENT HELPERS
+  // ==========================================
 
-const STOCK_NAMES = {
+  function getElement(id) {
 
-  ADANIENT: "Adani Enterprises",
-  ADANIPORTS: "Adani Ports",
-  APOLLOHOSP: "Apollo Hospitals",
-  ASIANPAINT: "Asian Paints",
-  AXISBANK: "Axis Bank",
-  "BAJAJ-AUTO": "Bajaj Auto",
-  BAJFINANCE: "Bajaj Finance",
-  BAJAJFINSV: "Bajaj Finserv",
-  BEL: "Bharat Electronics",
-  BHARTIARTL: "Bharti Airtel",
-  CIPLA: "Cipla",
-  COALINDIA: "Coal India",
-  DRREDDY: "Dr. Reddy's Laboratories",
-  EICHERMOT: "Eicher Motors",
-  ETERNAL: "Eternal",
-  GRASIM: "Grasim Industries",
-  HCLTECH: "HCL Technologies",
-  HDFCBANK: "HDFC Bank",
-  HDFCLIFE: "HDFC Life",
-  HEROMOTOCO: "Hero MotoCorp",
-  HINDALCO: "Hindalco Industries",
-  HINDUNILVR: "Hindustan Unilever",
-  ICICIBANK: "ICICI Bank",
-  INDUSINDBK: "IndusInd Bank",
-  INFY: "Infosys",
-  ITC: "ITC",
-  JIOFIN: "Jio Financial Services",
-  JSWSTEEL: "JSW Steel",
-  KOTAKBANK: "Kotak Mahindra Bank",
-  LT: "Larsen & Toubro",
-  "M&M": "Mahindra & Mahindra",
-  MARUTI: "Maruti Suzuki",
-  NESTLEIND: "Nestle India",
-  NTPC: "NTPC",
-  ONGC: "ONGC",
-  POWERGRID: "Power Grid Corporation",
-  RELIANCE: "Reliance Industries",
-  SBILIFE: "SBI Life Insurance",
-  SBIN: "State Bank of India",
-  SHRIRAMFIN: "Shriram Finance",
-  SUNPHARMA: "Sun Pharmaceutical",
-  TATACONSUM: "Tata Consumer Products",
-  TATAMOTORS: "Tata Motors",
-  TATASTEEL: "Tata Steel",
-  TCS: "Tata Consultancy Services",
-  TECHM: "Tech Mahindra",
-  TITAN: "Titan Company",
-  TRENT: "Trent",
-  ULTRACEMCO: "UltraTech Cement",
-  WIPRO: "Wipro"
+    return document.getElementById(id);
 
-};
+  }
 
 
-// ============================================
-// ELEMENTS
-// ============================================
+  // ==========================================
+  // MARKET STATUS
+  // ==========================================
 
-let connectButton;
-let analyzeButton;
-let totpInput;
-let amountInput;
-let status;
-let list;
-let recommendation;
-let stockCount;
-let errorBox;
+  function setMarketStatus(
+    text,
+    type
+  ) {
+
+    const element =
+      getElement("marketStatus");
+
+    if (!element) {
+      return;
+    }
 
 
-// ============================================
-// INITIALIZE
-// ============================================
+    element.innerText =
+      text;
 
-document.addEventListener(
-  "DOMContentLoaded",
-  function () {
 
-    console.log(
-      "Prototype-1 app.js starting..."
+    element.className =
+      type === "ready"
+        ? "status-ready"
+        : type === "error"
+          ? "status-error"
+          : "status-pending";
+
+  }
+
+
+  // ==========================================
+  // ERROR
+  // ==========================================
+
+  function showAppError(
+    message
+  ) {
+
+    const box =
+      getElement("errorBox");
+
+
+    if (!box) {
+      return;
+    }
+
+
+    box.innerText =
+      message || "Unknown error.";
+
+
+    box.style.display =
+      "block";
+
+  }
+
+
+  function clearAppError() {
+
+    const box =
+      getElement("errorBox");
+
+
+    if (!box) {
+      return;
+    }
+
+
+    box.innerText =
+      "";
+
+
+    box.style.display =
+      "none";
+
+  }
+
+
+  // ==========================================
+  // ESCAPE HTML
+  // ==========================================
+
+  function escapeHtml(
+    value
+  ) {
+
+    return String(
+      value ?? ""
+    )
+      .replace(
+        /&/g,
+        "&amp;"
+      )
+      .replace(
+        /</g,
+        "&lt;"
+      )
+      .replace(
+        />/g,
+        "&gt;"
+      )
+      .replace(
+        /"/g,
+        "&quot;"
+      )
+      .replace(
+        /'/g,
+        "&#039;"
+      );
+
+  }
+
+
+  // ==========================================
+  // FORMAT MONEY
+  // ==========================================
+
+  function formatMoney(
+    value
+  ) {
+
+    const number =
+      Number(value) || 0;
+
+
+    return (
+      "₹" +
+      number.toLocaleString(
+        "en-IN",
+        {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }
+      )
+    );
+
+  }
+
+
+  // ==========================================
+  // DISPLAY TOP 20
+  // ==========================================
+
+  function displayTop20(
+    stocks
+  ) {
+
+    const list =
+      getElement("top20List");
+
+
+    if (!list) {
+      return;
+    }
+
+
+    if (
+      !Array.isArray(stocks) ||
+      stocks.length === 0
+    ) {
+
+      list.innerHTML =
+        `
+        <p class="note">
+          Live market data available nahi hai.
+        </p>
+        `;
+
+      return;
+
+    }
+
+
+    list.innerHTML =
+      "";
+
+
+    stocks.forEach(
+      function (
+        stock,
+        index
+      ) {
+
+        const row =
+          document.createElement(
+            "div"
+          );
+
+
+        row.className =
+          "stock";
+
+
+        const change =
+          Number(
+            stock.change
+          ) || 0;
+
+
+        const changeClass =
+          change >= 0
+            ? "positive"
+            : "negative";
+
+
+        const changeText =
+          (
+            change >= 0
+              ? "+"
+              : ""
+          ) +
+          change.toFixed(2) +
+          "%";
+
+
+        row.innerHTML =
+          `
+
+          <div class="stock-left">
+
+            <div class="rank">
+              ${index + 1}
+            </div>
+
+            <div>
+
+              <div class="stock-name">
+                ${escapeHtml(
+                  stock.name ||
+                  stock.symbol
+                )}
+              </div>
+
+              <div class="stock-sector">
+                ${escapeHtml(
+                  stock.symbol
+                )}
+                •
+                ${escapeHtml(
+                  stock.sector ||
+                  "Nifty 50"
+                )}
+              </div>
+
+            </div>
+
+          </div>
+
+          <div class="stock-change">
+
+            <div class="${changeClass}">
+              ${changeText}
+            </div>
+
+            <div class="stock-sector">
+              ${formatMoney(
+                stock.price
+              )}
+            </div>
+
+          </div>
+
+          `;
+
+
+        list.appendChild(
+          row
+        );
+
+      }
+    );
+
+  }
+
+
+  // ==========================================
+  // LOAD TOP 20
+  // ==========================================
+
+  function loadTop20() {
+
+    if (
+      !window.RANKING_ENGINE ||
+      typeof
+      window.RANKING_ENGINE.calculateTop20 !==
+      "function"
+    ) {
+
+      console.error(
+        "Ranking engine not available."
+      );
+
+      setMarketStatus(
+        "ENGINE ERROR",
+        "error"
+      );
+
+      showAppError(
+        "ranking-engine.js load nahi hua."
+      );
+
+      return [];
+
+    }
+
+
+    const top20 =
+      window.RANKING_ENGINE
+        .calculateTop20();
+
+
+    if (!top20.length) {
+
+      setMarketStatus(
+        "NO DATA",
+        "error"
+      );
+
+
+      displayTop20([]);
+
+
+      return [];
+
+    }
+
+
+    window.TOP_20_STOCKS =
+      top20;
+
+
+    displayTop20(
+      top20
     );
 
 
-    connectButton =
-      document.getElementById(
-        "connectButton"
-      );
+    const received =
+      Array.isArray(
+        window.REAL_MARKET_DATA
+      )
+        ? window.REAL_MARKET_DATA.length
+        : top20.length;
 
-    analyzeButton =
-      document.getElementById(
-        "analyzeButton"
-      );
 
-    totpInput =
-      document.getElementById(
-        "totp"
-      );
+    setMarketStatus(
+      `LIVE • ${received}/50`,
+      "ready"
+    );
 
-    amountInput =
-      document.getElementById(
-        "amount"
-      );
 
-    status =
-      document.getElementById(
-        "marketStatus"
-      );
+    return top20;
 
-    list =
-      document.getElementById(
-        "top20List"
-      );
+  }
 
-    recommendation =
-      document.getElementById(
+
+  // ==========================================
+  // DISPLAY INVESTMENT RESULT
+  // ==========================================
+
+  function displayInvestmentResult(
+    result
+  ) {
+
+    const recommendation =
+      getElement(
         "recommendation"
       );
 
-    stockCount =
-      document.getElementById(
-        "stockCount"
-      );
 
-    errorBox =
-      document.getElementById(
-        "errorBox"
-      );
+    if (!recommendation) {
+      return;
+    }
 
 
-    if (stockCount) {
+    if (
+      !result ||
+      !result.success
+    ) {
 
-      stockCount.innerText =
-        NIFTY_50_SYMBOLS.length;
+      recommendation.innerText =
+        result?.message ||
+        "Investment analysis failed.";
+
+      return;
 
     }
 
 
-    setupAnalyzeButton();
-
-    setupConnectButton();
-
-
-    console.log(
-      "Prototype-1 event listeners ready."
-    );
-
-  }
-);
+    const data =
+      result.data;
 
 
-// ============================================
-// ERROR
-// ============================================
+    if (!data) {
 
-function clearError() {
+      recommendation.innerText =
+        result.message ||
+        "Investment analysis completed.";
 
-  if (!errorBox) {
-    return;
-  }
-
-  errorBox.style.display =
-    "none";
-
-  errorBox.innerText =
-    "";
-
-}
-
-
-function showError(message) {
-
-  if (!errorBox) {
-    return;
-  }
-
-  errorBox.innerText =
-    message ||
-    "Unknown error.";
-
-  errorBox.style.display =
-    "block";
-
-}
-
-
-// ============================================
-// NORMALIZE SYMBOL
-// ============================================
-
-function normalizeSymbol(symbol) {
-
-  return String(
-    symbol || ""
-  )
-    .trim()
-    .replace(
-      /-EQ$/i,
-      ""
-    )
-    .toUpperCase();
-
-}
-
-
-// ============================================
-// CONVERT MARKET DATA
-// ============================================
-
-function getMatchedStocks() {
-
-  if (
-    !window.MARKET_DATA ||
-    !window.MARKET_DATA.stocks
-  ) {
-
-    console.error(
-      "MARKET_DATA.stocks not available."
-    );
-
-    return [];
-
-  }
-
-
-  const liveData =
-    window.MARKET_DATA.stocks;
-
-
-  const liveMap = {};
-
-
-  Object.keys(liveData).forEach(
-    function (key) {
-
-      const raw =
-        liveData[key];
-
-      if (!raw) {
-        return;
-      }
-
-
-      const symbol =
-        normalizeSymbol(
-          raw.symbol ||
-          raw.displaySymbol ||
-          key
-        );
-
-
-      if (!symbol) {
-        return;
-      }
-
-
-      const price =
-        Number(
-          raw.price ??
-          raw.ltp
-        );
-
-
-      const change =
-        Number(
-          raw.change ??
-          raw.perChange
-        );
-
-
-      if (
-        !Number.isFinite(price) ||
-        price <= 0
-      ) {
-
-        return;
-
-      }
-
-
-      liveMap[symbol] = {
-
-        symbol:
-          symbol,
-
-        name:
-          STOCK_NAMES[symbol] ||
-          symbol,
-
-        price:
-          price,
-
-        ltp:
-          price,
-
-        change:
-          Number.isFinite(change)
-            ? change
-            : 0,
-
-        perChange:
-          Number.isFinite(change)
-            ? change
-            : 0
-
-      };
+      return;
 
     }
-  );
 
 
-  const matched = [];
+    let html =
+      "";
 
 
-  NIFTY_50_SYMBOLS.forEach(
-    function (symbol) {
+    // ======================================
+    // SUMMARY
+    // ======================================
 
-      const normalized =
-        normalizeSymbol(
-          symbol
-        );
+    html +=
+      `
+      <div style="
+        margin-bottom:14px;
+      ">
+
+        <strong>
+          Investment Plan
+        </strong>
+
+        <div class="note">
+          Amount:
+          ${formatMoney(
+            data.investmentAmount
+          )}
+        </div>
+
+        <div class="note">
+          Selected Stocks:
+          ${data.buyableStocks}
+        </div>
+
+        <div class="note">
+          Estimated Investment:
+          ${formatMoney(
+            data.totalInvested
+          )}
+        </div>
+
+        <div class="note">
+          Balance:
+          ${formatMoney(
+            data.remaining
+          )}
+        </div>
+
+      </div>
+      `;
 
 
-      const stock =
-        liveMap[
-          normalized
-        ];
+    // ======================================
+    // STOCKS
+    // ======================================
+
+    if (
+      Array.isArray(
+        data.stocks
+      ) &&
+      data.stocks.length
+    ) {
+
+      data.stocks.forEach(
+        function (
+          stock,
+          index
+        ) {
+
+          const change =
+            Number(
+              stock.change
+            ) || 0;
 
 
-      if (!stock) {
-
-        console.warn(
-          "Nifty symbol not matched:",
-          normalized
-        );
-
-        return;
-
-      }
+          const changeClass =
+            change >= 0
+              ? "positive"
+              : "negative";
 
 
-      matched.push(
-        stock
+          html +=
+            `
+            <div
+              class="stock"
+              style="
+                display:block;
+                padding:12px 0;
+              "
+            >
+
+              <div
+                style="
+                  display:flex;
+                  justify-content:space-between;
+                  align-items:center;
+                  gap:10px;
+                "
+              >
+
+                <div>
+
+                  <div class="stock-name">
+                    ${index + 1}.
+                    ${escapeHtml(
+                      stock.name ||
+                      stock.symbol
+                    )}
+                  </div>
+
+                  <div class="stock-sector">
+                    ${escapeHtml(
+                      stock.symbol
+                    )}
+                  </div>
+
+                </div>
+
+                <div
+                  class="stock-change"
+                >
+
+                  <div>
+                    ${stock.quantity}
+                    share${stock.quantity > 1 ? "s" : ""}
+                  </div>
+
+                  <div
+                    class="${changeClass}"
+                  >
+                    ${change >= 0 ? "+" : ""}
+                    ${change.toFixed(2)}%
+                  </div>
+
+                </div>
+
+              </div>
+
+              <div
+                class="note"
+                style="
+                  margin-top:6px;
+                "
+              >
+
+                Price:
+                ${formatMoney(
+                  stock.price
+                )}
+
+                &nbsp; • &nbsp;
+
+                Invest:
+                ${formatMoney(
+                  stock.invested
+                )}
+
+              </div>
+
+            </div>
+            `;
+
+        }
       );
 
     }
-  );
 
 
-  console.log(
-    "Nifty 50 matched:",
-    matched.length
-  );
+    // ======================================
+    // DISCLAIMER
+    // ======================================
+
+    html +=
+      `
+      <div
+        class="note"
+        style="
+          margin-top:14px;
+        "
+      >
+        ${escapeHtml(
+          result.message
+        )}
+        <br><br>
+        Ye calculation live market data
+        aur prototype ranking par based hai.
+        Investment ka final decision aapka hai.
+      </div>
+      `;
 
 
-  return matched;
-
-}
-
-
-// ============================================
-// BUILD TOP 20 USING RANKING ENGINE
-// ============================================
-
-function buildTop20Directly() {
-
-  const matchedStocks =
-    getMatchedStocks();
-
-
-  if (!matchedStocks.length) {
-
-    return [];
+    recommendation.innerHTML =
+      html;
 
   }
 
 
-  // ------------------------------------------
-  // IMPORTANT:
-  // USE RANKING ENGINE
-  // ------------------------------------------
+  // ==========================================
+  // ANALYZE INVESTMENT
+  // ==========================================
 
-  if (
-    !window.RANKING_ENGINE ||
-    typeof window.RANKING_ENGINE.getTop20 !==
+  function analyzeInvestment() {
+
+    clearAppError();
+
+
+    const amountInput =
+      getElement("amount");
+
+
+    const amount =
+      Number(
+        amountInput?.value
+      );
+
+
+    if (
+      !Number.isFinite(amount) ||
+      amount <= 0
+    ) {
+
+      showAppError(
+        "Please valid investment amount enter karein."
+      );
+
+
+      const recommendation =
+        getElement(
+          "recommendation"
+        );
+
+
+      if (recommendation) {
+
+        recommendation.innerText =
+          "Investment amount enter karke dobara Analyze Investment dabaiye.";
+
+      }
+
+
+      return;
+
+    }
+
+
+    // ----------------------------------------
+    // Check live data
+    // ----------------------------------------
+
+    const liveStocks =
+      Array.isArray(
+        window.REAL_MARKET_DATA
+      )
+        ? window.REAL_MARKET_DATA
+        : [];
+
+
+    if (
+      liveStocks.length === 0
+    ) {
+
+      showAppError(
+        "Pehle Connect Live Market Data karke live quotes load karein."
+      );
+
+
+      setMarketStatus(
+        "NO DATA",
+        "error"
+      );
+
+
+      return;
+
+    }
+
+
+    // ----------------------------------------
+    // Check ranking engine
+    // ----------------------------------------
+
+    if (
+      !window.RANKING_ENGINE ||
+      typeof
+      window.RANKING_ENGINE
+        .analyzeInvestmentAmount !==
       "function"
-  ) {
+    ) {
 
-    console.error(
-      "RANKING_ENGINE.getTop20() not available."
-    );
+      showAppError(
+        "Investment engine available nahi hai."
+      );
 
-    return [];
+
+      return;
+
+    }
+
+
+    // ----------------------------------------
+    // Run analysis
+    // ----------------------------------------
+
+    const analyzeButton =
+      getElement(
+        "analyzeButton"
+      );
+
+
+    if (analyzeButton) {
+
+      analyzeButton.disabled =
+        true;
+
+      analyzeButton.innerText =
+        "Calculating...";
+
+    }
+
+
+    try {
+
+      const result =
+        window.RANKING_ENGINE
+          .analyzeInvestmentAmount(
+            amount
+          );
+
+
+      console.log(
+        "Investment analysis result:",
+        result
+      );
+
+
+      displayInvestmentResult(
+        result
+      );
+
+    }
+
+    catch (error) {
+
+      console.error(
+        "Investment analysis error:",
+        error
+      );
+
+
+      showAppError(
+        error?.message ||
+        "Investment analysis failed."
+      );
+
+    }
+
+    finally {
+
+      if (analyzeButton) {
+
+        analyzeButton.disabled =
+          false;
+
+        analyzeButton.innerText =
+          "Analyze Investment";
+
+      }
+
+    }
 
   }
 
 
-  const top20 =
-    window.RANKING_ENGINE.getTop20(
-      matchedStocks
+  // ==========================================
+  // CONNECT LIVE MARKET DATA
+  // ==========================================
+
+  async function connectLiveMarketData() {
+
+    clearAppError();
+
+
+    const button =
+      getElement(
+        "connectButton"
+      );
+
+
+    const totpInput =
+      getElement(
+        "totp"
+      );
+
+
+    const totp =
+      String(
+        totpInput?.value ||
+        ""
+      ).trim();
+
+
+    // ----------------------------------------
+    // TOTP validation
+    // ----------------------------------------
+
+    if (
+      !/^\d{6}$/.test(
+        totp
+      )
+    ) {
+
+      setMarketStatus(
+        "TOTP REQUIRED",
+        "pending"
+      );
+
+
+      showAppError(
+        "Current 6-digit TOTP enter karein."
+      );
+
+
+      totpInput?.focus();
+
+
+      return;
+
+    }
+
+
+    // ----------------------------------------
+    // fetchMarketData check
+    // ----------------------------------------
+
+    if (
+      typeof window.fetchMarketData !==
+      "function"
+    ) {
+
+      setMarketStatus(
+        "ENGINE ERROR",
+        "error"
+      );
+
+
+      showAppError(
+        "market-data.js load nahi hua ya fetchMarketData() available nahi hai."
+      );
+
+
+      return;
+
+    }
+
+
+    // ----------------------------------------
+    // Loading
+    // ----------------------------------------
+
+    if (button) {
+
+      button.disabled =
+        true;
+
+      button.innerText =
+        "Connecting...";
+
+    }
+
+
+    setMarketStatus(
+      "LOADING",
+      "pending"
     );
 
 
-  console.log(
-    "Ranking Engine Top 20:",
-    top20
-  );
-
-
-  return top20;
-
-}
-
-
-// ============================================
-// DISPLAY TOP 20
-// ============================================
-
-function loadTop20() {
-
-  const top20 =
-    buildTop20Directly();
-
-
-  if (
-    !top20.length
-  ) {
-
-    if (status) {
-
-      status.innerText =
-        "NO DATA";
-
-      status.className =
-        "status-error";
-
-    }
+    const list =
+      getElement(
+        "top20List"
+      );
 
 
     if (list) {
@@ -511,503 +907,186 @@ function loadTop20() {
       list.innerHTML =
         `
         <p class="note">
-          Live market data received,
-          but Ranking Engine could not
-          calculate Top 20.
+          Kotak Neo se live market data
+          load ho raha hai...
         </p>
         `;
 
     }
 
-    return;
 
-  }
+    try {
 
-
-  if (status) {
-
-    status.innerText =
-      "LIVE • " +
-      (
-        window.MARKET_DATA.totalStocks ||
-        50
-      ) +
-      "/50";
-
-    status.className =
-      "status-ready";
-
-  }
-
-
-  if (!list) {
-    return;
-  }
-
-
-  list.innerHTML =
-    "";
-
-
-  top20.forEach(
-    function (stock, index) {
-
-      const change =
-        Number(
-          stock.change ??
-          stock.perChange ??
-          0
+      const success =
+        await window.fetchMarketData(
+          totp
         );
 
 
-      const price =
-        Number(
-          stock.price ??
-          stock.ltp ??
-          0
+      console.log(
+        "fetchMarketData result:",
+        success
+      );
+
+
+      if (!success) {
+
+        throw new Error(
+          "Kotak Neo live market data request failed."
         );
 
-
-      const changeClass =
-        change >= 0
-          ? "positive"
-          : "negative";
+      }
 
 
-      const changeText =
-        (
-          change >= 0
-            ? "+"
-            : ""
-        ) +
-        change.toFixed(2) +
-        "%";
+      // --------------------------------------
+      // Top 20 rebuild
+      // --------------------------------------
+
+      loadTop20();
 
 
-      const row =
-        document.createElement(
-          "div"
-        );
+    }
+
+    catch (error) {
+
+      console.error(
+        "Market connection error:",
+        error
+      );
 
 
-      row.className =
-        "stock";
+      setMarketStatus(
+        "ERROR",
+        "error"
+      );
 
 
-      row.innerHTML =
-        `
-
-        <div class="stock-left">
-
-          <div class="rank">
-            ${index + 1}
-          </div>
-
-          <div>
-
-            <div class="stock-name">
-              ${escapeHtml(
-                stock.name
-              )}
-            </div>
-
-            <div class="stock-sector">
-              ${escapeHtml(
-                stock.symbol
-              )}
-            </div>
-
-          </div>
-
-        </div>
-
-
-        <div class="stock-change">
-
-          <div class="${changeClass}">
-            ${changeText}
-          </div>
-
-          <div class="stock-sector">
-            ₹${price.toLocaleString(
-              "en-IN",
-              {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-              }
-            )}
-          </div>
-
-        </div>
-
-        `;
-
-
-      list.appendChild(
-        row
+      showAppError(
+        error?.message ||
+        "Unexpected market data error."
       );
 
     }
-  );
 
+    finally {
 
-  // ------------------------------------------
-  // SAVE TOP 20 GLOBALLY
-  // ------------------------------------------
+      if (button) {
 
-  window.TOP_20_STOCKS =
-    top20;
-
-
-  console.log(
-    "TOP_20_STOCKS saved:",
-    window.TOP_20_STOCKS
-  );
-
-}
-
-
-// ============================================
-// CONNECT LIVE MARKET DATA
-// ============================================
-
-function setupConnectButton() {
-
-  if (!connectButton) {
-    return;
-  }
-
-
-  connectButton.addEventListener(
-    "click",
-    async function () {
-
-      clearError();
-
-
-      const totp =
-        String(
-          totpInput?.value || ""
-        ).trim();
-
-
-      if (
-        !/^\d{6}$/.test(totp)
-      ) {
-
-        if (status) {
-
-          status.innerText =
-            "TOTP REQUIRED";
-
-          status.className =
-            "status-pending";
-
-        }
-
-
-        if (list) {
-
-          list.innerHTML =
-            `
-            <p class="note">
-              Current 6-digit TOTP enter karein.
-            </p>
-            `;
-
-        }
-
-
-        totpInput?.focus();
-
-        return;
-
-      }
-
-
-      if (
-        typeof window.fetchMarketData !==
-        "function"
-      ) {
-
-        if (status) {
-
-          status.innerText =
-            "ENGINE ERROR";
-
-          status.className =
-            "status-error";
-
-        }
-
-
-        showError(
-          "market-data.js load nahi hua."
-        );
-
-        return;
-
-      }
-
-
-      connectButton.disabled =
-        true;
-
-      connectButton.innerText =
-        "Connecting...";
-
-
-      if (status) {
-
-        status.innerText =
-          "LOADING";
-
-        status.className =
-          "status-pending";
-
-      }
-
-
-      if (list) {
-
-        list.innerHTML =
-          `
-          <p class="note">
-            Kotak Neo se live market data
-            load ho raha hai...
-          </p>
-          `;
-
-      }
-
-
-      try {
-
-        const result =
-          await window.fetchMarketData(
-            totp
-          );
-
-
-        console.log(
-          "fetchMarketData result:",
-          result
-        );
-
-
-        if (!result) {
-
-          throw new Error(
-            "Market data request failed."
-          );
-
-        }
-
-
-        loadTop20();
-
-      }
-
-      catch (error) {
-
-        console.error(
-          "Market connection error:",
-          error
-        );
-
-
-        if (status) {
-
-          status.innerText =
-            "ERROR";
-
-          status.className =
-            "status-error";
-
-        }
-
-
-        if (list) {
-
-          list.innerHTML =
-            `
-            <p class="note">
-              Kotak Neo live quotes request failed.
-            </p>
-            `;
-
-        }
-
-
-        showError(
-          error?.message ||
-          "Unexpected connection error."
-        );
-
-      }
-
-      finally {
-
-        connectButton.disabled =
+        button.disabled =
           false;
 
-        connectButton.innerText =
+        button.innerText =
           "Connect Live Market Data";
 
       }
 
     }
-  );
 
-}
-
-
-// ============================================
-// ANALYZE INVESTMENT
-// ============================================
-
-function setupAnalyzeButton() {
-
-  if (!analyzeButton) {
-    return;
   }
 
 
-  analyzeButton.addEventListener(
-    "click",
-    function () {
+  // ==========================================
+  // INITIALIZE APP
+  // ==========================================
 
-      clearError();
+  function initializeApp() {
 
-
-      const amount =
-        Number(
-          amountInput?.value
-        );
-
-
-      if (
-        !amount ||
-        amount <= 0
-      ) {
-
-        if (recommendation) {
-
-          recommendation.innerText =
-            "Please valid investment amount enter karein.";
-
-        }
-
-        return;
-
-      }
-
-
-      if (
-        typeof window.analyzeInvestmentAmount ===
-        "function"
-      ) {
-
-        try {
-
-          const result =
-            window.analyzeInvestmentAmount(
-              amount
-            );
-
-
-          if (
-            result &&
-            result.success &&
-            recommendation
-          ) {
-
-            recommendation.innerText =
-              result.message;
-
-            return;
-
-          }
-
-        }
-
-        catch (error) {
-
-          console.error(
-            "Investment analysis error:",
-            error
-          );
-
-        }
-
-      }
-
-
-      if (!recommendation) {
-        return;
-      }
-
-
-      recommendation.innerText =
-        "₹" +
-        amount.toLocaleString(
-          "en-IN"
-        ) +
-        " ke liye available live market data ke basis par diversification aur risk management ko priority di jayegi.";
-
-    }
-  );
-
-}
-
-
-// ============================================
-// HTML ESCAPE
-// ============================================
-
-function escapeHtml(value) {
-
-  return String(
-    value || ""
-  )
-    .replace(
-      /&/g,
-      "&amp;"
-    )
-    .replace(
-      /</g,
-      "&lt;"
-    )
-    .replace(
-      />/g,
-      "&gt;"
-    )
-    .replace(
-      /"/g,
-      "&quot;"
-    )
-    .replace(
-      /'/g,
-      "&#039;"
+    console.log(
+      "Prototype-1 app.js loaded."
     );
 
-}
+
+    const connectButton =
+      getElement(
+        "connectButton"
+      );
 
 
-// ============================================
-// GLOBAL ACCESS
-// ============================================
-
-window.buildTop20Directly =
-  buildTop20Directly;
-
-window.loadTop20 =
-  loadTop20;
-
-window.NIFTY_50_SYMBOLS =
-  NIFTY_50_SYMBOLS;
+    const analyzeButton =
+      getElement(
+        "analyzeButton"
+      );
 
 
-console.log(
-  "Prototype-1 app.js READY — Ranking Engine Connected"
-);
+    // ----------------------------------------
+    // Connect button
+    // ----------------------------------------
+
+    if (connectButton) {
+
+      connectButton.addEventListener(
+        "click",
+        connectLiveMarketData
+      );
+
+    }
+
+
+    // ----------------------------------------
+    // Analyze button
+    // ----------------------------------------
+
+    if (analyzeButton) {
+
+      analyzeButton.addEventListener(
+        "click",
+        analyzeInvestment
+      );
+
+    }
+
+
+    // ----------------------------------------
+    // Stock count
+    // ----------------------------------------
+
+    const stockCount =
+      getElement(
+        "stockCount"
+      );
+
+
+    if (
+      stockCount &&
+      Array.isArray(
+        window.NIFTY_50_STOCKS
+      )
+    ) {
+
+      stockCount.innerText =
+        window.NIFTY_50_STOCKS.length;
+
+    }
+
+
+    console.log(
+      "Prototype-1 app initialized."
+    );
+
+  }
+
+
+  // ==========================================
+  // START
+  // ==========================================
+
+  if (
+    document.readyState ===
+    "loading"
+  ) {
+
+    document.addEventListener(
+      "DOMContentLoaded",
+      initializeApp
+    );
+
+  }
+
+  else {
+
+    initializeApp();
+
+  }
+
+
+})();
