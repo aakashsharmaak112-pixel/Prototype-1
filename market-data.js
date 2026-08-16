@@ -102,6 +102,7 @@ async function fetchMarketData(totp) {
 
         body: JSON.stringify({
           totp: String(totp || "").trim(),
+
           symbols: NIFTY_50_STOCKS.map(
             stock => stock.symbol
           )
@@ -114,14 +115,10 @@ async function fetchMarketData(totp) {
 
     const text = await response.text();
 
+
     console.log(
       "Kotak API HTTP status:",
       response.status
-    );
-
-    console.log(
-      "Kotak API raw response:",
-      text
     );
 
 
@@ -140,6 +137,12 @@ async function fetchMarketData(totp) {
     }
 
 
+    console.log(
+      "Kotak API response:",
+      data
+    );
+
+
     if (!response.ok) {
 
       throw new Error(
@@ -151,18 +154,9 @@ async function fetchMarketData(totp) {
     }
 
 
-    if (!data.success && !Array.isArray(data.stocks)) {
-
-      throw new Error(
-        data.error ||
-        data.message ||
-        "Market data request failed."
-      );
-
-    }
-
-
-    if (!Array.isArray(data.stocks)) {
+    if (
+      !Array.isArray(data.stocks)
+    ) {
 
       throw new Error(
         "API response me stocks array nahi mila."
@@ -172,7 +166,7 @@ async function fetchMarketData(totp) {
 
 
     // ========================================
-    // CONVERT API ARRAY → SYMBOL MAP
+    // API ARRAY → SYMBOL MAP
     // ========================================
 
     const stockMap = {};
@@ -200,13 +194,31 @@ async function fetchMarketData(totp) {
             .toUpperCase();
 
 
+        // ====================================
+        // IMPORTANT
+        // ====================================
+        // Kotak Neo:
+        //
+        // change    = ₹ price change
+        // perChange = percentage change
+        //
+        // Ranking ke liye percentage change
+        // use karna hai.
+        // ====================================
+
         const price =
           Number(
             quote.ltp
           );
 
 
-        const change =
+        const rupeeChange =
+          Number(
+            quote.change
+          );
+
+
+        const percentageChange =
           Number(
             quote.perChange
           );
@@ -216,50 +228,115 @@ async function fetchMarketData(totp) {
           !Number.isFinite(price) ||
           price <= 0
         ) {
+
           return;
+
         }
 
 
         stockMap[symbol] = {
 
-          symbol: symbol,
+          symbol:
+            symbol,
 
-          price: price,
+          price:
+            price,
 
-          ltp: price,
+          ltp:
+            price,
+
+
+          // ==================================
+          // RANKING VALUE = PERCENTAGE CHANGE
+          // ==================================
 
           change:
-            Number.isFinite(change)
-              ? change
+            Number.isFinite(
+              percentageChange
+            )
+              ? percentageChange
               : 0,
 
+
           perChange:
-            Number.isFinite(change)
-              ? change
+            Number.isFinite(
+              percentageChange
+            )
+              ? percentageChange
               : 0,
+
+
+          // Actual ₹ change separately
+          rupeeChange:
+            Number.isFinite(
+              rupeeChange
+            )
+              ? rupeeChange
+              : 0,
+
 
           displaySymbol:
             quote.displaySymbol ||
             `${symbol}-EQ`,
 
+
           exchange:
             quote.exchange ||
             "nse_cm",
 
+
           token:
-            quote.token || "",
+            quote.token ||
+            "",
+
 
           open:
-            Number(quote.open) || null,
+            Number(
+              quote.open
+            ) || null,
+
 
           high:
-            Number(quote.high) || null,
+            Number(
+              quote.high
+            ) || null,
+
 
           low:
-            Number(quote.low) || null,
+            Number(
+              quote.low
+            ) || null,
+
 
           close:
-            Number(quote.close) || null,
+            Number(
+              quote.close
+            ) || null,
+
+
+          lastTradedQuantity:
+            Number(
+              quote.lastTradedQuantity
+            ) || null,
+
+
+          avgCost:
+            Number(
+              quote.avgCost
+            ) || null,
+
+
+          yearHigh:
+            Number(
+              quote.yearHigh
+            ) || null,
+
+
+          yearLow:
+            Number(
+              quote.yearLow
+            ) || null,
+
 
           lastUpdated:
             quote.lastUpdated ||
@@ -272,17 +349,23 @@ async function fetchMarketData(totp) {
 
 
     // ========================================
-    // SAVE GLOBAL DATA
+    // SAVE MARKET DATA
     // ========================================
 
     window.MARKET_DATA = {
 
-      success: true,
+      success:
+        Object.keys(
+          stockMap
+        ).length > 0,
 
-      stocks: stockMap,
+      stocks:
+        stockMap,
 
       received:
-        Object.keys(stockMap).length,
+        Object.keys(
+          stockMap
+        ).length,
 
       requested:
         data.totalRequested ||
@@ -295,7 +378,7 @@ async function fetchMarketData(totp) {
 
 
     // ========================================
-    // ALSO SAVE ARRAY FORMAT
+    // ARRAY FORMAT ALSO AVAILABLE
     // ========================================
 
     window.REAL_MARKET_DATA =
@@ -303,19 +386,21 @@ async function fetchMarketData(totp) {
 
 
     console.log(
-      "MARKET_DATA:",
+      "Converted MARKET_DATA:",
       window.MARKET_DATA
     );
 
 
     console.log(
       "Live stocks received:",
-      Object.keys(stockMap).length
+      Object.keys(
+        stockMap
+      ).length
     );
 
 
     // ========================================
-    // STATUS
+    // MARKET STATUS
     // ========================================
 
     const marketStatus =
@@ -327,7 +412,10 @@ async function fetchMarketData(totp) {
     if (marketStatus) {
 
       marketStatus.innerText =
-        `LIVE • ${Object.keys(stockMap).length}/${NIFTY_50_STOCKS.length}`;
+        `LIVE • ${
+          Object.keys(stockMap).length
+        }/${NIFTY_50_STOCKS.length}`;
+
 
       marketStatus.className =
         "status-ready";
@@ -335,12 +423,10 @@ async function fetchMarketData(totp) {
     }
 
 
-    // ========================================
-    // RETURN SUCCESS
-    // ========================================
-
     return (
-      Object.keys(stockMap).length > 0
+      Object.keys(
+        stockMap
+      ).length > 0
     );
 
   }
@@ -365,7 +451,8 @@ async function fetchMarketData(totp) {
       requested:
         NIFTY_50_STOCKS.length,
 
-      timestamp: Date.now(),
+      timestamp:
+        Date.now(),
 
       error:
         error?.message ||
@@ -385,6 +472,7 @@ async function fetchMarketData(totp) {
       marketStatus.innerText =
         "ERROR";
 
+
       marketStatus.className =
         "status-error";
 
@@ -399,7 +487,7 @@ async function fetchMarketData(totp) {
 
 
 // ============================================
-// HELPER FUNCTIONS
+// GET SINGLE STOCK
 // ============================================
 
 function getMarketStock(symbol) {
@@ -425,6 +513,10 @@ function getMarketStock(symbol) {
 }
 
 
+// ============================================
+// GET ALL MARKET DATA
+// ============================================
+
 function getAllMarketData() {
 
   if (
@@ -436,10 +528,15 @@ function getAllMarketData() {
 
   }
 
+
   return window.MARKET_DATA.stocks;
 
 }
 
+
+// ============================================
+// MARKET STATUS
+// ============================================
 
 function getMarketStatus() {
 
@@ -465,7 +562,7 @@ function getMarketStatus() {
 
 
 // ============================================
-// EXPORT TO WINDOW
+// EXPORT
 // ============================================
 
 window.fetchMarketData =
@@ -488,7 +585,8 @@ console.log(
   "market-data.js loaded successfully."
 );
 
+
 console.log(
-  "NIFTY 50 stocks:",
+  "NIFTY 50 Stocks:",
   NIFTY_50_STOCKS.length
 );
