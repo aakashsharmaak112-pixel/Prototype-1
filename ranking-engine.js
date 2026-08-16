@@ -1,11 +1,10 @@
 // ============================================
 // PROTOTYPE-1
-// LIVE MARKET RANKING ENGINE
+// RANKING ENGINE
+// LIVE MARKET DATA
 // ============================================
 
 const RANKING_ENGINE = {
-
-  name: "Prototype-1 Ranking Engine",
 
   version: "1.0",
 
@@ -22,155 +21,107 @@ const RANKING_ENGINE = {
       return 0;
     }
 
+
     const change =
       Number(
         stock.change ??
         stock.perChange ??
         0
-      ) || 0;
-
-    const price =
-      Number(
-        stock.price ??
-        stock.ltp ??
-        0
-      ) || 0;
+      );
 
 
-    if (price <= 0) {
-      return -999999;
+    if (!Number.isFinite(change)) {
+      return 0;
     }
 
 
-    // Current prototype ranking:
-    // percentage change = primary score
+    /*
+     * Phase-1 ranking:
+     *
+     * Current live percentage change
+     * is the primary ranking factor.
+     *
+     * Future phases can add:
+     * - momentum
+     * - volatility
+     * - volume
+     * - fundamentals
+     * - sector strength
+     * - risk score
+     */
+
 
     return change;
+
   },
 
 
   // ==========================================
-  // RANK MARKET DATA
+  // RANK STOCKS
   // ==========================================
 
-  rank: function (marketData) {
+  rankStocks: function (stocks) {
 
-    if (!marketData) {
+    if (!Array.isArray(stocks)) {
       return [];
     }
 
 
-    const stocks = Array.isArray(marketData)
-      ? marketData
-      : Object.values(marketData);
+    const ranked =
+      stocks
+        .filter(function (stock) {
+
+          if (!stock) {
+            return false;
+          }
 
 
-    const ranked = [];
+          const price =
+            Number(
+              stock.price ??
+              stock.ltp
+            );
 
 
-    stocks.forEach(function (stock) {
+          return (
+            Number.isFinite(price) &&
+            price > 0
+          );
 
-      if (!stock) {
-        return;
-      }
-
-
-      const symbol =
-        String(
-          stock.symbol || ""
-        )
-          .replace(/-EQ$/i, "")
-          .trim()
-          .toUpperCase();
+        })
 
 
-      if (!symbol) {
-        return;
-      }
+        .map(function (stock) {
+
+          const score =
+            RANKING_ENGINE.calculateScore(
+              stock
+            );
 
 
-      const price =
-        Number(
-          stock.price ??
-          stock.ltp ??
-          0
-        ) || 0;
+          return {
+
+            ...stock,
+
+            score: score
+
+          };
+
+        })
 
 
-      if (price <= 0) {
-        return;
-      }
+        .sort(function (a, b) {
 
+          return (
+            Number(b.score) -
+            Number(a.score)
+          );
 
-      const change =
-        Number(
-          stock.change ??
-          stock.perChange ??
-          0
-        ) || 0;
-
-
-      const score =
-        this.calculateScore(stock);
-
-
-      ranked.push({
-
-        symbol: symbol,
-
-        name:
-          stock.name ||
-          symbol,
-
-        sector:
-          stock.sector ||
-          "Market",
-
-        price: price,
-
-        ltp:
-          Number(
-            stock.ltp ??
-            price
-          ) || price,
-
-        change: change,
-
-        perChange:
-          Number(
-            stock.perChange ??
-            change
-          ) || change,
-
-        score: score,
-
-        token:
-          stock.token || null,
-
-        exchange:
-          stock.exchange || "nse_cm",
-
-        displaySymbol:
-          stock.displaySymbol ||
-          `${symbol}-EQ`
-
-      });
-
-    }, this);
-
-
-    // ========================================
-    // SORT HIGHEST SCORE FIRST
-    // ========================================
-
-    ranked.sort(function (a, b) {
-
-      return b.score - a.score;
-
-    });
+        });
 
 
     return ranked;
+
   },
 
 
@@ -178,56 +129,58 @@ const RANKING_ENGINE = {
   // GET TOP 20
   // ==========================================
 
-  getTop20: function (marketData) {
+  getTop20: function (stocks) {
 
     const ranked =
-      this.rank(marketData);
+      RANKING_ENGINE.rankStocks(
+        stocks
+      );
 
 
     return ranked.slice(
       0,
-      this.targetStocks
+      RANKING_ENGINE.targetStocks
     );
+
   },
 
 
   // ==========================================
-  // GET TOP STOCK
+  // GET RANKING SUMMARY
   // ==========================================
 
-  getTopStock: function (marketData) {
+  getSummary: function (stocks) {
 
-    const top20 =
-      this.getTop20(marketData);
+    const ranked =
+      RANKING_ENGINE.rankStocks(
+        stocks
+      );
 
-
-    return top20.length
-      ? top20[0]
-      : null;
-  },
-
-
-  // ==========================================
-  // ENGINE STATUS
-  // ==========================================
-
-  getStatus: function () {
 
     return {
 
-      name:
-        this.name,
+      success: true,
 
-      version:
-        this.version,
+      totalStocks:
+        ranked.length,
 
       targetStocks:
-        this.targetStocks,
+        RANKING_ENGINE.targetStocks,
 
-      ready:
-        true
+      top20:
+        ranked.slice(
+          0,
+          RANKING_ENGINE.targetStocks
+        ),
+
+      engine:
+        "Prototype Ranking Engine",
+
+      version:
+        RANKING_ENGINE.version
 
     };
+
   }
 
 };
@@ -241,10 +194,6 @@ window.RANKING_ENGINE =
   RANKING_ENGINE;
 
 
-// ============================================
-// COMPATIBILITY FUNCTIONS
-// ============================================
-
 window.calculateStockScore =
   function (stock) {
 
@@ -255,35 +204,27 @@ window.calculateStockScore =
   };
 
 
-window.rankMarketData =
-  function (marketData) {
+window.rankStocks =
+  function (stocks) {
 
-    return RANKING_ENGINE.rank(
-      marketData
+    return RANKING_ENGINE.rankStocks(
+      stocks
     );
 
   };
 
 
 window.getTop20Stocks =
-  function (marketData) {
+  function (stocks) {
 
     return RANKING_ENGINE.getTop20(
-      marketData
+      stocks
     );
 
   };
 
 
-// ============================================
-// READY
-// ============================================
-
 console.log(
-  "Prototype-1 ranking-engine.js READY"
-);
-
-console.log(
-  "Ranking engine:",
-  RANKING_ENGINE.getStatus()
+  "Prototype-1 ranking-engine.js READY",
+  RANKING_ENGINE.version
 );
