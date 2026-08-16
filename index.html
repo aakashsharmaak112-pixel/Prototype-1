@@ -2,7 +2,6 @@
 <html lang="en">
 
 <head>
-
   <meta charset="UTF-8">
 
   <meta
@@ -13,7 +12,6 @@
   <title>Prototype-1 | AI Stock Assistant</title>
 
   <style>
-
     * {
       box-sizing: border-box;
       margin: 0;
@@ -224,7 +222,6 @@
       padding: 15px 0 25px;
       line-height: 1.6;
     }
-
   </style>
 
 </head>
@@ -416,7 +413,6 @@
 
       </div>
 
-
       <div class="stock">
 
         <div>
@@ -436,7 +432,6 @@
         </span>
 
       </div>
-
 
       <div class="stock">
 
@@ -500,15 +495,20 @@
 
 
 <!-- ========================================= -->
-<!-- EXISTING ENGINES -->
+<!-- SCRIPT LOAD ORDER                         -->
+<!-- IMPORTANT: ROOT MARKET-DATA FIRST        -->
 <!-- ========================================= -->
 
-<script src="market-data.js"></script>
+<script src="./market-data.js"></script>
 
-<script src="ranking-engine.js"></script>
+<script src="./ranking-engine.js"></script>
 
-<script src="app.js"></script>
+<script src="./app.js"></script>
 
+
+<!-- ========================================= -->
+<!-- DASHBOARD CONTROLLER                      -->
+<!-- ========================================= -->
 
 <script>
 
@@ -518,6 +518,16 @@ document.addEventListener(
 
     console.log(
       "Prototype-1 dashboard loaded."
+    );
+
+    console.log(
+      "market-data.js loaded:",
+      typeof window.fetchMarketData === "function"
+    );
+
+    console.log(
+      "ranking-engine.js loaded:",
+      typeof window.runAppRanking === "function"
     );
 
 
@@ -568,7 +578,7 @@ document.addEventListener(
 
 
     // ========================================
-    // ERROR DISPLAY
+    // ERROR
     // ========================================
 
     function clearError() {
@@ -611,7 +621,7 @@ document.addEventListener(
 
 
     // ========================================
-    // ANALYZE INVESTMENT
+    // ANALYZE
     // ========================================
 
     analyzeButton.addEventListener(
@@ -706,7 +716,7 @@ document.addEventListener(
 
 
     // ========================================
-    // BUILD TOP 20
+    // BUILD TOP 20 FROM LIVE DATA
     // ========================================
 
     function buildTop20Directly() {
@@ -788,13 +798,13 @@ document.addEventListener(
           rankings.push({
 
             symbol:
-              stock.symbol,
+              symbol,
 
             name:
-              stock.name,
+              stock.name || symbol,
 
             sector:
-              stock.sector,
+              stock.sector || "Nifty 50",
 
             price:
               price,
@@ -829,13 +839,19 @@ document.addEventListener(
 
 
     // ========================================
-    // LOAD TOP 20
+    // DISPLAY TOP 20
     // ========================================
 
     function loadTop20() {
 
       const top20 =
         buildTop20Directly();
+
+
+      console.log(
+        "Calculated Top 20:",
+        top20
+      );
 
 
       if (
@@ -849,7 +865,7 @@ document.addEventListener(
           "status-error";
 
         list.innerHTML =
-          '<p class="note">Live market data received, but valid Nifty 50 prices were not matched.</p>';
+          '<p class="note">Live market data received, but Nifty 50 symbols match nahi hue.</p>';
 
         return;
 
@@ -959,7 +975,7 @@ document.addEventListener(
 
 
     // ========================================
-    // HTML ESCAPE
+    // ESCAPE HTML
     // ========================================
 
     function escapeHtml(value) {
@@ -1002,20 +1018,11 @@ document.addEventListener(
         clearError();
 
 
-        console.log(
-          "Connect Live Market Data clicked."
-        );
-
-
         const totp =
           String(
             totpInput.value || ""
           ).trim();
 
-
-        // ====================================
-        // TOTP VALIDATION
-        // ====================================
 
         if (
           !/^\d{6}$/.test(totp)
@@ -1040,7 +1047,7 @@ document.addEventListener(
 
 
         // ====================================
-        // MARKET ENGINE CHECK
+        // VERIFY FRONTEND ENGINE
         // ====================================
 
         if (
@@ -1055,21 +1062,14 @@ document.addEventListener(
             "status-error";
 
 
-          list.innerHTML =
-            '<p class="note">fetchMarketData() function available nahi hai.</p>';
-
           showError(
-            "market-data.js load nahi hua."
+            "Root market-data.js load nahi hua."
           );
 
           return;
 
         }
 
-
-        // ====================================
-        // LOADING
-        // ====================================
 
         connectButton.disabled =
           true;
@@ -1091,6 +1091,15 @@ document.addEventListener(
 
         try {
 
+          /*
+           * IMPORTANT:
+           * Existing root market-data.js
+           * API /api/market-data use karta hai.
+           *
+           * TOTP argument compatibility ke liye
+           * pass kiya ja raha hai.
+           */
+
           const success =
             await window.fetchMarketData(
               totp
@@ -1102,8 +1111,15 @@ document.addEventListener(
             success
           );
 
+          console.log(
+            "MARKET_DATA:",
+            window.MARKET_DATA
+          );
 
-          if (success) {
+
+          if (
+            success === true
+          ) {
 
             loadTop20();
 
@@ -1119,11 +1135,11 @@ document.addEventListener(
 
 
             list.innerHTML =
-              '<p class="note">Kotak Neo live quotes request failed.</p>';
+              '<p class="note">Kotak Neo market data request failed.</p>';
 
 
             showError(
-              "Kotak Neo live market data request failed. Browser console mein exact API response check karein."
+              "Market data fetch failed. Browser console mein exact response check karein."
             );
 
           }
@@ -1143,10 +1159,6 @@ document.addEventListener(
 
           status.className =
             "status-error";
-
-
-          list.innerHTML =
-            '<p class="note">Connection error.</p>';
 
 
           showError(
@@ -1170,8 +1182,32 @@ document.addEventListener(
     );
 
 
+    // ========================================
+    // INITIAL CHECK
+    // ========================================
+
+    if (
+      typeof window.fetchMarketData ===
+      "function"
+    ) {
+
+      console.log(
+        "✅ market-data.js connected"
+      );
+
+    }
+
+    else {
+
+      console.error(
+        "❌ market-data.js NOT loaded"
+      );
+
+    }
+
+
     console.log(
-      "Prototype-1 event listeners ready."
+      "Prototype-1 dashboard ready."
     );
 
   }
@@ -1180,5 +1216,4 @@ document.addEventListener(
 </script>
 
 </body>
-
 </html>
