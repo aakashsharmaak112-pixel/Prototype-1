@@ -1,8 +1,8 @@
-// ============================================================
+// ============================================
 // PROTOTYPE-1
 // APP ENGINE
-// SMART BUDGET-SAFE DIVERSIFICATION
-// ============================================================
+// LIVE TOP-20 + BUDGET-SAFE DIVERSIFICATION
+// ============================================
 
 (function () {
 
@@ -10,16 +10,13 @@
 
   console.log("Prototype-1 app.js loading...");
 
-  // ==========================================================
-  // CONFIG
-  // ==========================================================
+  const MAX_STOCK_ALLOCATION = 0.35;
+  const MAX_PORTFOLIO_STOCKS = 10;
 
-  const MAX_STOCK_ALLOCATION = 0.30;
-  const MIN_BALANCE_TARGET = 0;
 
-  // ==========================================================
+  // ==========================================
   // DOM READY
-  // ==========================================================
+  // ==========================================
 
   document.addEventListener("DOMContentLoaded", function () {
 
@@ -34,7 +31,12 @@
     const recommendation =
       document.getElementById("recommendation");
 
-    if (!amountInput || !analyzeButton || !recommendation) {
+
+    if (
+      !amountInput ||
+      !analyzeButton ||
+      !recommendation
+    ) {
 
       console.error(
         "Prototype-1: required analysis elements not found."
@@ -43,185 +45,254 @@
       return;
     }
 
-    analyzeButton.addEventListener("click", function () {
 
-      const amount =
-        Number(amountInput.value);
+    // ========================================
+    // ANALYZE BUTTON
+    // ========================================
 
-      if (!Number.isFinite(amount) || amount <= 0) {
+    analyzeButton.addEventListener(
+      "click",
+      function () {
 
-        recommendation.innerHTML =
-          "Please valid investment amount enter karein.";
+        const amount =
+          Number(amountInput.value);
 
-        return;
-      }
 
-      try {
-
-        const result =
-          window.analyzeInvestmentAmount(amount);
-
-        if (result && result.success) {
+        if (
+          !Number.isFinite(amount) ||
+          amount <= 0
+        ) {
 
           recommendation.innerHTML =
-            result.html;
+            "Please valid investment amount enter karein.";
 
-        } else {
+          return;
+        }
 
-          recommendation.innerHTML =
-            result && result.message
-              ? result.message
-              : "Investment analysis available nahi hai.";
+
+        analyzeButton.disabled = true;
+
+
+        try {
+
+          const result =
+            window.analyzeInvestmentAmount(
+              amount
+            );
+
+
+          if (
+            result &&
+            result.success
+          ) {
+
+            recommendation.innerHTML =
+              result.html;
+
+          }
+
+          else {
+
+            recommendation.innerHTML =
+              (
+                result &&
+                result.message
+              ) ||
+              "Investment analysis available nahi hai.";
+
+          }
+
 
         }
 
-      } catch (error) {
+        catch (error) {
 
-        console.error(
-          "Investment analysis error:",
-          error
-        );
+          console.error(
+            "Investment analysis error:",
+            error
+          );
 
-        recommendation.innerHTML =
-          "Investment analysis mein error aaya. Browser console check karein.";
+          recommendation.innerHTML =
+            "Investment analysis mein error aaya.";
+
+        }
+
+
+        finally {
+
+          analyzeButton.disabled = false;
+
+        }
 
       }
-
-    });
+    );
 
   });
 
 
-  // ==========================================================
+  // ==========================================
   // MAIN ANALYSIS
-  // ==========================================================
+  // ==========================================
 
   window.analyzeInvestmentAmount =
     function (amount) {
 
-      amount = Number(amount);
+      amount =
+        Number(amount);
 
-      if (!Number.isFinite(amount) || amount <= 0) {
+
+      if (
+        !Number.isFinite(amount) ||
+        amount <= 0
+      ) {
 
         return {
+
           success: false,
+
           message:
             "Please valid investment amount enter karein."
+
         };
 
       }
 
-      // --------------------------------------------------------
-      // GET TOP 20
-      // --------------------------------------------------------
 
-      let stocks = [];
+      // ========================================
+      // GET CURRENT TOP 20
+      // ========================================
 
-      if (Array.isArray(window.TOP_20_STOCKS)) {
+      let stocks =
+        getTop20Stocks();
+
+
+      // ========================================
+      // FALLBACK MARKET DATA
+      // ========================================
+
+      if (
+        !stocks.length
+      ) {
 
         stocks =
-          window.TOP_20_STOCKS
-            .map(normalizeStock)
-            .filter(isValidStock);
+          getStocksFromMarketData();
 
       }
 
-      // --------------------------------------------------------
-      // FALLBACK TO MARKET DATA
-      // --------------------------------------------------------
 
-      if (!stocks.length) {
+      stocks =
+        stocks
+          .map(normalizeStock)
+          .filter(isValidStock);
 
-        stocks =
-          getStocksFromMarketData()
-            .map(normalizeStock)
-            .filter(isValidStock);
 
-      }
-
-      if (!stocks.length) {
+      if (
+        !stocks.length
+      ) {
 
         return {
+
           success: false,
+
           message:
             "Pehle Connect Live Market Data karke live quotes load karein."
+
         };
 
       }
 
-      // --------------------------------------------------------
-      // SORT BY LIVE RANKING
-      // --------------------------------------------------------
 
-      stocks.sort(function (a, b) {
+      // ========================================
+      // SORT BY LIVE PERFORMANCE
+      // ========================================
 
-        return b.change - a.change;
+      stocks.sort(
+        function (a, b) {
 
-      });
+          return (
+            b.change -
+            a.change
+          );
 
-      // --------------------------------------------------------
+        }
+      );
+
+
+      // ========================================
       // BUILD PORTFOLIO
-      // --------------------------------------------------------
+      // ========================================
 
       const selected =
-        buildBudgetPortfolio(
+        buildDiversifiedPortfolio(
           stocks,
           amount
         );
 
-      if (!selected.length) {
+
+      if (
+        !selected.length
+      ) {
 
         return {
+
           success: false,
+
           message:
-            "Is budget mein Top 20 ke available prices ke basis par whole-share diversified allocation nahi ban paaya."
+            "Current Top 20 ke prices ke basis par is budget mein whole-share allocation nahi ban paaya."
+
         };
 
       }
 
-      // --------------------------------------------------------
-      // TOTAL
-      // --------------------------------------------------------
 
       const totalInvestment =
         selected.reduce(
           function (sum, stock) {
 
-            return sum + stock.investment;
+            return (
+              sum +
+              stock.investment
+            );
 
           },
           0
         );
 
+
+      // Absolute safety:
+      // investment kabhi budget se zyada nahi.
+      const safeTotal =
+        Math.min(
+          totalInvestment,
+          amount
+        );
+
+
       const balance =
         Math.max(
           0,
-          amount - totalInvestment
+          amount -
+          safeTotal
         );
 
-      // --------------------------------------------------------
-      // HTML
-      // --------------------------------------------------------
-
-      const html =
-        buildRecommendationHTML(
-          amount,
-          selected,
-          totalInvestment,
-          balance
-        );
 
       return {
 
         success: true,
 
-        html: html,
+        html:
+          buildRecommendationHTML(
+            amount,
+            selected,
+            safeTotal,
+            balance
+          ),
 
         selectedStocks:
           selected,
 
         totalInvestment:
-          totalInvestment,
+          safeTotal,
 
         balance:
           balance
@@ -231,27 +302,168 @@
     };
 
 
-  // ==========================================================
+  // ==========================================
+  // GET TOP 20
+  // ==========================================
+
+  function getTop20Stocks() {
+
+    const sources = [
+
+      window.TOP_20_STOCKS,
+
+      window.TOP20_STOCKS,
+
+      window.top20Stocks
+
+    ];
+
+
+    for (
+      let i = 0;
+      i < sources.length;
+      i++
+    ) {
+
+      if (
+        Array.isArray(
+          sources[i]
+        ) &&
+        sources[i].length
+      ) {
+
+        return sources[i]
+          .slice(0, 20);
+
+      }
+
+    }
+
+
+    return [];
+
+  }
+
+
+  // ==========================================
+  // MARKET DATA FALLBACK
+  // ==========================================
+
+  function getStocksFromMarketData() {
+
+    const result = [];
+
+    const market =
+      window.MARKET_DATA;
+
+
+    if (
+      !market ||
+      !market.stocks
+    ) {
+
+      return result;
+
+    }
+
+
+    // ARRAY
+
+    if (
+      Array.isArray(
+        market.stocks
+      )
+    ) {
+
+      return market.stocks
+        .slice(0, 20);
+
+    }
+
+
+    // OBJECT
+
+    if (
+      typeof market.stocks ===
+      "object"
+    ) {
+
+      Object.keys(
+        market.stocks
+      ).forEach(
+        function (key) {
+
+          const item =
+            market.stocks[key] ||
+            {};
+
+
+          result.push({
+
+            symbol:
+              item.symbol ||
+              key,
+
+            name:
+              item.name ||
+              item.companyName ||
+              item.displaySymbol ||
+              key,
+
+            sector:
+              item.sector ||
+              "Nifty 50",
+
+            price:
+              item.price ??
+              item.ltp ??
+              item.lastPrice ??
+              0,
+
+            change:
+              item.change ??
+              item.perChange ??
+              item.percentChange ??
+              0
+
+          });
+
+        }
+      );
+
+    }
+
+
+    return result
+      .slice(0, 20);
+
+  }
+
+
+  // ==========================================
   // NORMALIZE STOCK
-  // ==========================================================
+  // ==========================================
 
   function normalizeStock(stock) {
 
-    stock = stock || {};
+    stock =
+      stock || {};
 
-    const rawSymbol =
+
+    const symbol =
       String(
         stock.symbol ||
         stock.neoSymbol ||
         stock.displaySymbol ||
         ""
-      ).trim().toUpperCase();
+      )
+        .replace(
+          /-EQ$/i,
+          ""
+        )
+        .trim()
+        .toUpperCase();
 
-    const symbol =
-      rawSymbol.replace(
-        /-EQ$/i,
-        ""
-      );
 
     const name =
       String(
@@ -259,7 +471,9 @@
         stock.companyName ||
         stock.displaySymbol ||
         symbol
-      ).trim();
+      )
+        .trim();
+
 
     const price =
       Number(
@@ -270,6 +484,7 @@
         0
       );
 
+
     const change =
       Number(
         stock.change ??
@@ -278,527 +493,459 @@
         0
       );
 
+
     const sector =
       String(
         stock.sector ||
         "Nifty 50"
-      ).trim();
+      )
+        .trim();
+
 
     return {
 
-      symbol: symbol,
+      symbol:
+        symbol,
 
-      displaySymbol:
-        rawSymbol,
+      name:
+        name,
 
-      name: name,
+      sector:
+        sector,
 
-      sector: sector,
+      price:
+        price,
 
-      price: price,
-
-      change: change
+      change:
+        change
 
     };
 
   }
 
 
-  // ==========================================================
-  // VALIDATION
-  // ==========================================================
+  // ==========================================
+  // VALID STOCK
+  // ==========================================
 
   function isValidStock(stock) {
 
-    return (
+    return Boolean(
+
       stock &&
+
       stock.symbol &&
-      Number.isFinite(stock.price) &&
+
+      Number.isFinite(
+        stock.price
+      ) &&
+
       stock.price > 0 &&
-      Number.isFinite(stock.change)
+
+      Number.isFinite(
+        stock.change
+      )
+
     );
 
   }
 
 
-  // ==========================================================
-  // MARKET DATA FALLBACK
-  // ==========================================================
+  // ==========================================
+  // DIVERSIFICATION ENGINE
+  // ==========================================
 
-  function getStocksFromMarketData() {
-
-    const result = [];
-
-    const market =
-      window.MARKET_DATA;
-
-    if (!market) {
-
-      return result;
-
-    }
-
-    if (Array.isArray(market.stocks)) {
-
-      return market.stocks;
-
-    }
-
-    if (
-      market.stocks &&
-      typeof market.stocks === "object"
-    ) {
-
-      Object.keys(
-        market.stocks
-      ).forEach(function (key) {
-
-        const item =
-          market.stocks[key] || {};
-
-        result.push({
-
-          symbol:
-            item.symbol || key,
-
-          name:
-            item.name ||
-            item.displaySymbol ||
-            key,
-
-          sector:
-            item.sector ||
-            "Nifty 50",
-
-          price:
-            item.price ??
-            item.ltp ??
-            item.lastPrice ??
-            0,
-
-          change:
-            item.change ??
-            item.perChange ??
-            item.percentChange ??
-            0
-
-        });
-
-      });
-
-    }
-
-    return result;
-
-  }
-
-
-  // ==========================================================
-  // SMART BUDGET PORTFOLIO
-  //
-  // Main rule:
-  // Top 20 mein se jo stocks budget ke andar aa sakte hain,
-  // unmein sensible diversification.
-  // ==========================================================
-
-  function buildBudgetPortfolio(
+  function buildDiversifiedPortfolio(
     stocks,
     amount
   ) {
 
-    if (!stocks.length || amount <= 0) {
-
-      return [];
-
-    }
-
-    // --------------------------------------------------------
-    // ONLY AFFORDABLE STOCKS
-    // --------------------------------------------------------
+    // ----------------------------------------
+    // ONLY AFFORDABLE TOP-20 STOCKS
+    // ----------------------------------------
 
     const affordable =
-      stocks.filter(function (stock) {
+      stocks.filter(
+        function (stock) {
 
-        return stock.price <= amount;
+          return (
+            stock.price <=
+            amount
+          );
 
-      });
+        }
+      );
 
-    if (!affordable.length) {
+
+    if (
+      !affordable.length
+    ) {
 
       return [];
 
     }
 
-    // --------------------------------------------------------
-    // HOW MANY STOCKS?
-    //
-    // Budget ke badhne ke saath diversification badhega.
-    // Lekin expensive stocks ki wajah se force nahi karenge.
-    // --------------------------------------------------------
 
-    let desiredCount;
+    // ----------------------------------------
+    // NUMBER OF STOCKS BASED ON BUDGET
+    // ----------------------------------------
 
-    if (amount < 1000) {
+    const targetCount =
+      calculateTargetCount(
+        affordable.length,
+        amount
+      );
 
-      desiredCount = 1;
 
-    } else if (amount < 2500) {
-
-      desiredCount = 2;
-
-    } else if (amount < 5000) {
-
-      desiredCount = 3;
-
-    } else if (amount < 10000) {
-
-      desiredCount = 4;
-
-    } else if (amount < 25000) {
-
-      desiredCount = 5;
-
-    } else if (amount < 50000) {
-
-      desiredCount = 6;
-
-    } else {
-
-      desiredCount = 8;
-
-    }
-
-    // --------------------------------------------------------
-    // EXPENSIVE STOCKS KO AUTOMATICALLY EXCLUDE NAHI KARNA
-    //
-    // Pehle candidates ko score karenge.
-    // --------------------------------------------------------
+    // ----------------------------------------
+    // CREATE RANKING SCORE
+    // ----------------------------------------
 
     const candidates =
-      affordable.map(function (stock, index) {
+      affordable.map(
+        function (stock, index) {
 
-        let score =
-          stock.change;
+          const rankingBonus =
+            Math.max(
+              0,
+              20 - index
+            ) * 0.05;
 
-        // Current ranking bonus
-        score +=
-          Math.max(
-            0,
-            20 - index
-          ) * 0.05;
 
-        return {
-          ...stock,
-          rankIndex: index,
-          score: score
-        };
+          const score =
+            stock.change +
+            rankingBonus;
 
-      });
 
-    candidates.sort(function (a, b) {
+          return {
 
-      return b.score - a.score;
+            ...stock,
 
-    });
+            score:
+              score,
 
-    // --------------------------------------------------------
-    // TARGET MAX PER STOCK
-    //
-    // Small amount:
-    // thoda flexible
-    //
-    // Large amount:
-    // max 30% initial allocation
-    // --------------------------------------------------------
+            rank:
+              index + 1
+
+          };
+
+        }
+      );
+
+
+    candidates.sort(
+      function (a, b) {
+
+        return (
+          b.score -
+          a.score
+        );
+
+      }
+    );
+
+
+    // ----------------------------------------
+    // MAXIMUM INITIAL ALLOCATION
+    // ----------------------------------------
 
     let maxPerStock =
       amount *
       MAX_STOCK_ALLOCATION;
 
-    if (amount < 2500) {
+
+    // Small budgets need more flexibility.
+    if (
+      amount < 5000
+    ) {
 
       maxPerStock =
         amount *
-        0.60;
-
-    } else if (amount < 5000) {
-
-      maxPerStock =
-        amount *
-        0.45;
+        0.50;
 
     }
 
-    // --------------------------------------------------------
-    // SELECTED
-    // --------------------------------------------------------
+
+    // If no stock fits the normal cap,
+    // temporarily allow the budget itself.
+    if (
+      !candidates.some(
+        function (stock) {
+
+          return (
+            stock.price <=
+            maxPerStock
+          );
+
+        }
+      )
+    ) {
+
+      maxPerStock =
+        amount;
+
+    }
+
 
     const selected = [];
 
-    // --------------------------------------------------------
-    // PASS 1
-    //
-    // Highest-ranked affordable stocks.
-    // Different sectors ko preference.
-    // --------------------------------------------------------
-
-    const usedSectors =
+    const selectedSymbols =
       new Set();
+
+    const selectedSectors =
+      new Set();
+
+
+    // ========================================
+    // PASS 1
+    // DIFFERENT SECTORS
+    // ========================================
 
     for (
       let i = 0;
+
       i < candidates.length &&
-      selected.length < desiredCount;
+      selected.length <
+        targetCount;
+
       i++
     ) {
 
       const stock =
         candidates[i];
 
+
       if (
-        usedSectors.has(stock.sector)
+        selectedSymbols.has(
+          stock.symbol
+        )
       ) {
 
         continue;
 
       }
 
-      const remaining =
-        amount -
-        getTotalInvestment(selected);
 
-      if (remaining <= 0) {
-
-        break;
-
-      }
-
-      const quantity =
-        calculateQuantity(
-          stock.price,
-          remaining,
-          maxPerStock
-        );
-
-      if (quantity <= 0) {
+      if (
+        selectedSectors.has(
+          stock.sector
+        )
+      ) {
 
         continue;
 
       }
 
-      const investment =
-        quantity *
-        stock.price;
 
-      selected.push({
+      const remaining =
+        amount -
+        getTotal(selected);
 
-        ...stock,
 
-        quantity:
-          quantity,
+      if (
+        remaining <= 0
+      ) {
 
-        investment:
-          investment
+        break;
 
-      });
+      }
 
-      usedSectors.add(
+
+      const quantity =
+        calculateShares(
+          stock.price,
+          remaining,
+          maxPerStock
+        );
+
+
+      if (
+        quantity <= 0
+      ) {
+
+        continue;
+
+      }
+
+
+      addPosition(
+        selected,
+        stock,
+        quantity
+      );
+
+
+      selectedSymbols.add(
+        stock.symbol
+      );
+
+
+      selectedSectors.add(
         stock.sector
       );
 
     }
 
-    // --------------------------------------------------------
+
+    // ========================================
     // PASS 2
-    //
-    // Agar different sectors se desired count complete nahi hua,
-    // to remaining Top 20 candidates use karenge.
-    // --------------------------------------------------------
+    // FILL MORE TOP-20 STOCKS
+    // ========================================
 
     for (
       let i = 0;
+
       i < candidates.length &&
-      selected.length < desiredCount;
+      selected.length <
+        targetCount;
+
       i++
     ) {
 
       const stock =
         candidates[i];
 
-      const exists =
-        selected.some(function (item) {
 
-          return (
-            item.symbol ===
-            stock.symbol
-          );
-
-        });
-
-      if (exists) {
+      if (
+        selectedSymbols.has(
+          stock.symbol
+        )
+      ) {
 
         continue;
 
       }
 
+
       const remaining =
         amount -
-        getTotalInvestment(selected);
+        getTotal(selected);
 
-      if (remaining <= 0) {
+
+      if (
+        remaining <= 0
+      ) {
 
         break;
 
       }
 
+
       const quantity =
-        calculateQuantity(
+        calculateShares(
           stock.price,
           remaining,
           maxPerStock
         );
 
-      if (quantity <= 0) {
+
+      if (
+        quantity <= 0
+      ) {
 
         continue;
 
       }
 
-      selected.push({
 
-        ...stock,
+      addPosition(
+        selected,
+        stock,
+        quantity
+      );
 
-        quantity:
-          quantity,
 
-        investment:
-          quantity *
-          stock.price
-
-      });
+      selectedSymbols.add(
+        stock.symbol
+      );
 
     }
 
-    // --------------------------------------------------------
+
+    // ========================================
     // PASS 3
-    //
-    // Remaining budget ko intelligently use karna.
-    //
-    // IMPORTANT:
-    // Total amount kabhi cross nahi hoga.
-    // --------------------------------------------------------
-
-    improveExistingPositions(
-      selected,
-      amount,
-      maxPerStock
-    );
-
-    // --------------------------------------------------------
-    // SORT FINAL PORTFOLIO BY RANK
-    // --------------------------------------------------------
-
-    selected.sort(function (a, b) {
-
-      return a.rankIndex - b.rankIndex;
-
-    });
-
-    return selected;
-
-  }
-
-
-  // ==========================================================
-  // ADD EXTRA SHARES SAFELY
-  // ==========================================================
-
-  function improveExistingPositions(
-    selected,
-    amount,
-    maxPerStock
-  ) {
-
-    if (!selected.length) {
-
-      return;
-
-    }
+    // USE REMAINING MONEY
+    // ========================================
 
     let changed = true;
 
-    while (changed) {
+
+    while (
+      changed
+    ) {
 
       changed = false;
 
-      const total =
-        getTotalInvestment(selected);
 
       const balance =
-        amount - total;
+        amount -
+        getTotal(selected);
 
-      if (balance <= 0) {
+
+      if (
+        balance <= 0
+      ) {
 
         break;
 
       }
 
-      // Highest score first
-      const ordered =
-        [...selected].sort(function (a, b) {
 
-          return b.score - a.score;
+      const ranked =
+        selected
+          .slice()
+          .sort(
+            function (a, b) {
 
-        });
+              return (
+                b.score -
+                a.score
+              );
+
+            }
+          );
+
 
       for (
         let i = 0;
-        i < ordered.length;
+        i < ranked.length;
         i++
       ) {
 
         const stock =
-          ordered[i];
+          ranked[i];
 
-        // Find actual object
-        const actual =
-          selected.find(function (item) {
 
-            return (
-              item.symbol ===
-              stock.symbol
-            );
+        const hardCap =
+          amount *
+          MAX_STOCK_ALLOCATION;
 
-          });
 
-        if (!actual) {
-
-          continue;
-
-        }
-
-        // Absolute max per stock
         if (
-          actual.investment +
-          actual.price >
-          maxPerStock
+          stock.investment +
+          stock.price >
+          hardCap
         ) {
 
           continue;
 
         }
 
+
         if (
-          actual.price <=
+          stock.price <=
           balance
         ) {
 
-          actual.quantity += 1;
+          stock.quantity += 1;
 
-          actual.investment +=
-            actual.price;
+
+          stock.investment +=
+            stock.price;
+
 
           changed = true;
+
 
           break;
 
@@ -808,29 +955,157 @@
 
     }
 
+
+    // ========================================
+    // FINAL SAFETY
+    // ========================================
+
+    return selected.filter(
+      function (stock) {
+
+        return (
+
+          stock.quantity > 0 &&
+
+          stock.investment > 0 &&
+
+          stock.investment <= amount
+
+        );
+
+      }
+    );
+
   }
 
 
-  // ==========================================================
-  // QUANTITY CALCULATOR
-  // ==========================================================
+  // ==========================================
+  // TARGET STOCK COUNT
+  // ==========================================
 
-  function calculateQuantity(
+  function calculateTargetCount(
+    affordableCount,
+    amount
+  ) {
+
+    let target;
+
+
+    if (
+      amount < 2000
+    ) {
+
+      target = 1;
+
+    }
+
+    else if (
+      amount < 5000
+    ) {
+
+      target = 2;
+
+    }
+
+    else if (
+      amount < 10000
+    ) {
+
+      target = 3;
+
+    }
+
+    else if (
+      amount < 20000
+    ) {
+
+      target = 4;
+
+    }
+
+    else if (
+      amount < 35000
+    ) {
+
+      target = 5;
+
+    }
+
+    else if (
+      amount < 50000
+    ) {
+
+      target = 6;
+
+    }
+
+    else if (
+      amount < 75000
+    ) {
+
+      target = 7;
+
+    }
+
+    else if (
+      amount < 100000
+    ) {
+
+      target = 8;
+
+    }
+
+    else {
+
+      target =
+        MAX_PORTFOLIO_STOCKS;
+
+    }
+
+
+    return Math.max(
+
+      1,
+
+      Math.min(
+        target,
+        affordableCount,
+        MAX_PORTFOLIO_STOCKS
+      )
+
+    );
+
+  }
+
+
+  // ==========================================
+  // WHOLE SHARE CALCULATOR
+  // ==========================================
+
+  function calculateShares(
     price,
     available,
     maximumInvestment
   ) {
 
     if (
-      !Number.isFinite(price) ||
+
+      !Number.isFinite(
+        price
+      ) ||
+
       price <= 0 ||
-      !Number.isFinite(available) ||
-      available <= 0
+
+      available <= 0 ||
+
+      maximumInvestment <= 0
+
     ) {
 
       return 0;
 
     }
+
 
     const allowed =
       Math.min(
@@ -838,21 +1113,55 @@
         maximumInvestment
       );
 
-    return Math.max(
-      0,
-      Math.floor(
-        allowed / price
-      )
+
+    return Math.floor(
+      allowed /
+      price
     );
 
   }
 
 
-  // ==========================================================
-  // TOTAL INVESTMENT
-  // ==========================================================
+  // ==========================================
+  // ADD POSITION
+  // ==========================================
 
-  function getTotalInvestment(
+  function addPosition(
+    selected,
+    stock,
+    quantity
+  ) {
+
+    if (
+      quantity <= 0
+    ) {
+
+      return;
+
+    }
+
+
+    selected.push({
+
+      ...stock,
+
+      quantity:
+        quantity,
+
+      investment:
+        quantity *
+        stock.price
+
+    });
+
+  }
+
+
+  // ==========================================
+  // TOTAL
+  // ==========================================
+
+  function getTotal(
     selected
   ) {
 
@@ -861,7 +1170,7 @@
 
         return (
           sum +
-          Number(stock.investment || 0)
+          stock.investment
         );
 
       },
@@ -871,9 +1180,9 @@
   }
 
 
-  // ==========================================================
+  // ==========================================
   // RECOMMENDATION HTML
-  // ==========================================================
+  // ==========================================
 
   function buildRecommendationHTML(
     amount,
@@ -884,37 +1193,38 @@
 
     let html = "";
 
-    html +=
-      `<div class="recommendation-plan">`;
 
     html +=
-      `<strong>Investment Plan</strong>`;
+      '<div class="investment-summary">';
 
-    html += `<br>`;
-
-    html +=
-      `Amount: ₹${formatMoney(amount)}`;
-
-    html += `<br>`;
 
     html +=
-      `Selected Stocks: ${selected.length}`;
+      '<div class="investment-title">Investment Plan</div>';
 
-    html += `<br>`;
 
     html +=
-      `Estimated Investment: ₹${formatMoney(totalInvestment)}`;
+      `Amount: ₹${formatMoney(amount)}<br>`;
 
-    html += `<br>`;
+
+    html +=
+      `Selected Stocks: ${selected.length}<br>`;
+
+
+    html +=
+      `Estimated Investment: ₹${formatMoney(totalInvestment)}<br>`;
+
 
     html +=
       `Balance: ₹${formatMoney(balance)}`;
 
-    html +=
-      `</div>`;
 
     html +=
-      `<div style="margin-top:14px;">`;
+      "</div>";
+
+
+    html +=
+      "<div>";
+
 
     selected.forEach(
       function (stock, index) {
@@ -924,110 +1234,122 @@
             ? "positive"
             : "negative";
 
-        const displaySymbol =
-          stock.displaySymbol ||
-          stock.symbol;
 
         html +=
-          `<div style="
-            padding:12px 0;
-            border-bottom:1px solid #252d38;
-          ">`;
+          '<div style="padding:12px 0;border-bottom:1px solid #252d38;">';
+
 
         html +=
-          `<strong>
-            ${index + 1}.
-            ${escapeHtml(displaySymbol)}
-          </strong>`;
+          `<strong>${index + 1}. ${escapeHtml(stock.name)}</strong>`;
 
-        html += `<br>`;
 
         html +=
-          `<span>
-            ${escapeHtml(stock.symbol)}
-          </span>`;
+          "<br>";
 
-        html += `<br>`;
 
         html +=
-          `<span>
-            ${stock.quantity}
-            share${stock.quantity > 1 ? "s" : ""}
-          </span>`;
+          `<span>${escapeHtml(stock.symbol)}</span>`;
+
 
         html +=
-          `<span
-            style="margin-left:8px;"
-            class="${changeClass}"
-          >`;
+          "<br>";
+
+
+        html +=
+          `<span>${stock.quantity} share${stock.quantity > 1 ? "s" : ""}</span>`;
+
+
+        html +=
+          `<span style="margin-left:8px;" class="${changeClass}">`;
+
 
         html +=
           `${stock.change >= 0 ? "+" : ""}${stock.change.toFixed(2)}%`;
 
-        html += `</span>`;
 
-        html += `<br>`;
+        html +=
+          "</span>";
+
+
+        html +=
+          "<br>";
+
 
         html +=
           `Price: ₹${formatMoney(stock.price)}`;
 
+
         html +=
-          ` &nbsp; • &nbsp; `;
+          " &nbsp; • &nbsp; ";
+
 
         html +=
           `Invest: ₹${formatMoney(stock.investment)}`;
 
+
         html +=
-          `</div>`;
+          "</div>";
 
       }
     );
 
-    html += `</div>`;
 
     html +=
-      `<p style="margin-top:14px;line-height:1.6;">`;
+      "</div>";
+
 
     html +=
-      `₹${formatMoney(amount)} ke liye Top 20 mein se budget ke andar available stocks ke basis par `;
+      '<p style="margin-top:14px;line-height:1.6;">';
+
 
     html +=
-      `${selected.length} stock(s) mein diversified allocation calculate ki gayi hai. `;
+      `₹${formatMoney(amount)} ke liye Top 20 mein se budget ke andar `;
+
 
     html +=
-      `Total estimated investment ₹${formatMoney(totalInvestment)}. `;
+      `${selected.length} stock(s) mein diversified allocation calculate ki gayi hai.`;
+
 
     html +=
-      `₹${formatMoney(balance)} balance bacha hai.`;
+      `<br>Total estimated investment ₹${formatMoney(totalInvestment)}.`;
 
-    html += `<br>`;
-
-    html +=
-      `Total investment entered amount se zyada nahi ho sakta.`;
-
-    html += `<br>`;
 
     html +=
-      `Ye calculation live market data, current ranking aur prototype diversification rules par based hai.`;
+      `<br>₹${formatMoney(balance)} balance bacha hai.`;
 
-    html += `<br>`;
-
-    html +=
-      `Investment ka final decision aapka hai.`;
 
     html +=
-      `</p>`;
+      "<br>Total investment entered amount se zyada nahi ho sakta.";
+
+
+    html +=
+      "<br>";
+
+
+    html +=
+      "Ye calculation live market data, current ranking aur prototype diversification rules par based hai. ";
+
+
+    html +=
+      "Investment ka final decision aapka hai.";
+
+
+    html +=
+      "</p>";
+
 
     return html;
 
   }
 
 
-  // ==========================================================
+  // ==========================================
   // MONEY FORMAT
-  // ==========================================================
+  // ==========================================
 
-  function formatMoney(value) {
+  function formatMoney(
+    value
+  ) {
 
     return Number(
       value || 0
@@ -1042,20 +1364,37 @@
   }
 
 
-  // ==========================================================
+  // ==========================================
   // HTML ESCAPE
-  // ==========================================================
+  // ==========================================
 
-  function escapeHtml(value) {
+  function escapeHtml(
+    value
+  ) {
 
     return String(
       value || ""
     )
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+      .replace(
+        /&/g,
+        "&amp;"
+      )
+      .replace(
+        /</g,
+        "&lt;"
+      )
+      .replace(
+        />/g,
+        "&gt;"
+      )
+      .replace(
+        /"/g,
+        "&quot;"
+      )
+      .replace(
+        /'/g,
+        "&#039;"
+      );
 
   }
 
