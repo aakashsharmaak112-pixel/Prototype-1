@@ -1,164 +1,100 @@
 // ============================================
 // PROTOTYPE-1
-// LIVE RANKING ENGINE
+// LIVE MARKET RANKING ENGINE
 // ============================================
-//
-// Ranking is based on currently available
-// live quote data.
-//
-// This is a prototype scoring model.
-// It is NOT a buy/sell recommendation.
-// ============================================
-
 
 const RANKING_ENGINE = {
 
+  name: "Prototype-1 Ranking Engine",
+
   version: "1.0",
 
-  status: "READY",
-
-  targetCount: 20
-
-};
+  targetStocks: 20,
 
 
-// ============================================
-// SAFE NUMBER
-// ============================================
+  // ==========================================
+  // CALCULATE STOCK SCORE
+  // ==========================================
 
-function safeNumber(value) {
+  calculateScore: function (stock) {
 
-  const number =
-    Number(value);
+    if (!stock) {
+      return 0;
+    }
 
-  return Number.isFinite(number)
-    ? number
-    : 0;
+    const change =
+      Number(
+        stock.change ??
+        stock.perChange ??
+        0
+      ) || 0;
 
-}
-
-
-// ============================================
-// CALCULATE STOCK SCORE
-// ============================================
-//
-// Current live quote data gives us:
-// - price
-// - percentage change
-//
-// For now the score is primarily based
-// on live percentage change.
-//
-// Later we will add:
-// - momentum
-// - volatility
-// - liquidity
-// - sector strength
-// - trend
-// - historical data
-//
-// ============================================
-
-function calculateStockScore(stock) {
-
-  const change =
-    safeNumber(stock.change);
+    const price =
+      Number(
+        stock.price ??
+        stock.ltp ??
+        0
+      ) || 0;
 
 
-  // Normalize change into a usable score.
-
-  const momentumScore =
-    Math.max(
-      0,
-      Math.min(
-        100,
-        50 + (change * 5)
-      )
-    );
+    if (price <= 0) {
+      return -999999;
+    }
 
 
-  return Number(
-    momentumScore.toFixed(2)
-  );
+    // Current prototype ranking:
+    // percentage change = primary score
 
-}
-
-
-// ============================================
-// BUILD RANKINGS
-// ============================================
-
-function calculateLiveRankings() {
-
-  if (
-    !window.NIFTY_50_STOCKS ||
-    !Array.isArray(
-      window.NIFTY_50_STOCKS
-    )
-  ) {
-
-    console.error(
-      "NIFTY_50_STOCKS not available."
-    );
-
-    return [];
-
-  }
+    return change;
+  },
 
 
-  if (
-    !window.MARKET_DATA ||
-    !window.MARKET_DATA.stocks
-  ) {
+  // ==========================================
+  // RANK MARKET DATA
+  // ==========================================
 
-    console.error(
-      "MARKET_DATA not available."
-    );
+  rank: function (marketData) {
 
-    return [];
-
-  }
+    if (!marketData) {
+      return [];
+    }
 
 
-  const liveData =
-    window.MARKET_DATA.stocks;
+    const stocks = Array.isArray(marketData)
+      ? marketData
+      : Object.values(marketData);
 
 
-  const rankings = [];
+    const ranked = [];
 
 
-  // ------------------------------------------
-  // PROCESS EACH NIFTY STOCK
-  // ------------------------------------------
+    stocks.forEach(function (stock) {
 
-  window.NIFTY_50_STOCKS.forEach(
-    function(stock) {
-
-
-      const data =
-        liveData[
-          stock.symbol
-        ];
+      if (!stock) {
+        return;
+      }
 
 
-      // Ignore stocks for which
-      // no live quote was received.
+      const symbol =
+        String(
+          stock.symbol || ""
+        )
+          .replace(/-EQ$/i, "")
+          .trim()
+          .toUpperCase();
 
-      if (!data) {
+
+      if (!symbol) {
         return;
       }
 
 
       const price =
-        safeNumber(
-          data.price
-        );
-
-
-      const change =
-        safeNumber(
-          data.change
-        );
+        Number(
+          stock.price ??
+          stock.ltp ??
+          0
+        ) || 0;
 
 
       if (price <= 0) {
@@ -166,211 +102,188 @@ function calculateLiveRankings() {
       }
 
 
+      const change =
+        Number(
+          stock.change ??
+          stock.perChange ??
+          0
+        ) || 0;
+
+
       const score =
-        calculateStockScore({
-
-          price:
-            price,
-
-          change:
-            change
-
-        });
+        this.calculateScore(stock);
 
 
-      rankings.push({
+      ranked.push({
 
-        symbol:
-          stock.symbol,
+        symbol: symbol,
 
         name:
-          stock.name,
+          stock.name ||
+          symbol,
 
         sector:
-          stock.sector,
+          stock.sector ||
+          "Market",
 
-        price:
-          price,
+        price: price,
 
-        change:
-          change,
+        ltp:
+          Number(
+            stock.ltp ??
+            price
+          ) || price,
 
-        score:
-          score
+        change: change,
+
+        perChange:
+          Number(
+            stock.perChange ??
+            change
+          ) || change,
+
+        score: score,
+
+        token:
+          stock.token || null,
+
+        exchange:
+          stock.exchange || "nse_cm",
+
+        displaySymbol:
+          stock.displaySymbol ||
+          `${symbol}-EQ`
 
       });
 
-    }
-  );
+    }, this);
 
 
-  // ------------------------------------------
-  // SORT BY SCORE
-  // ------------------------------------------
+    // ========================================
+    // SORT HIGHEST SCORE FIRST
+    // ========================================
 
-  rankings.sort(
-    function(a, b) {
+    ranked.sort(function (a, b) {
 
-      return (
-        b.score -
-        a.score
-      );
+      return b.score - a.score;
 
-    }
-  );
+    });
 
 
-  // ------------------------------------------
-  // ASSIGN RANK
-  // ------------------------------------------
-
-  rankings.forEach(
-    function(stock, index) {
-
-      stock.rank =
-        index + 1;
-
-    }
-  );
+    return ranked;
+  },
 
 
-  return rankings;
+  // ==========================================
+  // GET TOP 20
+  // ==========================================
 
-}
+  getTop20: function (marketData) {
 
-
-// ============================================
-// GET TOP 20
-// ============================================
-
-function getLiveTop20() {
-
-  const rankings =
-    calculateLiveRankings();
+    const ranked =
+      this.rank(marketData);
 
 
-  return rankings.slice(
-    0,
-    RANKING_ENGINE.targetCount
-  );
-
-}
-
-
-// ============================================
-// GET STOCK RANK
-// ============================================
-
-function getLiveStockRank(symbol) {
-
-  const rankings =
-    calculateLiveRankings();
-
-
-  const stock =
-    rankings.find(
-      function(item) {
-
-        return (
-          item.symbol ===
-          symbol
-        );
-
-      }
+    return ranked.slice(
+      0,
+      this.targetStocks
     );
+  },
 
 
-  return stock || null;
+  // ==========================================
+  // GET TOP STOCK
+  // ==========================================
 
-}
+  getTopStock: function (marketData) {
+
+    const top20 =
+      this.getTop20(marketData);
+
+
+    return top20.length
+      ? top20[0]
+      : null;
+  },
+
+
+  // ==========================================
+  // ENGINE STATUS
+  // ==========================================
+
+  getStatus: function () {
+
+    return {
+
+      name:
+        this.name,
+
+      version:
+        this.version,
+
+      targetStocks:
+        this.targetStocks,
+
+      ready:
+        true
+
+    };
+  }
+
+};
 
 
 // ============================================
-// GET RANKING ENGINE STATUS
+// GLOBAL ACCESS
 // ============================================
 
-function getRankingEngineStatus() {
+window.RANKING_ENGINE =
+  RANKING_ENGINE;
 
-  return {
 
-    version:
-      RANKING_ENGINE.version,
+// ============================================
+// COMPATIBILITY FUNCTIONS
+// ============================================
 
-    status:
-      RANKING_ENGINE.status,
+window.calculateStockScore =
+  function (stock) {
 
-    targetCount:
-      RANKING_ENGINE.targetCount,
-
-    liveStocks:
-      window.MARKET_DATA &&
-      window.MARKET_DATA.stocks
-        ? Object.keys(
-            window.MARKET_DATA.stocks
-          ).length
-        : 0
+    return RANKING_ENGINE.calculateScore(
+      stock
+    );
 
   };
 
-}
+
+window.rankMarketData =
+  function (marketData) {
+
+    return RANKING_ENGINE.rank(
+      marketData
+    );
+
+  };
+
+
+window.getTop20Stocks =
+  function (marketData) {
+
+    return RANKING_ENGINE.getTop20(
+      marketData
+    );
+
+  };
 
 
 // ============================================
-// BROWSER ACCESS
-// ============================================
-
-if (
-  typeof window !== "undefined"
-) {
-
-  window.RANKING_ENGINE =
-    RANKING_ENGINE;
-
-
-  window.calculateStockScore =
-    calculateStockScore;
-
-
-  window.calculateLiveRankings =
-    calculateLiveRankings;
-
-
-  window.getLiveTop20 =
-    getLiveTop20;
-
-
-  window.getLiveStockRank =
-    getLiveStockRank;
-
-
-  window.getRankingEngineStatus =
-    getRankingEngineStatus;
-
-}
-
-
-// ============================================
-// STARTUP
+// READY
 // ============================================
 
 console.log(
-  "================================"
+  "Prototype-1 ranking-engine.js READY"
 );
 
 console.log(
-  "PROTOTYPE-1 LIVE RANKING ENGINE"
-);
-
-console.log(
-  "Version:",
-  RANKING_ENGINE.version
-);
-
-console.log(
-  "Target:",
-  RANKING_ENGINE.targetCount
-);
-
-console.log(
-  "================================"
+  "Ranking engine:",
+  RANKING_ENGINE.getStatus()
 );
