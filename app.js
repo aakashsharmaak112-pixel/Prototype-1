@@ -16,8 +16,13 @@
   // ============================================
 
   function getNumber(value) {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : 0;
+
+    const number = Number(value);
+
+    return Number.isFinite(number)
+      ? number
+      : 0;
+
   }
 
 
@@ -47,7 +52,7 @@
 
 
   // ============================================
-  // NORMALIZE KOTAK DATA
+  // NORMALIZE KOTAK MARKET DATA
   // ============================================
 
   function normalizeMarketData(rawData) {
@@ -64,6 +69,7 @@
       if (!item) {
         return;
       }
+
 
       const symbol = String(
         item.symbol ||
@@ -88,15 +94,15 @@
       );
 
 
+      const change = getNumber(
+        item.change
+      );
+
+
       const perChange = getNumber(
         item.perChange ??
         item.percentChange ??
         item.pChange
-      );
-
-
-      const change = getNumber(
-        item.change
       );
 
 
@@ -132,27 +138,19 @@
 
 
   // ============================================
-  // FIND LIVE MARKET DATA
+  // GET LIVE MARKET DATA
   // ============================================
 
   function getLiveMarketData() {
 
-    /*
-      Primary format:
-
-      window.MARKET_DATA.stocks
-      OR
-      window.MARKET_DATA as array
-
-      Also supports:
-
-      window.REAL_MARKET_DATA
-    */
-
+    // Format 1:
+    // MARKET_DATA.stocks
 
     if (
       window.MARKET_DATA &&
-      Array.isArray(window.MARKET_DATA.stocks)
+      Array.isArray(
+        window.MARKET_DATA.stocks
+      )
     ) {
 
       return normalizeMarketData(
@@ -162,8 +160,13 @@
     }
 
 
+    // Format 2:
+    // MARKET_DATA directly as array
+
     if (
-      Array.isArray(window.MARKET_DATA)
+      Array.isArray(
+        window.MARKET_DATA
+      )
     ) {
 
       return normalizeMarketData(
@@ -173,8 +176,13 @@
     }
 
 
+    // Format 3:
+    // REAL_MARKET_DATA
+
     if (
-      Array.isArray(window.REAL_MARKET_DATA)
+      Array.isArray(
+        window.REAL_MARKET_DATA
+      )
     ) {
 
       return normalizeMarketData(
@@ -191,15 +199,18 @@
 
   // ============================================
   // BUILD TOP 20
+  //
   // IMPORTANT:
-  // RANKING = perChange
-  // NOT change
+  // Ranking uses perChange
+  // NOT rupee change
   // ============================================
 
   function buildTop20() {
 
     if (
-      !Array.isArray(window.NIFTY_50_STOCKS)
+      !Array.isArray(
+        window.NIFTY_50_STOCKS
+      )
     ) {
 
       console.error(
@@ -243,12 +254,7 @@
           liveData[symbol];
 
 
-        /*
-          IMPORTANT:
-
-          Only use stocks for which
-          real live price exists.
-        */
+        // No live data = don't include
 
         if (!data) {
           return;
@@ -256,7 +262,9 @@
 
 
         const price =
-          getNumber(data.price);
+          getNumber(
+            data.price
+          );
 
 
         if (price <= 0) {
@@ -265,24 +273,33 @@
 
 
         /*
-          THIS IS THE FIX.
+          Kotak Neo:
 
-          Kotak gives:
+          change = rupee change
 
-          change    = ₹ change
           perChange = percentage change
 
           Example:
 
-          Apollo:
+          Apollo Hospitals
+
           change = 320.5
+
           perChange = 3.7267
 
-          We MUST display 3.73%.
+          Display must be:
+
+          +3.73%
+
+          NOT:
+
+          +320.50%
         */
 
         const percentageChange =
-          getNumber(data.perChange);
+          getNumber(
+            data.perChange
+          );
 
 
         rankings.push({
@@ -302,7 +319,9 @@
           price: price,
 
           change:
-            getNumber(data.change),
+            getNumber(
+              data.change
+            ),
 
           perChange:
             percentageChange,
@@ -316,21 +335,34 @@
     );
 
 
-    /*
-      Highest percentage gain first.
-    */
+    // Highest percentage gain first
 
     rankings.sort(
       function (a, b) {
 
-        return b.perChange -
-               a.perChange;
+        return (
+          b.perChange -
+          a.perChange
+        );
 
       }
     );
 
 
-    return rankings.slice(0, 20);
+    const top20 =
+      rankings.slice(
+        0,
+        20
+      );
+
+
+    // Save globally
+
+    window.TOP_20_STOCKS =
+      top20;
+
+
+    return top20;
 
   }
 
@@ -376,10 +408,15 @@
 
 
       list.innerHTML = `
+
         <p class="note">
+
           Live market data available hai,
-          lekin valid Nifty 50 prices match nahi hue.
+          lekin valid Nifty 50 prices
+          match nahi hue.
+
         </p>
+
       `;
 
       return;
@@ -398,7 +435,8 @@
     }
 
 
-    list.innerHTML = "";
+    list.innerHTML =
+      "";
 
 
     top20.forEach(
@@ -415,7 +453,9 @@
 
 
         const percentage =
-          stock.perChange;
+          getNumber(
+            stock.perChange
+          );
 
 
         const changeClass =
@@ -442,15 +482,26 @@
               ${index + 1}
             </div>
 
+
             <div>
 
               <div class="stock-name">
-                ${escapeHtml(stock.name)}
+
+                ${escapeHtml(
+                  stock.name
+                )}
+
               </div>
 
+
               <div class="stock-sector">
-                ${escapeHtml(stock.symbol)}
+
+                ${escapeHtml(
+                  stock.symbol
+                )}
+
                 • Nifty 50
+
               </div>
 
             </div>
@@ -461,11 +512,18 @@
           <div class="stock-change">
 
             <div class="${changeClass}">
+
               ${percentageText}
+
             </div>
 
+
             <div class="stock-sector">
-              ₹${formatPrice(stock.price)}
+
+              ₹${formatPrice(
+                stock.price
+              )}
+
             </div>
 
           </div>
@@ -473,22 +531,16 @@
         `;
 
 
-        list.appendChild(row);
+        list.appendChild(
+          row
+        );
 
       }
     );
 
 
-    /*
-      Save for investment analysis.
-    */
-
-    window.TOP_20_STOCKS =
-      top20;
-
-
     console.log(
-      "TOP 20:",
+      "Prototype-1 TOP 20:",
       top20
     );
 
@@ -497,6 +549,7 @@
 
   // ============================================
   // INVESTMENT ANALYSIS
+  // BUDGET SAFE VERSION
   // ============================================
 
   function analyzeInvestment() {
@@ -541,10 +594,7 @@
     }
 
 
-    /*
-      Always refresh ranking from
-      current live data.
-    */
+    // Get current live ranking
 
     const top20 =
       buildTop20();
@@ -560,144 +610,294 @@
     }
 
 
-    /*
-      Prototype allocation:
+    // ==========================================
+    // BUDGET SAFE ALLOCATION
+    // ==========================================
 
-      Select up to 3 affordable stocks
-      from the highest-ranked live stocks.
+    let remaining =
+      amount;
 
-      IMPORTANT:
-      This is a prototype calculation,
-      not financial advice.
-    */
 
     const selected = [];
 
 
+    /*
+      Maximum 3 stocks.
+
+      IMPORTANT:
+
+      Total investment will NEVER
+      exceed entered amount.
+    */
+
     for (
       let i = 0;
-      i < top20.length &&
-      selected.length < 3;
+      i < top20.length;
       i++
     ) {
+
+      if (
+        remaining <= 0
+      ) {
+
+        break;
+
+      }
+
+
+      if (
+        selected.length >= 3
+      ) {
+
+        break;
+
+      }
+
 
       const stock =
         top20[i];
 
 
       const price =
-        getNumber(stock.price);
+        getNumber(
+          stock.price
+        );
 
 
       if (
-        price > 0 &&
-        price <= amount
+        price <= 0
       ) {
 
-        const quantity =
-          Math.max(
-            1,
-            Math.floor(
-              (amount / 3) /
-              price
-            )
+        continue;
+
+      }
+
+
+      // Stock must be affordable
+
+      if (
+        price > remaining
+      ) {
+
+        continue;
+
+      }
+
+
+      /*
+        Remaining slots.
+
+        Example:
+
+        ₹10,000
+
+        First stock:
+        remaining = ₹10,000
+
+        3 slots
+
+        Allocate based on remaining/slots.
+      */
+
+      const slotsLeft =
+        3 -
+        selected.length;
+
+
+      let quantity =
+        Math.floor(
+          remaining /
+          slotsLeft /
+          price
+        );
+
+
+      /*
+        If calculated quantity is zero,
+        try one share.
+      */
+
+      if (
+        quantity < 1
+      ) {
+
+        quantity = 1;
+
+      }
+
+
+      /*
+        HARD budget limit.
+      */
+
+      quantity =
+        Math.min(
+          quantity,
+          Math.floor(
+            remaining /
+            price
+          )
+        );
+
+
+      if (
+        quantity <= 0
+      ) {
+
+        continue;
+
+      }
+
+
+      let investment =
+        quantity *
+        price;
+
+
+      /*
+        Final safety check.
+      */
+
+      if (
+        investment >
+        remaining
+      ) {
+
+        quantity =
+          Math.floor(
+            remaining /
+            price
           );
 
 
-        const investment =
-          quantity * price;
-
-
-        if (
-          investment <= amount
-        ) {
-
-          selected.push({
-
-            ...stock,
-
-            quantity:
-              quantity,
-
-            investment:
-              investment
-
-          });
-
-        }
+        investment =
+          quantity *
+          price;
 
       }
 
-    }
 
-
-    /*
-      If normal 3-stock allocation
-      doesn't work, choose first
-      affordable stocks with 1 share.
-    */
-
-    if (!selected.length) {
-
-      for (
-        let i = 0;
-        i < top20.length &&
-        selected.length < 3;
-        i++
+      if (
+        quantity <= 0 ||
+        investment <= 0 ||
+        investment > remaining
       ) {
 
-        const stock =
-          top20[i];
+        continue;
+
+      }
 
 
-        if (
-          stock.price <= amount
-        ) {
+      selected.push({
 
-          selected.push({
+        symbol:
+          stock.symbol,
 
-            ...stock,
+        name:
+          stock.name,
 
-            quantity: 1,
+        sector:
+          stock.sector,
 
-            investment:
-              stock.price
+        price:
+          price,
 
-          });
+        perChange:
+          getNumber(
+            stock.perChange
+          ),
 
-        }
+        quantity:
+          quantity,
+
+        investment:
+          investment
+
+      });
+
+
+      remaining -=
+        investment;
+
+
+      /*
+        Floating point protection.
+      */
+
+      if (
+        remaining < 0
+      ) {
+
+        remaining = 0;
 
       }
 
     }
 
 
-    if (!selected.length) {
+    // ==========================================
+    // NO AFFORDABLE STOCK
+    // ==========================================
+
+    if (
+      !selected.length
+    ) {
 
       recommendation.innerText =
-        "Investment amount current Top 20 ke kisi stock ke 1 share ke liye bhi sufficient nahi hai.";
+        "Current Top 20 mein koi stock entered investment amount ke andar affordable nahi hai.";
 
       return;
 
     }
 
 
+    // ==========================================
+    // FINAL TOTAL
+    // ==========================================
+
     const totalInvestment =
       selected.reduce(
-        function (total, stock) {
+        function (
+          total,
+          stock
+        ) {
 
-          return total +
-                 stock.investment;
+          return (
+            total +
+            stock.investment
+          );
 
         },
         0
       );
 
 
-    const balance =
-      amount -
-      totalInvestment;
+    /*
+      Final safety clamp.
 
+      This guarantees:
+
+      totalInvestment <= amount
+    */
+
+    const safeTotal =
+      Math.min(
+        amount,
+        totalInvestment
+      );
+
+
+    const balance =
+      Math.max(
+        0,
+        amount -
+        safeTotal
+      );
+
+
+    // ==========================================
+    // BUILD RECOMMENDATION
+    // ==========================================
 
     let html = `
 
@@ -708,7 +908,9 @@
       <br><br>
 
       Amount:
-      ₹${formatPrice(amount)}
+      ₹${formatPrice(
+        amount
+      )}
 
       <br>
 
@@ -718,23 +920,36 @@
       <br>
 
       Estimated Investment:
-      ₹${formatPrice(totalInvestment)}
+      ₹${formatPrice(
+        safeTotal
+      )}
 
       <br>
 
       Balance:
-      ₹${formatPrice(balance)}
+      ₹${formatPrice(
+        balance
+      )}
 
       <br><br>
 
     `;
 
 
+    // ==========================================
+    // STOCK DETAILS
+    // ==========================================
+
     selected.forEach(
-      function (stock, index) {
+      function (
+        stock,
+        index
+      ) {
 
         const percentage =
-          stock.perChange;
+          getNumber(
+            stock.perChange
+          );
 
 
         const changeClass =
@@ -763,28 +978,52 @@
           >
 
             <strong>
-              ${index + 1}. ${escapeHtml(stock.symbol)}
+
+              ${index + 1}.
+              ${escapeHtml(
+                stock.symbol
+              )}
+
             </strong>
 
-            <br>
-
-            ${stock.quantity} share${stock.quantity > 1 ? "s" : ""}
 
             <br>
 
-            <span class="${changeClass}">
+
+            ${stock.quantity}
+            share${stock.quantity > 1 ? "s" : ""}
+
+
+            <br>
+
+
+            <span
+              class="${changeClass}"
+            >
+
               ${percentageText}
+
             </span>
 
+
             <br>
 
+
             Price:
-            ₹${formatPrice(stock.price)}
+
+            ₹${formatPrice(
+              stock.price
+            )}
+
 
             &nbsp; • &nbsp;
 
+
             Invest:
-            ₹${formatPrice(stock.investment)}
+
+            ₹${formatPrice(
+              stock.investment
+            )}
 
           </div>
 
@@ -794,22 +1033,42 @@
     );
 
 
+    // ==========================================
+    // FINAL MESSAGE
+    // ==========================================
+
     html += `
 
       <br>
 
-      ₹${formatPrice(amount)}
+      ₹${formatPrice(
+        amount
+      )}
+
       ke liye current live ranking ke basis par
-      ${selected.length} stock(s) mein allocation
-      calculate ki gayi hai.
+
+      ${selected.length}
+
+      stock(s) mein allocation calculate
+      ki gayi hai.
+
 
       Total estimated investment
-      ₹${formatPrice(totalInvestment)}.
 
-      ₹${formatPrice(balance)}
+      ₹${formatPrice(
+        safeTotal
+      )}.
+
+
+      ₹${formatPrice(
+        balance
+      )}
+
       balance bacha hai.
 
+
       <br><br>
+
 
       Ye calculation live market data aur
       prototype ranking par based hai.
@@ -820,6 +1079,17 @@
 
     recommendation.innerHTML =
       html;
+
+
+    console.log(
+      "Investment Plan:",
+      {
+        amount: amount,
+        selected: selected,
+        totalInvestment: safeTotal,
+        balance: balance
+      }
+    );
 
   }
 
@@ -866,8 +1136,14 @@
       ).trim();
 
 
+    // ==========================================
+    // TOTP VALIDATION
+    // ==========================================
+
     if (
-      !/^\d{6}$/.test(totp)
+      !/^\d{6}$/.test(
+        totp
+      )
     ) {
 
       if (status) {
@@ -884,17 +1160,33 @@
       if (list) {
 
         list.innerHTML = `
+
           <p class="note">
+
             Current 6-digit TOTP enter karein.
+
           </p>
+
         `;
 
       }
+
+
+      if (totpInput) {
+
+        totpInput.focus();
+
+      }
+
 
       return;
 
     }
 
+
+    // ==========================================
+    // MARKET ENGINE CHECK
+    // ==========================================
 
     if (
       typeof window.fetchMarketData !==
@@ -922,10 +1214,15 @@
 
       }
 
+
       return;
 
     }
 
+
+    // ==========================================
+    // LOADING
+    // ==========================================
 
     if (button) {
 
@@ -952,9 +1249,14 @@
     if (list) {
 
       list.innerHTML = `
+
         <p class="note">
-          Kotak Neo se live market data load ho raha hai...
+
+          Kotak Neo se live market data
+          load ho raha hai...
+
         </p>
+
       `;
 
     }
@@ -974,16 +1276,6 @@
       );
 
 
-      /*
-        fetchMarketData may return:
-
-        true
-
-        OR
-
-        response object
-      */
-
       const success =
         result === true ||
         (
@@ -995,20 +1287,21 @@
       if (!success) {
 
         throw new Error(
+
           (
             result &&
             result.error
           ) ||
           "Kotak Neo live quotes request failed."
+
         );
 
       }
 
 
       /*
-        Small delay ensures
-        market-data.js has completed
-        writing MARKET_DATA.
+        Give market-data.js a moment
+        to finish updating global data.
       */
 
       await new Promise(
@@ -1022,6 +1315,10 @@
         }
       );
 
+
+      // ========================================
+      // DISPLAY LIVE TOP 20
+      // ========================================
 
       displayTop20();
 
@@ -1050,9 +1347,13 @@
       if (list) {
 
         list.innerHTML = `
+
           <p class="note">
+
             Kotak Neo live quotes request failed.
+
           </p>
+
         `;
 
       }
@@ -1089,7 +1390,7 @@
 
 
   // ============================================
-  // START
+  // DOM READY
   // ============================================
 
   document.addEventListener(
@@ -1113,9 +1414,9 @@
         );
 
 
-      /*
-        Connect button
-      */
+      // ========================================
+      // CONNECT BUTTON
+      // ========================================
 
       if (connectButton) {
 
@@ -1127,9 +1428,9 @@
       }
 
 
-      /*
-        Analyze button
-      */
+      // ========================================
+      // ANALYZE BUTTON
+      // ========================================
 
       if (analyzeButton) {
 
@@ -1141,9 +1442,9 @@
       }
 
 
-      /*
-        Stock count
-      */
+      // ========================================
+      // STOCK COUNT
+      // ========================================
 
       const stockCount =
         document.getElementById(
@@ -1176,13 +1477,20 @@
   // PUBLIC FUNCTIONS
   // ============================================
 
-  window.displayTop20 =
-    displayTop20;
-
   window.buildTop20 =
     buildTop20;
 
+
+  window.displayTop20 =
+    displayTop20;
+
+
   window.analyzeInvestment =
     analyzeInvestment;
+
+
+  window.connectLiveMarketData =
+    connectLiveMarketData;
+
 
 })();
