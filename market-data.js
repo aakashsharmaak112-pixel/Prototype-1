@@ -3,7 +3,7 @@
 // FRONTEND MARKET DATA CLIENT
 // ============================================
 
-const MARKET_DATA_API = "/api/market-data";
+const MARKET_DATA_API = "/api/quotes";
 
 window.MARKET_DATA = {
   success: false,
