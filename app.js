@@ -1,8 +1,8 @@
 // ============================================
 // PROTOTYPE-1
 // APP ENGINE
-// LIVE MARKET DATA + RANK-WEIGHTED TOP 20
-// BUDGET ALLOCATION
+// LIVE MARKET DATA + TOP 20
+// RANK-WEIGHTED + DIVERSIFICATION ALLOCATION
 // ============================================
 
 (function () {
@@ -13,12 +13,12 @@
 
 
   // ==========================================
-  // RISK / DIVERSIFICATION LIMITS
+  // ALLOCATION LIMITS
   // ==========================================
 
-  const MAX_STOCK_ALLOCATION = 0.35; // 35%
-  const MAX_SECTOR_ALLOCATION = 0.40; // 40%
-  const MAX_GROUP_ALLOCATION = 0.30; // 30%
+  const MAX_STOCK_ALLOCATION = 0.35;
+  const MAX_SECTOR_ALLOCATION = 0.40;
+  const MAX_GROUP_ALLOCATION = 0.30;
 
   let isConnecting = false;
 
@@ -363,7 +363,7 @@
 
 
       // ----------------------------------------
-      // GET LIVE STOCKS
+      // LIVE STOCKS
       // ----------------------------------------
 
       let stocks =
@@ -400,7 +400,7 @@
 
 
       // ----------------------------------------
-      // CURRENT TOP 20
+      // TOP 20
       // ----------------------------------------
 
       const top20 =
@@ -422,7 +422,7 @@
 
 
       // ----------------------------------------
-      // BUILD RANK-WEIGHTED PLAN
+      // BUILD PLAN
       // ----------------------------------------
 
       const result =
@@ -974,7 +974,7 @@
 
 
   // ==========================================
-  // RANK-WEIGHTED BUDGET PLAN
+  // RANK-WEIGHTED + CONSTRAINED ALLOCATION
   // ==========================================
 
   function buildTop20BudgetPlan(
@@ -988,13 +988,8 @@
 
     // ----------------------------------------
     // RANK WEIGHTS
-    //
-    // Rank 1 = 20
-    // Rank 2 = 19
-    // ...
-    // Rank 20 = 1
-    //
-    // No equal 5%.
+    // #1 = 20
+    // #20 = 1
     // ----------------------------------------
 
     const rankWeights =
@@ -1031,27 +1026,7 @@
 
 
     // ----------------------------------------
-    // TARGET PERCENTAGE
-    // ----------------------------------------
-
-    const targetMap = {};
-
-
-    rankWeights.forEach(
-      function (item) {
-
-        targetMap[item.symbol] =
-          (
-            item.weight /
-            weightTotal
-          ) * 100;
-
-      }
-    );
-
-
-    // ----------------------------------------
-    // INITIAL TARGET
+    // RANK TARGET %
     // ----------------------------------------
 
     const selected =
@@ -1059,9 +1034,10 @@
         function (stock, index) {
 
           const targetPercent =
-            targetMap[
-              stock.symbol
-            ];
+            (
+              rankWeights[index].weight /
+              weightTotal
+            ) * 100;
 
 
           const targetAmount =
@@ -1071,6 +1047,9 @@
               100
             );
 
+
+          // Initial shares only.
+          // Later optimizer checks limits.
 
           const quantity =
             Math.floor(
@@ -1106,8 +1085,17 @@
 
 
     // ----------------------------------------
-    // ALLOCATION TOTAL
+    // FIRST PASS
+    //
+    // Initial quantities may violate sector/group
+    // limits. Reduce them BEFORE optimization.
     // ----------------------------------------
+
+    enforceInitialLimits(
+      selected,
+      budget
+    );
+
 
     let total =
       calculateTotal(
@@ -1123,17 +1111,10 @@
 
 
     // ----------------------------------------
-    // ADD WHOLE SHARES
+    // SECOND PASS
     //
-    // Every new share is checked against:
-    //
-    // 1. Budget
-    // 2. Stock max
-    // 3. Sector max
-    // 4. Group max
-    //
-    // Candidate with largest target gap
-    // gets priority.
+    // Add affordable shares only when ALL
+    // diversification limits remain valid.
     // ----------------------------------------
 
     let guard = 0;
@@ -1152,89 +1133,20 @@
           .filter(
             function (stock) {
 
-              const nextCost =
-                stock.price;
-
-
-              if (
-                nextCost >
+              return canAddShare(
+                stock,
+                selected,
+                budget,
                 balance
-              ) {
-
-                return false;
-
-              }
-
-
-              const nextInvestment =
-                stock.investment +
-                nextCost;
-
-
-              // STOCK LIMIT
-
-              if (
-                nextInvestment >
-                budget *
-                MAX_STOCK_ALLOCATION
-              ) {
-
-                return false;
-
-              }
-
-
-              const sectorTotal =
-                getSectorTotal(
-                  selected,
-                  stock.sector
-                );
-
-
-              // SECTOR LIMIT
-
-              if (
-                sectorTotal +
-                nextCost >
-                budget *
-                MAX_SECTOR_ALLOCATION
-              ) {
-
-                return false;
-
-              }
-
-
-              const groupTotal =
-                getGroupTotal(
-                  selected,
-                  stock.businessGroup
-                );
-
-
-              // GROUP LIMIT
-
-              if (
-                groupTotal +
-                nextCost >
-                budget *
-                MAX_GROUP_ALLOCATION
-              ) {
-
-                return false;
-
-              }
-
-
-              return true;
+              );
 
             }
           )
           .sort(
             function (a, b) {
 
-              // Primary:
-              // target percentage gap
+              // Main priority:
+              // largest gap from target amount
 
               const aGap =
                 a.targetAmount -
@@ -1256,8 +1168,7 @@
               }
 
 
-              // Secondary:
-              // higher rank first
+              // Higher live rank first
 
               if (
                 a.rank !== b.rank
@@ -1268,9 +1179,6 @@
 
               }
 
-
-              // Final:
-              // stronger live performance
 
               return b.change -
                 a.change;
@@ -1313,7 +1221,7 @@
 
 
     // ----------------------------------------
-    // CONCENTRATION TOTALS
+    // FINAL CONCENTRATION CALCULATION
     // ----------------------------------------
 
     const sectorTotals = {};
@@ -1353,7 +1261,7 @@
 
 
     // ----------------------------------------
-    // ACTUAL PERCENTAGES
+    // ACTUAL %
     // ----------------------------------------
 
     selected.forEach(
@@ -1425,6 +1333,290 @@
 
 
   // ==========================================
+  // INITIAL LIMIT ENFORCEMENT
+  // ==========================================
+
+  function enforceInitialLimits(
+    selected,
+    budget
+  ) {
+
+    let changed = true;
+
+    let guard = 0;
+
+
+    while (
+      changed &&
+      guard < 10000
+    ) {
+
+      guard++;
+
+      changed = false;
+
+
+      const sectorTotals =
+        buildTotals(
+          selected,
+          "sector"
+        );
+
+
+      const groupTotals =
+        buildTotals(
+          selected,
+          "group"
+        );
+
+
+      for (
+        let i = 0;
+        i < selected.length;
+        i++
+      ) {
+
+        const stock =
+          selected[i];
+
+
+        if (
+          stock.quantity <= 0
+        ) {
+
+          continue;
+
+        }
+
+
+        const stockLimit =
+          budget *
+          MAX_STOCK_ALLOCATION;
+
+
+        const sector =
+          stock.sector ||
+          "Nifty 50";
+
+
+        const group =
+          stock.businessGroup ||
+          stock.symbol;
+
+
+        const sectorLimit =
+          budget *
+          MAX_SECTOR_ALLOCATION;
+
+
+        const groupLimit =
+          budget *
+          MAX_GROUP_ALLOCATION;
+
+
+        const exceedsStock =
+          stock.investment >
+          stockLimit;
+
+
+        const exceedsSector =
+          (
+            sectorTotals[sector] ||
+            0
+          ) >
+          sectorLimit;
+
+
+        const exceedsGroup =
+          (
+            groupTotals[group] ||
+            0
+          ) >
+          groupLimit;
+
+
+        if (
+          exceedsStock ||
+          exceedsSector ||
+          exceedsGroup
+        ) {
+
+          stock.quantity -= 1;
+
+
+          stock.investment =
+            stock.quantity *
+            stock.price;
+
+
+          changed = true;
+
+
+          // Rebuild totals after each reduction
+          break;
+
+        }
+
+      }
+
+    }
+
+  }
+
+
+  // ==========================================
+  // CAN ADD SHARE?
+  // ==========================================
+
+  function canAddShare(
+    stock,
+    selected,
+    budget,
+    balance
+  ) {
+
+    const cost =
+      stock.price;
+
+
+    // Budget check
+
+    if (
+      cost > balance
+    ) {
+
+      return false;
+
+    }
+
+
+    const nextInvestment =
+      stock.investment +
+      cost;
+
+
+    // ----------------------------------------
+    // STOCK LIMIT
+    // ----------------------------------------
+
+    if (
+      nextInvestment >
+      budget *
+      MAX_STOCK_ALLOCATION
+    ) {
+
+      return false;
+
+    }
+
+
+    // ----------------------------------------
+    // SECTOR LIMIT
+    // ----------------------------------------
+
+    const sector =
+      stock.sector ||
+      "Nifty 50";
+
+
+    const sectorTotal =
+      getSectorTotal(
+        selected,
+        sector
+      );
+
+
+    if (
+      sectorTotal +
+      cost >
+      budget *
+      MAX_SECTOR_ALLOCATION
+    ) {
+
+      return false;
+
+    }
+
+
+    // ----------------------------------------
+    // GROUP LIMIT
+    // ----------------------------------------
+
+    const group =
+      stock.businessGroup ||
+      stock.symbol;
+
+
+    const groupTotal =
+      getGroupTotal(
+        selected,
+        group
+      );
+
+
+    if (
+      groupTotal +
+      cost >
+      budget *
+      MAX_GROUP_ALLOCATION
+    ) {
+
+      return false;
+
+    }
+
+
+    return true;
+
+  }
+
+
+  // ==========================================
+  // BUILD TOTALS
+  // ==========================================
+
+  function buildTotals(
+    stocks,
+    type
+  ) {
+
+    const totals = {};
+
+
+    stocks.forEach(
+      function (stock) {
+
+        const key =
+          type === "sector"
+            ? (
+                stock.sector ||
+                "Nifty 50"
+              )
+            : (
+                stock.businessGroup ||
+                stock.symbol
+              );
+
+
+        totals[key] =
+          (
+            totals[key] ||
+            0
+          ) +
+          Number(
+            stock.investment || 0
+          );
+
+      }
+    );
+
+
+    return totals;
+
+  }
+
+
+  // ==========================================
   // SECTOR TOTAL
   // ==========================================
 
@@ -1436,11 +1628,13 @@
     return stocks.reduce(
       function (sum, stock) {
 
+        const currentSector =
+          stock.sector ||
+          "Nifty 50";
+
+
         if (
-          (
-            stock.sector ||
-            "Nifty 50"
-          ) ===
+          currentSector ===
           (
             sector ||
             "Nifty 50"
@@ -1476,11 +1670,13 @@
     return stocks.reduce(
       function (sum, stock) {
 
+        const currentGroup =
+          stock.businessGroup ||
+          stock.symbol;
+
+
         if (
-          (
-            stock.businessGroup ||
-            stock.symbol
-          ) ===
+          currentGroup ===
           (
             group ||
             stock.symbol
@@ -1638,7 +1834,7 @@
       `<table style="
         width:100%;
         border-collapse:collapse;
-        min-width:1000px;
+        min-width:1050px;
         font-size:13px;
       ">`;
 
@@ -1670,7 +1866,11 @@
 
       "Sector",
 
-      "Group"
+      "Sector %",
+
+      "Group",
+
+      "Group %"
 
     ];
 
@@ -1820,7 +2020,25 @@
             padding:8px;
             border-bottom:1px solid #252d38;
           ">
+            ${stock.sectorPercent.toFixed(2)}%
+          </td>`;
+
+
+        html +=
+          `<td style="
+            padding:8px;
+            border-bottom:1px solid #252d38;
+          ">
             ${escapeHtml(stock.businessGroup)}
+          </td>`;
+
+
+        html +=
+          `<td style="
+            padding:8px;
+            border-bottom:1px solid #252d38;
+          ">
+            ${stock.groupPercent.toFixed(2)}%
           </td>`;
 
 
@@ -1888,14 +2106,8 @@
 
 
     html +=
-      `• Whole shares ki wajah se actual allocation
-      target percentage se thoda different ho sakta hai.
-      <br>`;
-
-
-    html +=
-      `• Remaining balance ko affordable stocks mein
-      whole-share increments se use karne ki koshish hoti hai.
+      `• Whole-share allocation ke waqt stock,
+      sector aur business-group limits directly enforce hoti hain.
       <br>`;
 
 
@@ -1927,7 +2139,13 @@
 
 
     html +=
-      `• Total investment budget se kabhi zyada nahi hoga.
+      `• Remaining balance ko valid whole-share candidates
+      mein target-gap ke basis par allocate karne ki koshish hoti hai.
+      <br>`;
+
+
+    html +=
+      `• Total investment entered budget se kabhi zyada nahi hoga.
       <br>`;
 
 
@@ -1986,7 +2204,7 @@
 
     html +=
       `Allocation:
-      Rank-Weighted
+      Rank-Weighted + Diversification Constraints
       <br>`;
 
 
