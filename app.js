@@ -1,7 +1,8 @@
 // ============================================
 // PROTOTYPE-1
 // APP ENGINE
-// LIVE MARKET DATA + TOP 20 + AI RECOMMENDATION
+// LIVE MARKET DATA + RANK-WEIGHTED TOP 20
+// BUDGET ALLOCATION
 // ============================================
 
 (function () {
@@ -10,9 +11,14 @@
 
   console.log("Prototype-1 app.js loading...");
 
-  const MAX_STOCK_ALLOCATION = 0.35;
-  const MAX_SECTOR_ALLOCATION = 0.40;
-  const MAX_GROUP_ALLOCATION = 0.30;
+
+  // ==========================================
+  // RISK / DIVERSIFICATION LIMITS
+  // ==========================================
+
+  const MAX_STOCK_ALLOCATION = 0.35; // 35%
+  const MAX_SECTOR_ALLOCATION = 0.40; // 40%
+  const MAX_GROUP_ALLOCATION = 0.30; // 30%
 
   let isConnecting = false;
 
@@ -133,6 +139,7 @@
 
             showError(message);
 
+
             setMarketStatus(
               "ERROR",
               "status-error"
@@ -173,7 +180,6 @@
 
         }
 
-
         catch (error) {
 
           console.error(
@@ -195,7 +201,6 @@
           );
 
         }
-
 
         finally {
 
@@ -225,9 +230,7 @@
 
 
         const amount =
-          Number(
-            amountInput.value
-          );
+          Number(amountInput.value);
 
 
         if (
@@ -271,7 +274,6 @@
 
         }
 
-
         catch (error) {
 
           console.error(
@@ -298,9 +300,7 @@
       function (event) {
 
         if (event.key === "Enter") {
-
           analyzeButton.click();
-
         }
 
       }
@@ -312,9 +312,7 @@
       function (event) {
 
         if (event.key === "Enter") {
-
           connectButton.click();
-
         }
 
       }
@@ -344,8 +342,7 @@
   window.analyzeInvestmentAmount =
     function (amount) {
 
-      amount =
-        Number(amount);
+      amount = Number(amount);
 
 
       if (
@@ -425,24 +422,12 @@
 
 
       // ----------------------------------------
-      // EQUAL TOP-20 ALLOCATION
+      // BUILD RANK-WEIGHTED PLAN
       // ----------------------------------------
 
-      const allocation =
+      const result =
         buildTop20BudgetPlan(
           top20,
-          amount
-        );
-
-
-      // ----------------------------------------
-      // AI ANALYSIS
-      // ----------------------------------------
-
-      const aiAnalysis =
-        buildAIAnalysis(
-          top20,
-          allocation,
           amount
         );
 
@@ -455,24 +440,20 @@
           buildRecommendationHTML(
             amount,
             top20,
-            allocation,
-            aiAnalysis
+            result
           ),
 
         selectedStocks:
-          allocation.selected,
+          result.selected,
 
         totalInvestment:
-          allocation.totalInvestment,
+          result.totalInvestment,
 
         balance:
-          allocation.balance,
+          result.balance,
 
         top20:
-          top20,
-
-        aiAnalysis:
-          aiAnalysis
+          top20
 
       };
 
@@ -500,9 +481,7 @@
 
 
     if (
-      Array.isArray(
-        market.stocks
-      )
+      Array.isArray(market.stocks)
     ) {
 
       return market.stocks;
@@ -511,8 +490,7 @@
 
 
     if (
-      typeof market.stocks !==
-      "object"
+      typeof market.stocks !== "object"
     ) {
 
       return [];
@@ -589,95 +567,73 @@
 
   function normalizeStock(stock) {
 
-    stock =
-      stock || {};
+    stock = stock || {};
 
 
     const symbol =
       String(
-
         stock.symbol ||
         stock.neoSymbol ||
         stock.displaySymbol ||
         ""
-
       )
-        .replace(
-          /-EQ$/i,
-          ""
-        )
+        .replace(/-EQ$/i, "")
         .trim()
         .toUpperCase();
 
 
     const master =
-      findNiftyStock(
-        symbol
-      );
+      findNiftyStock(symbol);
 
 
     const name =
       String(
-
         stock.name ||
         stock.companyName ||
-
         (
           master &&
           master.name
         ) ||
-
         stock.displaySymbol ||
         symbol
-
       ).trim();
 
 
     const price =
       Number(
-
         stock.price ??
         stock.ltp ??
         stock.lastPrice ??
         stock.close ??
         0
-
       );
 
 
     const change =
       Number(
-
         stock.perChange ??
         stock.change ??
         stock.percentChange ??
         0
-
       );
 
 
     const sector =
       String(
-
         stock.sector ||
-
         (
           master &&
           master.sector
         ) ||
-
         "Nifty 50"
-
       ).trim();
 
 
     const businessGroup =
       String(
-
         stock.businessGroup ||
         stock.group ||
         stock.parentGroup ||
-
         (
           master &&
           (
@@ -685,11 +641,7 @@
             master.group
           )
         ) ||
-
-        inferBusinessGroup(
-          symbol
-        )
-
+        inferBusinessGroup(symbol)
       ).trim();
 
 
@@ -711,9 +663,7 @@
   // NIFTY MASTER LOOKUP
   // ==========================================
 
-  function findNiftyStock(
-    symbol
-  ) {
+  function findNiftyStock(symbol) {
 
     const list =
       Array.isArray(
@@ -734,17 +684,11 @@
 
 
       if (
-
         String(
           item.symbol || ""
         )
-          .replace(
-            /-EQ$/i,
-            ""
-          )
-          .toUpperCase() ===
-        symbol
-
+          .replace(/-EQ$/i, "")
+          .toUpperCase() === symbol
       ) {
 
         return item;
@@ -760,12 +704,10 @@
 
 
   // ==========================================
-  // BUSINESS GROUP
+  // BUSINESS GROUP FALLBACK
   // ==========================================
 
-  function inferBusinessGroup(
-    symbol
-  ) {
+  function inferBusinessGroup(symbol) {
 
     const groups = {
 
@@ -832,9 +774,7 @@
   // VALID STOCK
   // ==========================================
 
-  function isValidStock(
-    stock
-  ) {
+  function isValidStock(stock) {
 
     return Boolean(
 
@@ -901,10 +841,7 @@
 
 
     stocks.forEach(
-      function (
-        stock,
-        index
-      ) {
+      function (stock, index) {
 
         const row =
           document.createElement(
@@ -937,9 +874,7 @@
 
 
         rank.textContent =
-          String(
-            index + 1
-          );
+          String(index + 1);
 
 
         const info =
@@ -976,24 +911,11 @@
           `${stock.symbol} • ${stock.sector}`;
 
 
-        info.appendChild(
-          name
-        );
+        info.appendChild(name);
+        info.appendChild(sector);
 
-
-        info.appendChild(
-          sector
-        );
-
-
-        left.appendChild(
-          rank
-        );
-
-
-        left.appendChild(
-          info
-        );
+        left.appendChild(rank);
+        left.appendChild(info);
 
 
         const right =
@@ -1029,34 +951,16 @@
 
 
         price.textContent =
-          `₹${formatMoney(
-            stock.price
-          )}`;
+          `₹${formatMoney(stock.price)}`;
 
 
-        right.appendChild(
-          change
-        );
+        right.appendChild(change);
+        right.appendChild(price);
 
+        row.appendChild(left);
+        row.appendChild(right);
 
-        right.appendChild(
-          price
-        );
-
-
-        row.appendChild(
-          left
-        );
-
-
-        row.appendChild(
-          right
-        );
-
-
-        fragment.appendChild(
-          row
-        );
+        fragment.appendChild(row);
 
       }
     );
@@ -1070,7 +974,7 @@
 
 
   // ==========================================
-  // EQUAL TOP-20 BUDGET PLAN
+  // RANK-WEIGHTED BUDGET PLAN
   // ==========================================
 
   function buildTop20BudgetPlan(
@@ -1082,57 +986,128 @@
       stocks.length;
 
 
-    const equalPercent =
-      100 / count;
+    // ----------------------------------------
+    // RANK WEIGHTS
+    //
+    // Rank 1 = 20
+    // Rank 2 = 19
+    // ...
+    // Rank 20 = 1
+    //
+    // No equal 5%.
+    // ----------------------------------------
+
+    const rankWeights =
+      stocks.map(
+        function (stock, index) {
+
+          return {
+
+            symbol:
+              stock.symbol,
+
+            rank:
+              index + 1,
+
+            weight:
+              count - index
+
+          };
+
+        }
+      );
 
 
-    const selected = [];
+    const weightTotal =
+      rankWeights.reduce(
+        function (sum, item) {
+
+          return sum +
+            item.weight;
+
+        },
+        0
+      );
 
 
-    stocks.forEach(
-      function (stock) {
+    // ----------------------------------------
+    // TARGET PERCENTAGE
+    // ----------------------------------------
 
-        const targetAmount =
-          budget *
+    const targetMap = {};
+
+
+    rankWeights.forEach(
+      function (item) {
+
+        targetMap[item.symbol] =
           (
-            equalPercent /
-            100
-          );
-
-
-        const quantity =
-          Math.floor(
-            targetAmount /
-            stock.price
-          );
-
-
-        selected.push({
-
-          ...stock,
-
-          targetPercent:
-            equalPercent,
-
-          targetAmount:
-            targetAmount,
-
-          quantity:
-            quantity > 0
-              ? quantity
-              : 0,
-
-          investment:
-            quantity > 0
-              ? quantity *
-                stock.price
-              : 0
-
-        });
+            item.weight /
+            weightTotal
+          ) * 100;
 
       }
     );
 
+
+    // ----------------------------------------
+    // INITIAL TARGET
+    // ----------------------------------------
+
+    const selected =
+      stocks.map(
+        function (stock, index) {
+
+          const targetPercent =
+            targetMap[
+              stock.symbol
+            ];
+
+
+          const targetAmount =
+            budget *
+            (
+              targetPercent /
+              100
+            );
+
+
+          const quantity =
+            Math.floor(
+              targetAmount /
+              stock.price
+            );
+
+
+          return {
+
+            ...stock,
+
+            rank:
+              index + 1,
+
+            rankWeight:
+              rankWeights[index].weight,
+
+            targetPercent,
+
+            targetAmount,
+
+            quantity,
+
+            investment:
+              quantity *
+              stock.price
+
+          };
+
+        }
+      );
+
+
+    // ----------------------------------------
+    // ALLOCATION TOTAL
+    // ----------------------------------------
 
     let total =
       calculateTotal(
@@ -1147,18 +1122,26 @@
       );
 
 
+    // ----------------------------------------
+    // ADD WHOLE SHARES
+    //
+    // Every new share is checked against:
+    //
+    // 1. Budget
+    // 2. Stock max
+    // 3. Sector max
+    // 4. Group max
+    //
+    // Candidate with largest target gap
+    // gets priority.
+    // ----------------------------------------
+
     let guard = 0;
 
 
-    // ----------------------------------------
-    // USE REMAINING BALANCE
-    // ----------------------------------------
-
     while (
-
       balance > 0 &&
       guard < 10000
-
     ) {
 
       guard++;
@@ -1166,7 +1149,6 @@
 
       const candidates =
         selected
-
           .filter(
             function (stock) {
 
@@ -1174,30 +1156,85 @@
                 stock.price;
 
 
+              if (
+                nextCost >
+                balance
+              ) {
+
+                return false;
+
+              }
+
+
               const nextInvestment =
                 stock.investment +
                 nextCost;
 
 
-              const maxStock =
+              // STOCK LIMIT
+
+              if (
+                nextInvestment >
                 budget *
-                MAX_STOCK_ALLOCATION;
+                MAX_STOCK_ALLOCATION
+              ) {
+
+                return false;
+
+              }
 
 
-              return (
+              const sectorTotal =
+                getSectorTotal(
+                  selected,
+                  stock.sector
+                );
 
-                nextCost <= balance &&
 
-                nextInvestment <=
-                maxStock
+              // SECTOR LIMIT
 
-              );
+              if (
+                sectorTotal +
+                nextCost >
+                budget *
+                MAX_SECTOR_ALLOCATION
+              ) {
+
+                return false;
+
+              }
+
+
+              const groupTotal =
+                getGroupTotal(
+                  selected,
+                  stock.businessGroup
+                );
+
+
+              // GROUP LIMIT
+
+              if (
+                groupTotal +
+                nextCost >
+                budget *
+                MAX_GROUP_ALLOCATION
+              ) {
+
+                return false;
+
+              }
+
+
+              return true;
 
             }
           )
-
           .sort(
             function (a, b) {
+
+              // Primary:
+              // target percentage gap
 
               const aGap =
                 a.targetAmount -
@@ -1210,22 +1247,33 @@
 
 
               if (
-                bGap !==
-                aGap
+                bGap !== aGap
               ) {
 
-                return (
-                  bGap -
-                  aGap
-                );
+                return bGap -
+                  aGap;
 
               }
 
 
-              return (
-                b.change -
-                a.change
-              );
+              // Secondary:
+              // higher rank first
+
+              if (
+                a.rank !== b.rank
+              ) {
+
+                return a.rank -
+                  b.rank;
+
+              }
+
+
+              // Final:
+              // stronger live performance
+
+              return b.change -
+                a.change;
 
             }
           );
@@ -1244,8 +1292,7 @@
         candidates[0];
 
 
-      chosen.quantity +=
-        1;
+      chosen.quantity += 1;
 
 
       chosen.investment +=
@@ -1256,14 +1303,17 @@
         chosen.price;
 
 
-      balance -=
-        chosen.price;
+      balance =
+        Math.max(
+          0,
+          budget - total
+        );
 
     }
 
 
     // ----------------------------------------
-    // SECTOR / GROUP TOTALS
+    // CONCENTRATION TOTALS
     // ----------------------------------------
 
     const sectorTotals = {};
@@ -1302,6 +1352,10 @@
     );
 
 
+    // ----------------------------------------
+    // ACTUAL PERCENTAGES
+    // ----------------------------------------
+
     selected.forEach(
       function (stock) {
 
@@ -1310,48 +1364,35 @@
             ? (
                 stock.investment /
                 total
-              ) *
-              100
+              ) * 100
             : 0;
 
 
         stock.sectorPercent =
           total > 0
-
             ? (
-
                 (
                   sectorTotals[
                     stock.sector ||
                     "Nifty 50"
-                  ] ||
-                  0
+                  ] || 0
                 ) /
                 total
-
-              ) *
-              100
-
+              ) * 100
             : 0;
 
 
         stock.groupPercent =
           total > 0
-
             ? (
-
                 (
                   groupTotals[
                     stock.businessGroup ||
                     stock.symbol
-                  ] ||
-                  0
+                  ] || 0
                 ) /
                 total
-
-              ) *
-              100
-
+              ) * 100
             : 0;
 
       }
@@ -1370,10 +1411,9 @@
       top20Count:
         count,
 
-      equalPercent,
+      rankWeights,
 
-      equalAmount:
-        budget,
+      weightTotal,
 
       sectorTotals,
 
@@ -1385,466 +1425,103 @@
 
 
   // ==========================================
-  // AI RECOMMENDATION ENGINE
+  // SECTOR TOTAL
   // ==========================================
 
-  function buildAIAnalysis(
+  function getSectorTotal(
     stocks,
-    allocation,
-    budget
+    sector
   ) {
 
-    const scored =
-      stocks.map(
-        function (
-          stock,
-          index
-        ) {
-
-          const rank =
-            index + 1;
-
-
-          const positionScore =
-            calculatePositionScore(
-              rank
-            );
-
-
-          const momentumScore =
-            calculateMomentumScore(
-              stock.change
-            );
-
-
-          const allocationData =
-            allocation.selected.find(
-              function (item) {
-
-                return (
-                  item.symbol ===
-                  stock.symbol
-                );
-
-              }
-            );
-
-
-          const diversificationScore =
-            calculateDiversificationScore(
-              allocationData
-            );
-
-
-          const score =
-            Math.round(
-
-              positionScore +
-              momentumScore +
-              diversificationScore
-
-            );
-
-
-          let action =
-            "WATCH";
-
-
-          if (
-            score >= 75
-          ) {
-
-            action =
-              "BUY";
-
-          }
-
-          else if (
-            score < 50
-          ) {
-
-            action =
-              "AVOID";
-
-          }
-
-
-          const reason =
-            getAIReason(
-              stock,
-              action,
-              allocationData
-            );
-
-
-          return {
-
-            symbol:
-              stock.symbol,
-
-            name:
-              stock.name,
-
-            sector:
-              stock.sector,
-
-            businessGroup:
-              stock.businessGroup,
-
-            price:
-              stock.price,
-
-            change:
-              stock.change,
-
-            rank,
-
-            score,
-
-            action,
-
-            reason,
-
-            positionScore,
-
-            momentumScore,
-
-            diversificationScore
-
-          };
-
-        }
-      );
-
-
-    scored.sort(
-      function (a, b) {
+    return stocks.reduce(
+      function (sum, stock) {
 
         if (
-          b.score !==
-          a.score
+          (
+            stock.sector ||
+            "Nifty 50"
+          ) ===
+          (
+            sector ||
+            "Nifty 50"
+          )
         ) {
 
-          return (
-            b.score -
-            a.score
-          );
+          return sum +
+            Number(
+              stock.investment || 0
+            );
 
         }
 
 
-        return (
-          b.change -
-          a.change
-        );
+        return sum;
 
-      }
-    );
-
-
-    const buy =
-      scored.filter(
-        function (item) {
-
-          return (
-            item.action ===
-            "BUY"
-          );
-
-        }
-      );
-
-
-    const watch =
-      scored.filter(
-        function (item) {
-
-          return (
-            item.action ===
-            "WATCH"
-          );
-
-        }
-      );
-
-
-    const avoid =
-      scored.filter(
-        function (item) {
-
-          return (
-            item.action ===
-            "AVOID"
-          );
-
-        }
-      );
-
-
-    return {
-
-      scored,
-
-      buy,
-
-      watch,
-
-      avoid,
-
-      buyCount:
-        buy.length,
-
-      watchCount:
-        watch.length,
-
-      avoidCount:
-        avoid.length,
-
-      budget,
-
-      model:
-        "Prototype live-market scoring"
-
-    };
-
-  }
-
-
-  // ==========================================
-  // POSITION SCORE
-  // ==========================================
-
-  function calculatePositionScore(
-    rank
-  ) {
-
-    return Math.max(
-      0,
-      30 -
-      (
-        (rank - 1) *
-        1.5
-      )
+      },
+      0
     );
 
   }
 
 
   // ==========================================
-  // MOMENTUM SCORE
+  // GROUP TOTAL
   // ==========================================
 
-  function calculateMomentumScore(
-    change
+  function getGroupTotal(
+    stocks,
+    group
   ) {
 
-    return clamp(
+    return stocks.reduce(
+      function (sum, stock) {
 
-      20 +
-      (
-        change *
-        6
-      ),
+        if (
+          (
+            stock.businessGroup ||
+            stock.symbol
+          ) ===
+          (
+            group ||
+            stock.symbol
+          )
+        ) {
 
-      0,
-      40
+          return sum +
+            Number(
+              stock.investment || 0
+            );
 
+        }
+
+
+        return sum;
+
+      },
+      0
     );
 
   }
 
 
   // ==========================================
-  // DIVERSIFICATION SCORE
+  // TOTAL
   // ==========================================
 
-  function calculateDiversificationScore(
-    stock
+  function calculateTotal(
+    stocks
   ) {
 
-    if (!stock) {
+    return stocks.reduce(
+      function (sum, stock) {
 
-      return 15;
+        return sum +
+          Number(
+            stock.investment || 0
+          );
 
-    }
-
-
-    let score =
-      30;
-
-
-    if (
-      stock.actualPercent >
-      25
-    ) {
-
-      score -=
-        12;
-
-    }
-
-    else if (
-      stock.actualPercent >
-      20
-    ) {
-
-      score -=
-        8;
-
-    }
-
-
-    if (
-      stock.sectorPercent >
-      MAX_SECTOR_ALLOCATION *
-      100
-    ) {
-
-      score -=
-        10;
-
-    }
-
-    else if (
-      stock.sectorPercent >
-      30
-    ) {
-
-      score -=
-        5;
-
-    }
-
-
-    if (
-      stock.groupPercent >
-      MAX_GROUP_ALLOCATION *
-      100
-    ) {
-
-      score -=
-        10;
-
-    }
-
-    else if (
-      stock.groupPercent >
-      25
-    ) {
-
-      score -=
-        5;
-
-    }
-
-
-    return clamp(
-      score,
-      0,
-      30
-    );
-
-  }
-
-
-  // ==========================================
-  // AI REASON
-  // ==========================================
-
-  function getAIReason(
-    stock,
-    action,
-    allocation
-  ) {
-
-    if (
-      action ===
-      "BUY"
-    ) {
-
-      if (
-        stock.change >=
-        2
-      ) {
-
-        return (
-          "Strong live momentum with high current Top-20 position."
-        );
-
-      }
-
-
-      if (
-        stock.change >=
-        0
-      ) {
-
-        return (
-          "Positive/steady momentum with strong Top-20 position."
-        );
-
-      }
-
-
-      return (
-        "High Top-20 score with acceptable diversification."
-      );
-
-    }
-
-
-    if (
-      action ===
-      "AVOID"
-    ) {
-
-      if (
-        stock.change <
-        0
-      ) {
-
-        return (
-          "Negative live momentum and comparatively lower score."
-        );
-
-      }
-
-
-      return (
-        "Lower prototype score compared with current Top-20 stocks."
-      );
-
-    }
-
-
-    if (
-      allocation &&
-      allocation.groupPercent >
-      25
-    ) {
-
-      return (
-        "WATCH due to business-group concentration."
-      );
-
-    }
-
-
-    if (
-      allocation &&
-      allocation.sectorPercent >
-      30
-    ) {
-
-      return (
-        "WATCH due to sector concentration."
-      );
-
-    }
-
-
-    return (
-      "Monitor; current score is between BUY and AVOID thresholds."
+      },
+      0
     );
 
   }
@@ -1857,12 +1534,10 @@
   function buildRecommendationHTML(
     budget,
     top20,
-    result,
-    ai
+    result
   ) {
 
-    let html =
-      "";
+    let html = "";
 
 
     // ========================================
@@ -1870,30 +1545,26 @@
     // ========================================
 
     html +=
-      `<div
-        class="investment-summary"
+      `<div class="investment-summary"
         style="
           padding:14px;
           margin-bottom:14px;
           border-radius:10px;
           background:#111820;
-        "
-      >`;
+        ">`;
 
 
     html +=
       `<div class="investment-title">
-        Top 20 Diversification Plan
+        Top 20 Rank-Weighted Diversification Plan
       </div>`;
 
 
     html +=
-      `<div
-        style="
-          line-height:1.8;
-          margin-top:8px;
-        "
-      >`;
+      `<div style="
+        line-height:1.8;
+        margin-top:8px;
+      ">`;
 
 
     html +=
@@ -1913,9 +1584,18 @@
 
 
     html +=
-      `Equal Top-20 target:
+      `Allocation method:
       <strong>
-        ${result.equalPercent.toFixed(2)}% each
+        Live Rank-Weighted %
+      </strong>
+      <br>`;
+
+
+    html +=
+      `Rank weight:
+      <strong>
+        #1 = ${result.rankWeights[0].weight}
+        → #${result.top20Count} = 1
       </strong>
       <br>`;
 
@@ -1923,9 +1603,7 @@
     html +=
       `Actual whole-share investment:
       <strong>
-        ₹${formatMoney(
-          result.totalInvestment
-        )}
+        ₹${formatMoney(result.totalInvestment)}
       </strong>
       <br>`;
 
@@ -1933,9 +1611,7 @@
     html +=
       `Remaining balance:
       <strong>
-        ₹${formatMoney(
-          result.balance
-        )}
+        ₹${formatMoney(result.balance)}
       </strong>`;
 
 
@@ -1948,96 +1624,23 @@
 
 
     // ========================================
-    // AI SUMMARY
+    // TABLE
     // ========================================
 
     html +=
-      `<div
-        style="
-          padding:14px;
-          margin-bottom:14px;
-          border-radius:10px;
-          background:#111820;
-          line-height:1.8;
-        "
-      >`;
+      `<div style="
+        overflow-x:auto;
+        margin-top:12px;
+      ">`;
 
 
     html +=
-      `<div
-        style="
-          font-size:18px;
-          font-weight:bold;
-          margin-bottom:8px;
-        "
-      >
-        🤖 AI Recommendation Engine
-      </div>`;
-
-
-    html +=
-      `BUY:
-      <strong>
-        ${ai.buyCount}
-      </strong>
-      &nbsp; | &nbsp;`;
-
-
-    html +=
-      `WATCH:
-      <strong>
-        ${ai.watchCount}
-      </strong>
-      &nbsp; | &nbsp;`;
-
-
-    html +=
-      `AVOID:
-      <strong>
-        ${ai.avoidCount}
-      </strong>`;
-
-
-    html +=
-      `<div
-        style="
-          margin-top:8px;
-          font-size:12px;
-          opacity:.8;
-        "
-      >
-        Prototype AI score live market change,
-        Top-20 rank aur diversification context
-        par based hai.
-      </div>`;
-
-
-    html +=
-      `</div>`;
-
-
-    // ========================================
-    // AI TABLE
-    // ========================================
-
-    html +=
-      `<div
-        style="
-          overflow-x:auto;
-          margin-top:12px;
-        "
-      >`;
-
-
-    html +=
-      `<table
-        style="
-          width:100%;
-          border-collapse:collapse;
-          min-width:900px;
-          font-size:13px;
-        "
-      >`;
+      `<table style="
+        width:100%;
+        border-collapse:collapse;
+        min-width:1000px;
+        font-size:13px;
+      ">`;
 
 
     html +=
@@ -2045,217 +1648,43 @@
         <tr>`;
 
 
-    [
+    const headers = [
+
       "Rank",
+
       "Company",
-      "Change",
-      "AI Score",
-      "Action",
-      "Reason"
 
-    ].forEach(
-      function (header) {
-
-        html +=
-          `<th
-            style="
-              text-align:left;
-              padding:9px;
-              border-bottom:1px solid #39424e;
-            "
-          >
-            ${header}
-          </th>`;
-
-      }
-    );
-
-
-    html +=
-      `</tr>
-      </thead>
-      <tbody>`;
-
-
-    ai.scored.forEach(
-      function (stock) {
-
-        const actionClass =
-          stock.action ===
-          "BUY"
-
-            ? "positive"
-
-            : stock.action ===
-              "AVOID"
-
-              ? "negative"
-
-              : "";
-
-
-        html +=
-          `<tr>`;
-
-
-        html +=
-          `<td
-            style="
-              padding:8px;
-              border-bottom:1px solid #252d38;
-            "
-          >
-            ${stock.rank}
-          </td>`;
-
-
-        html +=
-          `<td
-            style="
-              padding:8px;
-              border-bottom:1px solid #252d38;
-            "
-          >
-            <strong>
-              ${escapeHtml(
-                stock.name
-              )}
-            </strong>
-            <br>
-            <small>
-              ${escapeHtml(
-                stock.symbol
-              )}
-            </small>
-          </td>`;
-
-
-        html +=
-          `<td
-            class="${
-              stock.change >= 0
-                ? "positive"
-                : "negative"
-            }"
-            style="
-              padding:8px;
-              border-bottom:1px solid #252d38;
-            "
-          >
-            ${
-              stock.change >= 0
-                ? "+"
-                : ""
-            }${stock.change.toFixed(2)}%
-          </td>`;
-
-
-        html +=
-          `<td
-            style="
-              padding:8px;
-              border-bottom:1px solid #252d38;
-            "
-          >
-            <strong>
-              ${stock.score}/100
-            </strong>
-          </td>`;
-
-
-        html +=
-          `<td
-            class="${actionClass}"
-            style="
-              padding:8px;
-              border-bottom:1px solid #252d38;
-            "
-          >
-            <strong>
-              ${stock.action}
-            </strong>
-          </td>`;
-
-
-        html +=
-          `<td
-            style="
-              padding:8px;
-              border-bottom:1px solid #252d38;
-            "
-          >
-            ${escapeHtml(
-              stock.reason
-            )}
-          </td>`;
-
-
-        html +=
-          `</tr>`;
-
-      }
-    );
-
-
-    html +=
-      `</tbody>
-      </table>
-      </div>`;
-
-
-    // ========================================
-    // ALLOCATION TABLE
-    // ========================================
-
-    html +=
-      `<div
-        style="
-          overflow-x:auto;
-          margin-top:16px;
-        "
-      >`;
-
-
-    html +=
-      `<table
-        style="
-          width:100%;
-          border-collapse:collapse;
-          min-width:850px;
-          font-size:13px;
-        "
-      >`;
-
-
-    html +=
-      `<thead>
-        <tr>`;
-
-
-    [
-      "Rank",
-      "Company",
       "Price",
-      "Nifty Top-20 Target %",
+
+      "Rank Weight",
+
+      "Target %",
+
       "Target ₹",
+
       "Shares",
+
       "Actual ₹",
+
       "Actual %",
+
       "Sector",
+
       "Group"
 
-    ].forEach(
+    ];
+
+
+    headers.forEach(
       function (header) {
 
         html +=
-          `<th
-            style="
-              text-align:left;
-              padding:9px;
-              border-bottom:1px solid #39424e;
-              white-space:nowrap;
-            "
-          >
+          `<th style="
+            text-align:left;
+            padding:9px;
+            border-bottom:1px solid #39424e;
+            white-space:nowrap;
+          ">
             ${header}
           </th>`;
 
@@ -2265,15 +1694,15 @@
 
     html +=
       `</tr>
-      </thead>
-      <tbody>`;
+      </thead>`;
+
+
+    html +=
+      `<tbody>`;
 
 
     result.selected.forEach(
-      function (
-        stock,
-        index
-      ) {
+      function (stock) {
 
         const actualClass =
           stock.quantity > 0
@@ -2286,81 +1715,70 @@
 
 
         html +=
-          `<td
-            style="
-              padding:8px;
-              border-bottom:1px solid #252d38;
-            "
-          >
-            ${index + 1}
+          `<td style="
+            padding:8px;
+            border-bottom:1px solid #252d38;
+          ">
+            ${stock.rank}
           </td>`;
 
 
         html +=
-          `<td
-            style="
-              padding:8px;
-              border-bottom:1px solid #252d38;
-            "
-          >
+          `<td style="
+            padding:8px;
+            border-bottom:1px solid #252d38;
+          ">
             <strong>
-              ${escapeHtml(
-                stock.name
-              )}
+              ${escapeHtml(stock.name)}
             </strong>
             <br>
             <small>
-              ${escapeHtml(
-                stock.symbol
-              )}
+              ${escapeHtml(stock.symbol)}
             </small>
           </td>`;
 
 
         html +=
-          `<td
-            style="
-              padding:8px;
-              border-bottom:1px solid #252d38;
-            "
-          >
-            ₹${formatMoney(
-              stock.price
-            )}
+          `<td style="
+            padding:8px;
+            border-bottom:1px solid #252d38;
+          ">
+            ₹${formatMoney(stock.price)}
           </td>`;
 
 
         html +=
-          `<td
-            style="
-              padding:8px;
-              border-bottom:1px solid #252d38;
-            "
-          >
+          `<td style="
+            padding:8px;
+            border-bottom:1px solid #252d38;
+          ">
+            ${stock.rankWeight}
+          </td>`;
+
+
+        html +=
+          `<td style="
+            padding:8px;
+            border-bottom:1px solid #252d38;
+          ">
             ${stock.targetPercent.toFixed(2)}%
           </td>`;
 
 
         html +=
-          `<td
-            style="
-              padding:8px;
-              border-bottom:1px solid #252d38;
-            "
-          >
-            ₹${formatMoney(
-              stock.targetAmount
-            )}
+          `<td style="
+            padding:8px;
+            border-bottom:1px solid #252d38;
+          ">
+            ₹${formatMoney(stock.targetAmount)}
           </td>`;
 
 
         html +=
-          `<td
-            style="
-              padding:8px;
-              border-bottom:1px solid #252d38;
-            "
-          >
+          `<td style="
+            padding:8px;
+            border-bottom:1px solid #252d38;
+          ">
             <strong>
               ${stock.quantity}
             </strong>
@@ -2368,15 +1786,11 @@
 
 
         html +=
-          `<td
-            style="
-              padding:8px;
-              border-bottom:1px solid #252d38;
-            "
-          >
-            ₹${formatMoney(
-              stock.investment
-            )}
+          `<td style="
+            padding:8px;
+            border-bottom:1px solid #252d38;
+          ">
+            ₹${formatMoney(stock.investment)}
           </td>`;
 
 
@@ -2393,28 +1807,20 @@
 
 
         html +=
-          `<td
-            style="
-              padding:8px;
-              border-bottom:1px solid #252d38;
-            "
-          >
-            ${escapeHtml(
-              stock.sector
-            )}
+          `<td style="
+            padding:8px;
+            border-bottom:1px solid #252d38;
+          ">
+            ${escapeHtml(stock.sector)}
           </td>`;
 
 
         html +=
-          `<td
-            style="
-              padding:8px;
-              border-bottom:1px solid #252d38;
-            "
-          >
-            ${escapeHtml(
-              stock.businessGroup
-            )}
+          `<td style="
+            padding:8px;
+            border-bottom:1px solid #252d38;
+          ">
+            ${escapeHtml(stock.businessGroup)}
           </td>`;
 
 
@@ -2426,25 +1832,29 @@
 
 
     html +=
-      `</tbody>
-      </table>
-      </div>`;
+      `</tbody>`;
+
+
+    html +=
+      `</table>`;
+
+
+    html +=
+      `</div>`;
 
 
     // ========================================
-    // EXPLANATION
+    // ALLOCATION LOGIC
     // ========================================
 
     html +=
-      `<div
-        style="
-          margin-top:16px;
-          padding:14px;
-          border-radius:10px;
-          background:#111820;
-          line-height:1.7;
-        "
-      >`;
+      `<div style="
+        margin-top:16px;
+        padding:14px;
+        border-radius:10px;
+        background:#111820;
+        line-height:1.7;
+      ">`;
 
 
     html +=
@@ -2455,28 +1865,42 @@
 
 
     html +=
-      `• Top 20 ki har company ko equal theoretical target
-      <strong>
-        ${result.equalPercent.toFixed(2)}%
-      </strong>
-      diya gaya hai.
+      `• Equal 5% allocation use nahi ki gayi.
       <br>`;
 
 
     html +=
-      `• Whole shares ki wajah se actual percentage exact
-      ${result.equalPercent.toFixed(2)}% nahi ho sakta.
+      `• Current Top 20 ko live ranking ke basis par
+      weight diya gaya hai.
       <br>`;
 
 
     html +=
-      `• Remaining balance ko affordable Top-20 stocks mein
-      whole-share increments se use karne ki koshish ki gayi hai.
+      `• Rank #1 ko highest weight aur lower ranks ko
+      progressively lower weight milta hai.
       <br>`;
 
 
     html +=
-      `• Kisi individual stock ko approximately
+      `• Target percentage automatically rank weight se
+      calculate hota hai.
+      <br>`;
+
+
+    html +=
+      `• Whole shares ki wajah se actual allocation
+      target percentage se thoda different ho sakta hai.
+      <br>`;
+
+
+    html +=
+      `• Remaining balance ko affordable stocks mein
+      whole-share increments se use karne ki koshish hoti hai.
+      <br>`;
+
+
+    html +=
+      `• Kisi individual stock ko
       <strong>
         ${(MAX_STOCK_ALLOCATION * 100).toFixed(0)}%
       </strong>
@@ -2485,20 +1909,31 @@
 
 
     html +=
-      `• Sector aur business-group concentration calculate ki gayi hai.
+      `• Kisi sector ko
+      <strong>
+        ${(MAX_SECTOR_ALLOCATION * 100).toFixed(0)}%
+      </strong>
+      se upar nahi jaane diya gaya.
       <br>`;
 
 
     html +=
-      `• Total investment entered budget se kabhi zyada nahi ho sakta.
+      `• Kisi business group ko
+      <strong>
+        ${(MAX_GROUP_ALLOCATION * 100).toFixed(0)}%
+      </strong>
+      se upar nahi jaane diya gaya.
       <br>`;
 
 
     html +=
-      `• AI score abhi available live market data par based
-      prototype scoring model hai.
-      Fundamental/news/technical data ke bina ise final investment
-      signal nahi maana jana chahiye.`;
+      `• Total investment budget se kabhi zyada nahi hoga.
+      <br>`;
+
+
+    html +=
+      `• Ye live market data aur prototype allocation rules
+      par based calculation hai; investment decision final nahi hai.`;
 
 
     html +=
@@ -2510,14 +1945,12 @@
     // ========================================
 
     html +=
-      `<div
-        style="
-          margin-top:14px;
-          padding:14px;
-          border-top:1px solid #39424e;
-          line-height:1.8;
-        "
-      >`;
+      `<div style="
+        margin-top:14px;
+        padding:14px;
+        border-top:1px solid #39424e;
+        line-height:1.8;
+      ">`;
 
 
     html +=
@@ -2529,25 +1962,19 @@
 
     html +=
       `Budget:
-      ₹${formatMoney(
-        budget
-      )}
+      ₹${formatMoney(budget)}
       <br>`;
 
 
     html +=
       `Invested:
-      ₹${formatMoney(
-        result.totalInvestment
-      )}
+      ₹${formatMoney(result.totalInvestment)}
       <br>`;
 
 
     html +=
       `Balance:
-      ₹${formatMoney(
-        result.balance
-      )}
+      ₹${formatMoney(result.balance)}
       <br>`;
 
 
@@ -2558,53 +1985,30 @@
 
 
     html +=
-      `Target per company:
-      ${result.equalPercent.toFixed(2)}%
+      `Allocation:
+      Rank-Weighted
       <br>`;
 
 
     html +=
-      `AI BUY signals:
-      ${ai.buyCount}
+      `Stock limit:
+      ${(MAX_STOCK_ALLOCATION * 100).toFixed(0)}%
       <br>`;
 
 
     html +=
-      `AI WATCH signals:
-      ${ai.watchCount}
+      `Sector limit:
+      ${(MAX_SECTOR_ALLOCATION * 100).toFixed(0)}%
       <br>`;
 
 
     html +=
-      `AI AVOID signals:
-      ${ai.avoidCount}`;
+      `Group limit:
+      ${(MAX_GROUP_ALLOCATION * 100).toFixed(0)}%`;
 
 
     html +=
       `</div>`;
-
-
-    // ========================================
-    // DISCLAIMER
-    // ========================================
-
-    html +=
-      `<div
-        style="
-          margin-top:12px;
-          padding:12px;
-          border-radius:10px;
-          background:#111820;
-          font-size:12px;
-          line-height:1.6;
-        "
-      >
-        <strong>
-          Prototype-1
-        </strong>
-        AI analysis available market data par based hai.
-        Investment ka final decision aapka hai.
-      </div>`;
 
 
     return html;
@@ -2613,7 +2017,7 @@
 
 
   // ==========================================
-  // STATUS
+  // MARKET STATUS
   // ==========================================
 
   function setMarketStatus(
@@ -2644,9 +2048,7 @@
   // ERROR
   // ==========================================
 
-  function showError(
-    message
-  ) {
+  function showError(message) {
 
     const box =
       document.getElementById(
@@ -2692,41 +2094,10 @@
 
 
   // ==========================================
-  // TOTAL
+  // MONEY FORMAT
   // ==========================================
 
-  function calculateTotal(
-    stocks
-  ) {
-
-    return stocks.reduce(
-      function (
-        sum,
-        stock
-      ) {
-
-        return (
-          sum +
-          Number(
-            stock.investment ||
-            0
-          )
-        );
-
-      },
-      0
-    );
-
-  }
-
-
-  // ==========================================
-  // MONEY
-  // ==========================================
-
-  function formatMoney(
-    value
-  ) {
+  function formatMoney(value) {
 
     return Number(
       value || 0
@@ -2742,33 +2113,10 @@
 
 
   // ==========================================
-  // CLAMP
-  // ==========================================
-
-  function clamp(
-    value,
-    min,
-    max
-  ) {
-
-    return Math.min(
-      max,
-      Math.max(
-        min,
-        value
-      )
-    );
-
-  }
-
-
-  // ==========================================
   // HTML ESCAPE
   // ==========================================
 
-  function escapeHtml(
-    value
-  ) {
+  function escapeHtml(value) {
 
     return String(
       value || ""
