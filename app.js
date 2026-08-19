@@ -1,16 +1,22 @@
 // ============================================================
-// PROTOTYPE-1 — APP ENGINE V5
+// PROTOTYPE-1 — APP ENGINE V5.1
 // MONTHLY TOP-20
 // DAILY MONITORING
 // WATCH / IMPROVING / EXIT REVIEW
 // SMART WHOLE-SHARE ALLOCATION
 // INVESTMENT + PORTFOLIO TRACKING
+//
+// V5.1 FIXES
+// 1. Monthly Top-20 cannot be overwritten by daily ranking
+// 2. Analyze does NOT create fake portfolio purchases
+// 3. EXIT REVIEW requires persistent deterioration
+// 4. Monthly decision and daily ranking remain separate
 // ============================================================
 
 (function () {
   "use strict";
 
-  console.log("Prototype-1 app.js V5 loading...");
+  console.log("Prototype-1 app.js V5.1 loading...");
 
   // ==========================================================
   // SETTINGS
@@ -27,9 +33,18 @@
 
   const MIN_DIVERSIFIED_STOCKS = 5;
 
-  const PORTFOLIO_KEY = "prototype1_portfolio_v5";
-  const MONTHLY_KEY = "prototype1_monthly_top20_v5";
-  const DAILY_KEY = "prototype1_daily_monitoring_v5";
+  const PORTFOLIO_KEY =
+    "prototype1_portfolio_v5";
+
+  const MONTHLY_KEY =
+    "prototype1_monthly_top20_v5";
+
+  const DAILY_KEY =
+    "prototype1_daily_monitoring_v5";
+
+  const DAILY_HISTORY_LIMIT = 31;
+
+  const EXIT_REVIEW_MIN_DAYS = 2;
 
   let isConnecting = false;
 
@@ -62,7 +77,9 @@
       !analyzeButton ||
       !recommendation
     ) {
-      console.error("Required Prototype-1 elements not found.");
+      console.error(
+        "Required Prototype-1 elements not found."
+      );
       return;
     }
 
@@ -78,7 +95,9 @@
         if (isConnecting) return;
 
         const totp =
-          String(totpInput.value || "").trim();
+          String(
+            totpInput.value || ""
+          ).trim();
 
         hideError();
 
@@ -124,7 +143,9 @@
         try {
 
           const success =
-            await window.fetchMarketData(totp);
+            await window.fetchMarketData(
+              totp
+            );
 
           if (!success) {
 
@@ -159,9 +180,14 @@
             "status-ready"
           );
 
-          renderTop20();
-
+          /*
+           * IMPORTANT:
+           * Monitoring initialize/update hoti hai,
+           * lekin existing monthly Top-20 overwrite nahi hota.
+           */
           runMonitoring();
+
+          renderTop20();
 
           recommendation.innerHTML =
             `Live market data connected successfully. ${received}/${requested} stocks received.`;
@@ -213,7 +239,9 @@
         hideError();
 
         const amount =
-          Number(amountInput.value);
+          Number(
+            amountInput.value
+          );
 
         if (
           !Number.isFinite(amount) ||
@@ -228,6 +256,12 @@
 
         try {
 
+          /*
+           * Ensure monthly monitoring memory exists,
+           * but NEVER replace an existing monthly Top-20.
+           */
+          runMonitoring();
+
           const result =
             window.analyzeInvestmentAmount(
               amount
@@ -241,8 +275,11 @@
             recommendation.innerHTML =
               result.html;
 
-            saveInvestmentPlan(result);
-
+            /*
+             * IMPORTANT:
+             * Analyze is only a recommendation.
+             * It must NOT create a real portfolio purchase.
+             */
             appendMonitoringToRecommendation();
 
           } else {
@@ -294,8 +331,8 @@
       window.MARKET_DATA.success
     ) {
 
-      renderTop20();
       runMonitoring();
+      renderTop20();
     }
 
   });
@@ -340,34 +377,83 @@
         smartRankStocks(stocks);
 
       /*
-       * IMPORTANT:
-       * Daily ranking investment decision ko directly
-       * control nahi karti.
+       * MONTHLY DECISION
        *
-       * Monthly Top-20 memory primary reference hai.
+       * Existing monthly Top-20 is the primary reference.
+       * Current daily ranking cannot overwrite it.
        */
+      let monthly =
+        getSavedMonthly();
 
-      const monthly =
-        getMonthlyTop20(ranked);
+      if (
+        !monthly ||
+        monthly.month !==
+        currentMonthKey()
+      ) {
 
-      const decisionStocks =
-        monthly.length
-          ? monthly.map(
+        monthly =
+          createMonthlyTop20(
+            ranked
+          );
+      }
+
+      const monthlySymbols =
+        Array.isArray(
+          monthly.symbols
+        )
+          ? monthly.symbols
+          : [];
+
+      const monthlyStocks =
+        monthlySymbols
+          .map(
+            symbol =>
+              ranked.find(
+                s =>
+                  s.symbol ===
+                  symbol
+              )
+          )
+          .filter(Boolean);
+
+      /*
+       * If some monthly stocks are temporarily missing
+       * from live data, do not replace them with daily
+       * ranking. Use available monthly members only.
+       */
+      let top20 =
+        monthlyStocks.slice(
+          0,
+          TARGET_TOP20
+        );
+
+      /*
+       * Safety fallback only for a corrupted/empty monthly
+       * memory. This creates a new monthly baseline.
+       */
+      if (!top20.length) {
+
+        monthly =
+          createMonthlyTop20(
+            ranked
+          );
+
+        top20 =
+          monthly.symbols
+            .map(
               symbol =>
                 ranked.find(
-                  s => s.symbol === symbol
+                  s =>
+                    s.symbol ===
+                    symbol
                 )
-            ).filter(Boolean)
-          : ranked.slice(0, TARGET_TOP20);
-
-      const top20 =
-        decisionStocks.length >= TARGET_TOP20
-          ? decisionStocks.slice(0, TARGET_TOP20)
-          : ranked.slice(0, TARGET_TOP20);
-
-      saveMonthlyTop20(
-        top20
-      );
+            )
+            .filter(Boolean)
+            .slice(
+              0,
+              TARGET_TOP20
+            );
+      }
 
       const result =
         buildSmartPlan(
@@ -383,12 +469,14 @@
           buildRecommendationHTML(
             amount,
             top20,
-            result
+            result,
+            monthly
           ),
 
         selectedStocks:
           result.selected.filter(
-            s => s.quantity > 0
+            s =>
+              s.quantity > 0
           ),
 
         totalInvestment:
@@ -397,7 +485,10 @@
         balance:
           result.balance,
 
-        top20
+        top20,
+
+        monthlyTop20:
+          monthly.symbols
       };
     };
 
@@ -433,9 +524,13 @@
         const priority =
           master &&
           Number.isFinite(
-            Number(master.priority)
+            Number(
+              master.priority
+            )
           )
-            ? Number(master.priority)
+            ? Number(
+                master.priority
+              )
             : 0;
 
         return {
@@ -541,7 +636,6 @@
 
         newsScore:
           item.newsScore
-
       };
     });
   }
@@ -553,7 +647,8 @@
 
   function normalizeStock(stock) {
 
-    stock = stock || {};
+    stock =
+      stock || {};
 
     const symbol =
       String(
@@ -744,7 +839,6 @@
 
       SBIN:
         "SBI Group"
-
     };
 
     return (
@@ -793,14 +887,15 @@
       "-" +
       String(
         d.getMonth() + 1
-      ).padStart(2, "0")
+      ).padStart(
+        2,
+        "0"
+      )
     );
   }
 
 
-  function getMonthlyTop20(
-    ranked
-  ) {
+  function getSavedMonthly() {
 
     try {
 
@@ -812,52 +907,88 @@
         );
 
       if (
-        !saved ||
-        saved.month !==
-        currentMonthKey()
+        saved &&
+        saved.month ===
+        currentMonthKey() &&
+        Array.isArray(
+          saved.symbols
+        )
       ) {
-        return [];
-      }
 
-      return Array.isArray(
-        saved.symbols
-      )
-        ? saved.symbols
-        : [];
+        return saved;
+      }
 
     } catch (e) {
 
-      return [];
+      console.warn(
+        "Monthly memory read failed",
+        e
+      );
     }
+
+    return null;
   }
 
 
-  function saveMonthlyTop20(
-    top20
+  function createMonthlyTop20(
+    ranked
+  ) {
+
+    const symbols =
+      ranked
+        .slice(
+          0,
+          TARGET_TOP20
+        )
+        .map(
+          s =>
+            s.symbol
+        );
+
+    const monthly = {
+
+      month:
+        currentMonthKey(),
+
+      symbols,
+
+      createdAt:
+        new Date().toISOString(),
+
+      updatedAt:
+        new Date().toISOString()
+    };
+
+    saveMonthly(
+      monthly
+    );
+
+    console.log(
+      "New monthly Top-20 created:",
+      symbols
+    );
+
+    return monthly;
+  }
+
+
+  function saveMonthly(
+    data
   ) {
 
     try {
 
-      const symbols =
-        top20.map(
-          s => s.symbol
-        );
-
       localStorage.setItem(
         MONTHLY_KEY,
-        JSON.stringify({
-          month:
-            currentMonthKey(),
-          symbols,
-          updatedAt:
-            new Date().toISOString()
-        })
+        JSON.stringify(
+          data
+        )
       );
 
     } catch (e) {
 
       console.warn(
-        "Monthly memory save failed",
+        "Monthly data save failed",
         e
       );
     }
@@ -876,9 +1007,26 @@
     const count =
       stocks.length;
 
+    if (!count) {
+
+      return {
+
+        selected: [],
+
+        totalInvestment: 0,
+
+        balance:
+          budget
+      };
+    }
+
     const weightTotal =
       stocks.reduce(
-        (sum, stock, index) =>
+        (
+          sum,
+          stock,
+          index
+        ) =>
           sum +
           (
             count -
@@ -889,7 +1037,10 @@
 
     const selected =
       stocks.map(
-        function (stock, index) {
+        function (
+          stock,
+          index
+        ) {
 
           const weight =
             count -
@@ -973,7 +1124,10 @@
         countSelected(
           selected
         ) >=
-        MIN_DIVERSIFIED_STOCKS
+        Math.min(
+          MIN_DIVERSIFIED_STOCKS,
+          count
+        )
       ) {
         break;
       }
@@ -988,6 +1142,7 @@
       ) {
 
         stock.quantity++;
+
         stock.investment +=
           stock.price;
 
@@ -1048,7 +1203,9 @@
               a.score
           );
 
-      if (!possible.length) {
+      if (
+        !possible.length
+      ) {
         break;
       }
 
@@ -1115,6 +1272,7 @@
       budget *
       SMALL_BUDGET_MAX_STOCK
     ) {
+
       stockLimit =
         SMALL_BUDGET_MAX_STOCK;
     }
@@ -1286,7 +1444,6 @@
       utilization * 1.2 +
 
       momentum * 0.15
-
     );
   }
 
@@ -1416,7 +1573,7 @@
 
 
   // ==========================================================
-  // TOP 20 DISPLAY
+  // CURRENT DAILY TOP-20 DISPLAY
   // ==========================================================
 
   function renderTop20() {
@@ -1450,7 +1607,10 @@
       document.createDocumentFragment();
 
     stocks.forEach(
-      function (stock, index) {
+      function (
+        stock,
+        index
+      ) {
 
         const row =
           document.createElement(
@@ -1531,7 +1691,11 @@
             : "negative";
 
         change.textContent =
-          `${stock.change >= 0 ? "+" : ""}${stock.change.toFixed(2)}%`;
+          `${
+            stock.change >= 0
+              ? "+"
+              : ""
+          }${stock.change.toFixed(2)}%`;
 
         const price =
           document.createElement(
@@ -1575,10 +1739,13 @@
     if (!stocks.length) {
 
       return {
+
         success: false,
+
         monitored: []
       };
     }
+
 
     const currentTop20 =
       stocks
@@ -1587,38 +1754,113 @@
           TARGET_TOP20
         )
         .map(
-          s => s.symbol
+          s =>
+            s.symbol
         );
+
+
+    // --------------------------------------------------------
+    // Monthly memory
+    // --------------------------------------------------------
 
     let monthly =
       getSavedMonthly();
 
+    if (!monthly) {
+
+      monthly =
+        createMonthlyTop20(
+          stocks
+        );
+    }
+
+
+    // --------------------------------------------------------
+    // Daily snapshot
+    // --------------------------------------------------------
+
+    const today =
+      localDateKey();
+
+    const snapshot =
+      stocks.map(
+        function (
+          stock,
+          index
+        ) {
+
+          return {
+
+            symbol:
+              stock.symbol,
+
+            dailyRank:
+              index + 1,
+
+            change:
+              stock.change,
+
+            price:
+              stock.price
+          };
+        }
+      );
+
+
+    const history =
+      getDailyHistory();
+
+    const todayIndex =
+      history.findIndex(
+        item =>
+          item.date ===
+          today
+      );
+
+
     if (
-      !monthly ||
-      monthly.month !==
-      currentMonthKey()
+      todayIndex >= 0
     ) {
 
-      monthly = {
+      history[
+        todayIndex
+      ].data =
+        snapshot;
 
-        month:
-          currentMonthKey(),
+    } else {
 
-        symbols:
-          currentTop20,
+      history.push({
 
-        createdAt:
-          new Date().toISOString()
-      };
+        date:
+          today,
 
-      saveMonthly(
-        monthly
-      );
+        data:
+          snapshot
+      });
     }
+
+
+    const trimmedHistory =
+      history.slice(
+        -DAILY_HISTORY_LIMIT
+      );
+
+
+    saveDailyHistory(
+      trimmedHistory
+    );
+
+
+    // --------------------------------------------------------
+    // Monitoring status
+    // --------------------------------------------------------
 
     const monitored =
       stocks.map(
-        function (stock, index) {
+        function (
+          stock,
+          index
+        ) {
 
           const monthlyRank =
             monthly.symbols.indexOf(
@@ -1632,7 +1874,12 @@
             "MONITOR";
 
           let reason =
-            "";
+            "Daily monitoring continue hai.";
+
+
+          // --------------------------------------------------
+          // Existing Monthly Top-20 stock
+          // --------------------------------------------------
 
           if (
             monthlyRank > 0
@@ -1655,13 +1902,18 @@
                 "WATCH";
 
               reason =
-                "Daily ranking Top-20 se bahar hai; monthly decision abhi automatically change nahi hoga.";
+                "Daily ranking Top-20 se bahar hai; monthly investment decision automatically change nahi hoga.";
             }
+
+
+            // ------------------------------------------------
+            // Improvement
+            // ------------------------------------------------
 
             if (
               dailyRank <= 15 &&
-              monthlyRank > 0 &&
-              dailyRank < monthlyRank
+              dailyRank <
+                monthlyRank
             ) {
 
               status =
@@ -1671,7 +1923,46 @@
                 "Daily position monthly position ke comparison mein improve hui hai.";
             }
 
-          } else {
+
+            // ------------------------------------------------
+            // Persistent deterioration
+            // ------------------------------------------------
+
+            const deterioration =
+              getDeteriorationStatus(
+                stock.symbol,
+                trimmedHistory
+              );
+
+            if (
+              deterioration.exitReview
+            ) {
+
+              status =
+                "EXIT REVIEW";
+
+              reason =
+                `Stock mein persistent deterioration detect hua (${deterioration.badDays} recent monitoring day(s) weak). Detailed review required.`;
+
+            } else if (
+              deterioration.badDays > 0 &&
+              dailyRank > TARGET_TOP20
+            ) {
+
+              status =
+                "WATCH";
+
+              reason =
+                "Weakness observe hui hai, lekin abhi EXIT REVIEW ke liye confirmation sufficient nahi hai.";
+            }
+          }
+
+
+          // --------------------------------------------------
+          // New candidate outside monthly Top-20
+          // --------------------------------------------------
+
+          else {
 
             if (
               dailyRank <=
@@ -1682,7 +1973,7 @@
                 "IMPROVING";
 
               reason =
-                "Stock current Top-20 mein improve hua hai; next monthly review mein consider kiya jayega.";
+                "Stock current daily Top-20 mein hai; next monthly review mein consider kiya jayega.";
 
             } else {
 
@@ -1694,19 +1985,6 @@
             }
           }
 
-
-          // Strong deterioration check
-          if (
-            monthlyRank > 0 &&
-            dailyRank >= 30
-          ) {
-
-            status =
-              "EXIT REVIEW";
-
-            reason =
-              "Monthly Top-20 stock current ranking mein significantly deteriorate hua hai; detailed review required.";
-          }
 
           return {
 
@@ -1733,9 +2011,12 @@
         }
       );
 
+
     saveDailyMonitoring(
+      trimmedHistory,
       monitored
     );
+
 
     return {
 
@@ -1747,51 +2028,85 @@
       monthlyTop20:
         monthly.symbols,
 
-      monitored
+      currentDailyTop20:
+        currentTop20,
+
+      monitored,
+
+      history:
+        trimmedHistory
     };
   }
 
 
-  function getSavedMonthly() {
+  // ==========================================================
+  // LOCAL DATE
+  // ==========================================================
 
-    try {
+  function localDateKey() {
 
-      return JSON.parse(
-        localStorage.getItem(
-          MONTHLY_KEY
-        ) || "null"
-      );
+    const d =
+      new Date();
 
-    } catch (e) {
-
-      return null;
-    }
+    return (
+      d.getFullYear() +
+      "-" +
+      String(
+        d.getMonth() + 1
+      ).padStart(
+        2,
+        "0"
+      ) +
+      "-" +
+      String(
+        d.getDate()
+      ).padStart(
+        2,
+        "0"
+      )
+    );
   }
 
 
-  function saveMonthly(
-    data
-  ) {
+  // ==========================================================
+  // DAILY HISTORY
+  // ==========================================================
+
+  function getDailyHistory() {
 
     try {
 
-      localStorage.setItem(
-        MONTHLY_KEY,
-        JSON.stringify(data)
-      );
+      const saved =
+        JSON.parse(
+          localStorage.getItem(
+            DAILY_KEY
+          ) || "null"
+        );
+
+      if (
+        saved &&
+        Array.isArray(
+          saved.history
+        )
+      ) {
+
+        return saved.history;
+      }
 
     } catch (e) {
 
       console.warn(
-        "Monthly data save failed",
+        "Daily history read failed",
         e
       );
     }
+
+    return [];
   }
 
 
-  function saveDailyMonitoring(
-    data
+  function saveDailyHistory(
+    history
   ) {
 
     try {
@@ -1799,10 +2114,46 @@
       localStorage.setItem(
         DAILY_KEY,
         JSON.stringify({
+
+          updatedAt:
+            new Date().toISOString(),
+
+          history
+        })
+      );
+
+    } catch (e) {
+
+      console.warn(
+        "Daily history save failed",
+        e
+      );
+    }
+  }
+
+
+  // ==========================================================
+  // DAILY MONITORING COMPATIBILITY SAVE
+  // ==========================================================
+
+  function saveDailyMonitoring(
+    history,
+    monitored
+  ) {
+
+    try {
+
+      localStorage.setItem(
+        DAILY_KEY,
+        JSON.stringify({
+
           date:
             new Date().toISOString(),
 
-          data
+          history,
+
+          data:
+            monitored
         })
       );
 
@@ -1816,21 +2167,70 @@
   }
 
 
-  function currentMonthKey() {
+  // ==========================================================
+  // DETERIORATION CHECK
+  // ==========================================================
 
-    const d =
-      new Date();
+  function getDeteriorationStatus(
+    symbol,
+    history
+  ) {
 
-    return (
-      d.getFullYear() +
-      "-" +
-      String(
-        d.getMonth() + 1
-      ).padStart(
-        2,
-        "0"
-      )
+    const recent =
+      history.slice(
+        -3
+      );
+
+    let badDays = 0;
+
+    recent.forEach(
+      function (day) {
+
+        const item =
+          Array.isArray(
+            day.data
+          )
+            ? day.data.find(
+                x =>
+                  x.symbol ===
+                  symbol
+              )
+            : null;
+
+        if (
+          item &&
+          Number(
+            item.dailyRank
+          ) >= 30
+        ) {
+
+          badDays++;
+        }
+      }
     );
+
+
+    /*
+     * EXIT REVIEW only after persistent weakness.
+     *
+     * One weak day:
+     * WATCH
+     *
+     * Two recent weak monitoring days:
+     * EXIT REVIEW
+     *
+     * This prevents a single daily rank fluctuation
+     * from triggering unnecessary exit decisions.
+     */
+
+    return {
+
+      badDays,
+
+      exitReview:
+        badDays >=
+        EXIT_REVIEW_MIN_DAYS
+    };
   }
 
 
@@ -1838,95 +2238,36 @@
   // INVESTMENT TRACKING
   // ==========================================================
 
+  /*
+   * IMPORTANT:
+   *
+   * This function is intentionally NOT called from Analyze.
+   *
+   * Analyze = recommendation.
+   * Purchase = actual transaction.
+   *
+   * Until a real BUY/transaction action exists,
+   * Prototype-1 must not pretend that a purchase happened.
+   */
+
   function saveInvestmentPlan(
     result
   ) {
 
-    try {
-
-      const portfolio =
-        getPortfolio();
-
-      result.selectedStocks.forEach(
-        function (stock) {
-
-          const existing =
-            portfolio.positions.find(
-              p =>
-                p.symbol ===
-                stock.symbol
-            );
-
-          if (existing) {
-
-            existing.quantity +=
-              stock.quantity;
-
-            existing.invested +=
-              stock.investment;
-
-            existing.lastPrice =
-              stock.price;
-
-          } else {
-
-            portfolio.positions.push({
-
-              symbol:
-                stock.symbol,
-
-              name:
-                stock.name,
-
-              quantity:
-                stock.quantity,
-
-              invested:
-                stock.investment,
-
-              lastPrice:
-                stock.price,
-
-              sector:
-                stock.sector,
-
-              group:
-                stock.businessGroup,
-
-              addedAt:
-                new Date().toISOString()
-            });
-          }
-        }
-      );
-
-      portfolio.totalInvested =
-        portfolio.positions.reduce(
-          (sum, p) =>
-            sum +
-            Number(
-              p.invested || 0
-            ),
-          0
-        );
-
-      portfolio.updatedAt =
-        new Date().toISOString();
-
-      localStorage.setItem(
-        PORTFOLIO_KEY,
-        JSON.stringify(
-          portfolio
-        )
-      );
-
-    } catch (e) {
-
-      console.warn(
-        "Portfolio save failed",
-        e
-      );
+    if (
+      !result ||
+      !Array.isArray(
+        result.selectedStocks
+      )
+    ) {
+      return false;
     }
+
+    console.warn(
+      "saveInvestmentPlan is disabled for Analyze-only flow. Use actual purchase action before updating portfolio."
+    );
+
+    return false;
   }
 
 
@@ -1951,7 +2292,13 @@
         return saved;
       }
 
-    } catch (e) {}
+    } catch (e) {
+
+      console.warn(
+        "Portfolio read failed",
+        e
+      );
+    }
 
     return {
 
@@ -1964,6 +2311,10 @@
   }
 
 
+  // ==========================================================
+  // PORTFOLIO VALUE
+  // ==========================================================
+
   function calculatePortfolioValue() {
 
     const portfolio =
@@ -1971,13 +2322,19 @@
 
     const stocks =
       getStocksFromMarketData()
-        .map(normalizeStock);
+        .map(
+          normalizeStock
+        );
 
     let invested = 0;
+
     let currentValue = 0;
 
+
     portfolio.positions.forEach(
-      function (position) {
+      function (
+        position
+      ) {
 
         const live =
           stocks.find(
@@ -2012,6 +2369,7 @@
       }
     );
 
+
     const pnl =
       currentValue -
       invested;
@@ -2022,6 +2380,7 @@
           invested *
           100
         : 0;
+
 
     return {
 
@@ -2047,12 +2406,15 @@
 
     const stocks =
       getStocksFromMarketData()
-        .map(normalizeStock);
+        .map(
+          normalizeStock
+        );
 
     const positions =
       portfolio.positions;
 
     const warnings = [];
+
 
     const values =
       positions.map(
@@ -2068,7 +2430,10 @@
           const price =
             live
               ? live.price
-              : p.lastPrice;
+              : Number(
+                  p.lastPrice ||
+                  0
+                );
 
           return {
 
@@ -2076,21 +2441,31 @@
 
             value:
               price *
-              p.quantity
+              Number(
+                p.quantity ||
+                0
+              )
           };
         }
       );
 
+
     const total =
       values.reduce(
-        (s, p) =>
-          s + p.value,
+        (
+          sum,
+          p
+        ) =>
+          sum +
+          p.value,
         0
       );
+
 
     if (!total) {
       return warnings;
     }
+
 
     values.forEach(
       function (p) {
@@ -2113,6 +2488,7 @@
       }
     );
 
+
     return warnings;
   }
 
@@ -2124,7 +2500,8 @@
   function buildRecommendationHTML(
     budget,
     top20,
-    result
+    result,
+    monthly
   ) {
 
     const selected =
@@ -2134,6 +2511,7 @@
       );
 
     let html = "";
+
 
     html += `
       <div
@@ -2152,7 +2530,7 @@
             font-weight:bold;
           "
         >
-          🤖 Prototype-1 V5
+          🤖 Prototype-1 V5.1
         </div>
 
         <strong>
@@ -2163,23 +2541,38 @@
 
         Budget:
         <strong>
-          ₹${formatMoney(budget)}
+          ₹${formatMoney(
+            budget
+          )}
         </strong>
 
         <br>
 
         Decision Mode:
-        <strong>MONTHLY</strong>
+        <strong>
+          MONTHLY
+        </strong>
 
         <br>
 
         Daily Monitoring:
-        <strong>ACTIVE</strong>
+        <strong>
+          ACTIVE
+        </strong>
 
         <br>
 
-        Top-20 Companies:
-        <strong>${top20.length}</strong>
+        Monthly Top-20:
+        <strong>
+          ${
+            monthly &&
+            Array.isArray(
+              monthly.symbols
+            )
+              ? monthly.symbols.length
+              : top20.length
+          }
+        </strong>
 
         <br>
 
@@ -2198,6 +2591,13 @@
             result.balance
           )}
         </strong>
+
+        <br><br>
+
+        <small>
+          Monthly Top-20 investment decision daily ranking
+          se automatically change nahi hota.
+        </small>
 
       </div>
     `;
@@ -2222,6 +2622,7 @@
       <thead>
         <tr>
     `;
+
 
     [
       "Rank",
@@ -2253,9 +2654,11 @@
       }
     );
 
+
     html += `
         </tr>
       </thead>
+
       <tbody>
     `;
 
@@ -2284,7 +2687,9 @@
                   stock.name
                 )}
               </strong>
+
               <br>
+
               <small>
                 ${escapeHtml(
                   stock.symbol
@@ -2367,6 +2772,7 @@
         <br>
     `;
 
+
     if (
       selected.length
     ) {
@@ -2394,6 +2800,7 @@
         "No stock could be allocated within current safety rules.<br>";
     }
 
+
     html += `
       </div>
 
@@ -2408,12 +2815,15 @@
       >
 
         <strong>
-          🧠 V5 Decision Logic
+          🧠 V5.1 Decision Logic
         </strong>
 
         <br>
 
         • Monthly Top-20 investment decision ka primary reference hai.
+        <br>
+
+        • Existing monthly Top-20 same month mein overwrite nahi hota.
         <br>
 
         • Daily rank sirf monitoring signal hai.
@@ -2425,10 +2835,13 @@
         • Top-20 se bahar jaane par WATCH signal milega.
         <br>
 
-        • Strong deterioration par EXIT REVIEW milega.
+        • Persistent deterioration par EXIT REVIEW milega.
         <br>
 
-        • Improving stock ko IMPROVING signal milega.
+        • Improving candidate next monthly review ke liye monitor hoga.
+        <br>
+
+        • Analyze karne se portfolio mein fake purchase add nahi hoti.
         <br>
 
         • Whole-share allocation use hota hai.
@@ -2452,7 +2865,7 @@
         • Budget kabhi exceed nahi hoga.
         <br>
 
-        • Investment aur portfolio value local tracking mein maintain hoti hai.
+        • Existing portfolio ki valuation live price se calculate hogi.
         <br>
 
         • Chart/fundamental/news score available hone par hi use hoga.
@@ -2479,7 +2892,9 @@
         <br>
 
         Budget:
-        ₹${formatMoney(budget)}
+        ₹${formatMoney(
+          budget
+        )}
 
         <br>
 
@@ -2504,6 +2919,7 @@
       </div>
     `;
 
+
     return html;
   }
 
@@ -2521,14 +2937,17 @@
 
     if (!box) return;
 
+
     const monitoring =
       runMonitoring();
+
 
     if (
       !monitoring.success
     ) {
       return;
     }
+
 
     const relevant =
       monitoring.monitored
@@ -2542,6 +2961,7 @@
           0,
           25
         );
+
 
     let html = `
       <div
@@ -2560,8 +2980,8 @@
 
         <br>
 
-        Daily monitoring active hai.
-        Monthly investment decision daily fluctuation se automatically change nahi hoga.
+        Monthly decision stable rahega;
+        daily ranking sirf monitoring signal hai.
 
         <br><br>
     `;
@@ -2586,7 +3006,17 @@
             </strong>
 
             —
-            Daily Rank #${item.dailyRank}
+            Monthly Rank:
+            ${
+              item.monthlyRank > 0
+                ? "#" +
+                  item.monthlyRank
+                : "Candidate"
+            }
+
+            —
+            Daily Rank:
+            #${item.dailyRank}
 
             —
             <strong>
@@ -2612,6 +3042,7 @@
     const warnings =
       portfolioWarnings();
 
+
     if (
       warnings.length
     ) {
@@ -2633,6 +3064,7 @@
           <br>
       `;
 
+
       warnings.forEach(
         warning => {
 
@@ -2643,9 +3075,15 @@
         }
       );
 
+
       html +=
         "</div>";
     }
+
+
+    html += `
+      </div>
+    `;
 
 
     const valuation =
@@ -2653,8 +3091,6 @@
 
 
     html += `
-      </div>
-
       <div
         style="
           margin-top:14px;
@@ -2703,6 +3139,14 @@
           )
         </strong>
 
+        <br><br>
+
+        <small>
+          Note: New recommendations are not automatically
+          added to tracked portfolio. Portfolio tracking should
+          be updated only after an actual purchase is recorded.
+        </small>
+
       </div>
     `;
 
@@ -2743,11 +3187,13 @@
       const result =
         runMonitoring();
 
+
       if (
         !result.success
       ) {
         return result;
       }
+
 
       return {
 
@@ -2933,6 +3379,7 @@
         ) {
 
           runMonitoring();
+
           renderTop20();
         }
 
@@ -2954,7 +3401,7 @@
   // ==========================================================
 
   console.log(
-    "Prototype-1 app.js V5 loaded successfully."
+    "Prototype-1 app.js V5.1 loaded successfully."
   );
 
 })();
