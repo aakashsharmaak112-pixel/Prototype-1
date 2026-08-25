@@ -2274,4 +2274,388 @@
       );
     }
 
-   
+    const exitReviews =
+      getExitReviewStocks(
+        monthlyList,
+        monitoring
+      );
+
+    const decisionStocks =
+      getFreshInvestmentCandidates(
+        monthlyList,
+        monitoring
+      );
+
+    const replacementCandidates =
+      getReplacementCandidates(
+        ranked,
+        monthlyMemory,
+        monitoring
+      );
+
+    if (
+      !decisionStocks.length
+    ) {
+      throw new Error(
+        "Current monthly Top-20 ke saare eligible stocks EXIT REVIEW mein hain. Fresh investment plan generate nahi kiya gaya."
+      );
+    }
+
+    const plan =
+      buildSmartPlan(
+        decisionStocks,
+        budget
+      );
+
+    if (
+      plan.selectedCount === 0
+    ) {
+      throw new Error(
+        "Is investment amount par whole-share allocation se koi valid stock allocate nahi ho paya."
+      );
+    }
+
+    /*
+      FINAL BUG CHECK
+    */
+    validatePlan(plan);
+
+    /*
+      Save only the fresh generated plan.
+      Old stale positions are not carried forward.
+    */
+    savePlanAsTrackedPortfolio(
+      plan
+    );
+
+    if (recommendation) {
+      recommendation.innerHTML =
+        renderPlan(
+          plan,
+          decisionStocks
+        ) +
+
+        renderReplacementCandidates(
+          replacementCandidates,
+          exitReviews
+        ) +
+
+        renderMonitoring(
+          ranked,
+          monthlyMemory,
+          monitoring
+        );
+    }
+
+    return {
+      ranked,
+      monthlyMemory,
+      monitoring,
+      monthlyList,
+      exitReviews,
+      replacementCandidates,
+      decisionStocks,
+      plan
+    };
+  }
+
+  window.analyzeInvestmentAmount =
+    analyzeInvestmentAmount;
+
+  /* =========================
+     CONNECT LIVE MARKET DATA
+     IMPORTANT:
+     Existing quotes.js flow untouched.
+  ========================= */
+
+  if (connectButton) {
+    connectButton.addEventListener(
+      "click",
+      async () => {
+        try {
+          const totp =
+            String(
+              totpInput?.value || ""
+            ).trim();
+
+          if (
+            !/^\d{6}$/.test(totp)
+          ) {
+            alert(
+              "Please current 6-digit Kotak Neo TOTP enter karein."
+            );
+
+            return;
+          }
+
+          if (
+            typeof window.fetchMarketData !==
+            "function"
+          ) {
+            alert(
+              "Market data engine load nahi hua. Page refresh karke dobara try karein."
+            );
+
+            return;
+          }
+
+          connectButton.disabled =
+            true;
+
+          const result =
+            await window.fetchMarketData(
+              totp
+            );
+
+          if (
+            Array.isArray(result) &&
+            result.length
+          ) {
+            window.MARKET_DATA =
+              result;
+          }
+
+          const stocks =
+            getStocksFromMarketData();
+
+          if (
+            stocks.length <
+            TARGET_TOP20
+          ) {
+            throw new Error(
+              `Live market data incomplete hai. ${stocks.length}/${TARGET_TOP20} valid stocks received.`
+            );
+          }
+
+          const ranked =
+            smartRankStocks(
+              stocks
+            );
+
+          const monthlyMemory =
+            ensureMonthlyTop20(
+              ranked
+            );
+
+          if (!monthlyMemory) {
+            throw new Error(
+              "Monthly Top-20 snapshot create nahi ho paya."
+            );
+          }
+
+          const monitoring =
+            buildMonitoring(
+              ranked,
+              monthlyMemory
+            );
+
+          renderMonthlyTop20(
+            ranked,
+            monthlyMemory,
+            monitoring
+          );
+
+          renderWatchlist(
+            ranked,
+            monthlyMemory
+          );
+
+          const status =
+            document.getElementById(
+              "marketStatus"
+            );
+
+          if (status) {
+            status.textContent =
+              `Live market data connected successfully. ${stocks.length}/${stocks.length} stocks received.`;
+          }
+
+          if (recommendation) {
+            recommendation.innerHTML = `
+              <div>
+                <strong>
+                  Live Market Data Connected ✅
+                </strong>
+
+                <br><br>
+
+                ${stocks.length}/${stocks.length}
+                valid stocks received.
+
+                <br><br>
+
+                Monthly Top-20 Memory:
+                <strong>
+                  ${escapeHtml(
+                    monthlyMemory.month
+                  )}
+                </strong>
+
+                <br>
+
+                Daily Monitoring:
+                <strong>ACTIVE</strong>
+
+                <br>
+
+                Monthly Decision Mode:
+                <strong>ACTIVE</strong>
+              </div>
+
+              ${renderMonitoring(
+                ranked,
+                monthlyMemory,
+                monitoring
+              )}
+            `;
+          }
+        } catch (error) {
+          console.error(
+            "Prototype-1 V12 connect error:",
+            error
+          );
+
+          alert(
+            error?.message ||
+            "Live market data connect nahi ho paya."
+          );
+        } finally {
+          connectButton.disabled =
+            false;
+        }
+      }
+    );
+  }
+
+  /* =========================
+     ANALYZE BUTTON
+  ========================= */
+
+  if (analyzeButton) {
+    analyzeButton.addEventListener(
+      "click",
+      async () => {
+        try {
+          const amount =
+            safeNumber(
+              amountInput?.value
+            );
+
+          if (
+            !Number.isFinite(amount) ||
+            amount <= 0
+          ) {
+            alert(
+              "Please valid investment amount enter karein."
+            );
+
+            return;
+          }
+
+          const stocks =
+            getStocksFromMarketData();
+
+          if (
+            stocks.length <
+            TARGET_TOP20
+          ) {
+            alert(
+              "Pehle Connect Live Market Data karke live quotes load karein."
+            );
+
+            return;
+          }
+
+          analyzeButton.disabled =
+            true;
+
+          await analyzeInvestmentAmount(
+            amount
+          );
+        } catch (error) {
+          console.error(
+            "Prototype-1 V12 analyze error:",
+            error
+          );
+
+          if (recommendation) {
+            recommendation.innerHTML = `
+              <div>
+                <strong>
+                  ⚠️ Analysis Error
+                </strong>
+
+                <br>
+
+                ${escapeHtml(
+                  error?.message ||
+                  "Investment analysis failed."
+                )}
+              </div>
+            `;
+          }
+
+          alert(
+            error?.message ||
+            "Investment analysis failed."
+          );
+        } finally {
+          analyzeButton.disabled =
+            false;
+        }
+      }
+    );
+  }
+
+  /* =========================
+     INITIAL UI
+  ========================= */
+
+  try {
+    const stocks =
+      getStocksFromMarketData();
+
+    if (
+      stocks.length >=
+      TARGET_TOP20
+    ) {
+      const ranked =
+        smartRankStocks(
+          stocks
+        );
+
+      const monthlyMemory =
+        ensureMonthlyTop20(
+          ranked
+        );
+
+      if (monthlyMemory) {
+        const monitoring =
+          buildMonitoring(
+            ranked,
+            monthlyMemory
+          );
+
+        renderMonthlyTop20(
+          ranked,
+          monthlyMemory,
+          monitoring
+        );
+
+        renderWatchlist(
+          ranked,
+          monthlyMemory
+        );
+      }
+    }
+  } catch (error) {
+    console.warn(
+      "Initial Prototype-1 V12 render skipped:",
+      error
+    );
+  }
+
+  console.log(
+    "Prototype-1 App Engine V12 loaded successfully."
+  );
+})();
