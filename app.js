@@ -1,32 +1,24 @@
 /* ============================================================
-   PROTOTYPE-1 — APP ENGINE V8
-   ------------------------------------------------------------
-   Monthly Top-20 Primary Decision
-   Daily Monitoring
-   EXIT REVIEW
-   Replacement Candidates
+   PROTOTYPE-1 — APP ENGINE V8 (CORRECTED)
+   Monthly Top-20 + Daily Monitoring + Replacement Candidates
    Smart Whole-Share Allocation
-   Portfolio-Safe Migration
+   Existing quotes.js / fetchMarketData() flow untouched
    ============================================================ */
 
 (() => {
   "use strict";
 
-  /* ============================================================
+  /* =========================
      CONFIG
-  ============================================================ */
+  ========================= */
 
   const TARGET_TOP20 = 20;
-
   const NORMAL_MAX_STOCK = 0.20;
   const SMALL_BUDGET_MAX_STOCK = 0.25;
   const HARD_MAX_STOCK = 0.35;
-
   const MAX_SECTOR_ALLOCATION = 0.40;
   const MAX_GROUP_ALLOCATION = 0.30;
-
   const MIN_DIVERSIFIED_STOCKS = 5;
-
   const REPLACEMENT_POOL_SIZE = 5;
 
   const PORTFOLIO_KEY = "prototype1_portfolio_v8";
@@ -51,28 +43,23 @@
     "prototype1_daily_monitoring_v5"
   ];
 
-  /* ============================================================
+  void PORTFOLIO_KEY;
+  void OLD_PORTFOLIO_KEYS;
+
+  /* =========================
      DOM
-  ============================================================ */
+  ========================= */
 
   const amountInput = document.getElementById("amount");
   const totpInput = document.getElementById("totp");
+  const connectButton = document.getElementById("connectButton");
+  const analyzeButton = document.getElementById("analyzeButton");
+  const recommendation = document.getElementById("recommendation");
+  const top20List = document.getElementById("top20List");
 
-  const connectButton =
-    document.getElementById("connectButton");
-
-  const analyzeButton =
-    document.getElementById("analyzeButton");
-
-  const recommendation =
-    document.getElementById("recommendation");
-
-  const top20List =
-    document.getElementById("top20List");
-
-  /* ============================================================
-     BASIC HELPERS
-  ============================================================ */
+  /* =========================
+     HELPERS
+  ========================= */
 
   function safeNumber(value, fallback = 0) {
     const n = Number(value);
@@ -101,26 +88,12 @@
 
   function currentMonthKey() {
     const d = new Date();
-
-    return (
-      d.getFullYear() +
-      "-" +
-      String(d.getMonth() + 1).padStart(2, "0")
-    );
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   }
 
   function todayKey() {
     const d = new Date();
-
-    const year = d.getFullYear();
-    const month = String(
-      d.getMonth() + 1
-    ).padStart(2, "0");
-    const day = String(
-      d.getDate()
-    ).padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   }
 
   function normalizeSymbol(symbol) {
@@ -133,10 +106,7 @@
   function storageRead(key, fallback = null) {
     try {
       const raw = localStorage.getItem(key);
-
-      return raw
-        ? JSON.parse(raw)
-        : fallback;
+      return raw ? JSON.parse(raw) : fallback;
     } catch {
       return fallback;
     }
@@ -144,46 +114,34 @@
 
   function storageWrite(key, value) {
     try {
-      localStorage.setItem(
-        key,
-        JSON.stringify(value)
-      );
-
+      localStorage.setItem(key, JSON.stringify(value));
       return true;
     } catch {
       return false;
     }
   }
 
-  /* ============================================================
+  /* =========================
      NIFTY MASTER
-  ============================================================ */
+  ========================= */
 
   function findNiftyStock(symbol) {
-    const target =
-      normalizeSymbol(symbol);
+    const target = normalizeSymbol(symbol);
+    const master = Array.isArray(window.NIFTY_50_STOCKS)
+      ? window.NIFTY_50_STOCKS
+      : [];
 
-    const master =
-      Array.isArray(
-        window.NIFTY_50_STOCKS
-      )
-        ? window.NIFTY_50_STOCKS
-        : [];
-
-    return (
-      master.find(item =>
-        normalizeSymbol(
-          item.symbol ||
-          item.tradingsymbol ||
-          item.ticker
-        ) === target
-      ) || null
-    );
+    return master.find(item =>
+      normalizeSymbol(
+        item.symbol ||
+        item.tradingsymbol ||
+        item.ticker
+      ) === target
+    ) || null;
   }
 
   function inferBusinessGroup(symbol) {
-    const s =
-      normalizeSymbol(symbol);
+    const s = normalizeSymbol(symbol);
 
     const groups = {
       HDFCBANK: "HDFC Group",
@@ -192,7 +150,7 @@
       ICICIBANK: "ICICI Group",
       ICICIPRULI: "ICICI Group",
 
-      BAJAJ-AUTO: "Bajaj Group",
+      "BAJAJ-AUTO": "Bajaj Group",
       BAJAJFINSV: "Bajaj Group",
       BAJFINANCE: "Bajaj Group",
 
@@ -219,20 +177,18 @@
     return groups[s] || s;
   }
 
-  /* ============================================================
+  /* =========================
      NORMALIZATION
-  ============================================================ */
+  ========================= */
 
   function normalizeStock(stock) {
-    const symbol =
-      normalizeSymbol(
-        stock.symbol ||
-        stock.tradingsymbol ||
-        stock.ticker
-      );
+    const symbol = normalizeSymbol(
+      stock.symbol ||
+      stock.tradingsymbol ||
+      stock.ticker
+    );
 
-    const master =
-      findNiftyStock(symbol);
+    const master = findNiftyStock(symbol);
 
     return {
       ...stock,
@@ -269,19 +225,13 @@
       ),
 
       chartScore:
-        safeNumber(
-          stock.chartScore
-        ),
+        safeNumber(stock.chartScore),
 
       fundamentalScore:
-        safeNumber(
-          stock.fundamentalScore
-        ),
+        safeNumber(stock.fundamentalScore),
 
       newsScore:
-        safeNumber(
-          stock.newsScore
-        ),
+        safeNumber(stock.newsScore),
 
       priority:
         safeNumber(
@@ -301,13 +251,6 @@
     );
   }
 
-  /* ============================================================
-     LIVE MARKET DATA
-     ------------------------------------------------------------
-     IMPORTANT:
-     Existing quotes.js / fetchMarketData() flow untouched.
-  ============================================================ */
-
   function getStocksFromMarketData() {
     const data =
       Array.isArray(window.MARKET_DATA)
@@ -319,23 +262,20 @@
       .filter(isValidStock);
   }
 
-  /* ============================================================
-     DAILY RANKING
-  ============================================================ */
+  /* =========================
+     RANKING
+  ========================= */
 
   function smartRankStocks(stocks) {
     return stocks
       .map(stock => {
-        const momentum =
-          Math.max(
-            -5,
-            Math.min(
-              5,
-              safeNumber(
-                stock.chartScore
-              )
-            )
-          );
+        const momentum = Math.max(
+          -5,
+          Math.min(
+            5,
+            safeNumber(stock.chartScore)
+          )
+        );
 
         const engineScore =
           safeNumber(stock.change) +
@@ -361,13 +301,11 @@
       );
   }
 
-  /* ============================================================
+  /* =========================
      MONTHLY MEMORY
-  ============================================================ */
+  ========================= */
 
-  function normalizeMonthlyRecord(
-    record
-  ) {
+  function normalizeMonthlyRecord(record) {
     if (
       !record ||
       typeof record !== "object"
@@ -386,10 +324,7 @@
       record.symbols
         .map(normalizeSymbol)
         .filter(Boolean)
-        .slice(
-          0,
-          TARGET_TOP20
-        );
+        .slice(0, TARGET_TOP20);
 
     if (
       symbols.length !==
@@ -401,6 +336,7 @@
     return {
       month: record.month,
       symbols,
+
       createdAt:
         record.createdAt ||
         new Date().toISOString(),
@@ -469,33 +405,22 @@
     top20,
     reason = "monthly_initialization"
   ) {
-    const currentMonth =
-      currentMonthKey();
-
     const existing =
       getSavedMonthlyMemory();
 
     /*
       CRITICAL:
-      Existing monthly memory is immutable
-      during the month.
+      Existing monthly memory is never
+      overwritten during the same month.
     */
 
-    if (
-      existing &&
-      existing.month === currentMonth &&
-      existing.symbols.length ===
-        TARGET_TOP20
-    ) {
+    if (existing) {
       return existing;
     }
 
     const symbols =
       top20
-        .slice(
-          0,
-          TARGET_TOP20
-        )
+        .slice(0, TARGET_TOP20)
         .map(
           s =>
             normalizeSymbol(
@@ -512,12 +437,17 @@
     }
 
     const record = {
-      month: currentMonth,
+      month:
+        currentMonthKey(),
+
       symbols,
+
       createdAt:
         new Date().toISOString(),
+
       updatedAt:
         new Date().toISOString(),
+
       source: reason
     };
 
@@ -539,14 +469,8 @@
       return existing;
     }
 
-    const initialTop20 =
-      ranked.slice(
-        0,
-        TARGET_TOP20
-      );
-
     return saveMonthlyTop20(
-      initialTop20,
+      ranked.slice(0, TARGET_TOP20),
       "new_month_snapshot"
     );
   }
@@ -562,9 +486,7 @@
     const bySymbol =
       new Map(
         ranked.map(stock => [
-          normalizeSymbol(
-            stock.symbol
-          ),
+          normalizeSymbol(stock.symbol),
           stock
         ])
       );
@@ -585,9 +507,9 @@
       );
   }
 
-  /* ============================================================
+  /* =========================
      DAILY MONITORING
-  ============================================================ */
+  ========================= */
 
   function loadDailyMonitoring() {
     const current =
@@ -597,11 +519,9 @@
 
     if (
       current &&
-      typeof current === "object" &&
       current.date === todayKey() &&
       current.records &&
-      typeof current.records ===
-        "object"
+      typeof current.records === "object"
     ) {
       return current;
     }
@@ -637,94 +557,6 @@
     };
   }
 
-  function saveDailyMonitoring(
-    data
-  ) {
-    storageWrite(
-      DAILY_KEY,
-      data
-    );
-  }
-
-  function getMonitoringState(
-    stock,
-    monthlySymbols
-  ) {
-    const symbol =
-      normalizeSymbol(
-        stock.symbol
-      );
-
-    const inMonthly =
-      monthlySymbols.includes(
-        symbol
-      );
-
-    /*
-      MONTHLY HOLDING
-    */
-
-    if (inMonthly) {
-      if (
-        stock.dailyRank <=
-        TARGET_TOP20
-      ) {
-        return {
-          state: "HOLD",
-          reason:
-            "Monthly Top-20 mein hai; daily fluctuation normal hai."
-        };
-      }
-
-      if (
-        stock.dailyRank <= 30
-      ) {
-        return {
-          state: "WATCH",
-          reason:
-            "Monthly Top-20 holding hai, lekin daily ranking weaken hui hai. Automatic exit nahi."
-        };
-      }
-
-      return {
-        state: "EXIT REVIEW",
-        reason:
-          "Monthly Top-20 holding ki daily ranking significantly deteriorate hui hai. Review required."
-      };
-    }
-
-    /*
-      NON-MONTHLY STOCK
-    */
-
-    if (
-      stock.dailyRank <=
-      TARGET_TOP20
-    ) {
-      return {
-        state: "IMPROVING",
-        reason:
-          "Current daily Top-20 mein improve hua hai. Next monthly review mein consider kiya jayega."
-      };
-    }
-
-    if (
-      stock.dailyRank <= 30
-    ) {
-      return {
-        state: "WATCH",
-        reason:
-          "Daily ranking relatively strong hai, lekin current monthly Top-20 ka part nahi hai."
-      };
-    }
-
-    return {
-      state: "WATCH",
-      reason:
-        "Current daily ranking weak hai. Monthly investment decision automatically change nahi hoga."
-    };
-  }
-
   function buildMonitoring(
     ranked,
     monthlyMemory
@@ -745,17 +577,61 @@
           stock.symbol
         );
 
-      const signal =
-        getMonitoringState(
-          stock,
-          monthlySymbols
+      const inMonthly =
+        monthlySymbols.includes(
+          symbol
         );
+
+      let state;
+
+      if (inMonthly) {
+        if (
+          stock.dailyRank <=
+          TARGET_TOP20
+        ) {
+          state = {
+            state: "HOLD",
+            reason:
+              "Monthly Top-20 mein hai; daily fluctuation normal hai."
+          };
+        } else if (
+          stock.dailyRank <= 30
+        ) {
+          state = {
+            state: "WATCH",
+            reason:
+              "Monthly Top-20 holding hai, lekin daily ranking weaken hui hai. Automatic exit nahi."
+          };
+        } else {
+          state = {
+            state: "EXIT REVIEW",
+            reason:
+              "Monthly Top-20 holding ki daily ranking significantly deteriorate hui hai. Review required."
+          };
+        }
+      } else if (
+        stock.dailyRank <=
+        TARGET_TOP20
+      ) {
+        state = {
+          state: "IMPROVING",
+          reason:
+            "Current daily Top-20 mein improve hua hai. Next monthly review mein consider kiya jayega."
+        };
+      } else {
+        state = {
+          state: "WATCH",
+          reason:
+            "Current daily ranking monthly investment decision ko automatically change nahi karegi."
+        };
+      }
 
       const previousRecord =
         previous.records?.[symbol];
 
       records[symbol] = {
         symbol,
+
         dailyRank:
           stock.dailyRank,
 
@@ -765,10 +641,10 @@
           ) + 1,
 
         state:
-          signal.state,
+          state.state,
 
         reason:
-          signal.reason,
+          state.reason,
 
         previousDailyRank:
           previousRecord?.dailyRank ??
@@ -789,46 +665,54 @@
       records
     };
 
-    saveDailyMonitoring(data);
+    storageWrite(
+      DAILY_KEY,
+      data
+    );
 
     return data;
   }
 
-  /* ============================================================
-     EXIT REVIEW
-  ============================================================ */
+  /* =========================
+     EXIT / REPLACEMENT
+  ========================= */
 
   function getExitReviewStocks(
     monthlyStocks,
     monitoring
   ) {
     return monthlyStocks.filter(
-      stock => {
-        const symbol =
+      stock =>
+        monitoring.records?.[
           normalizeSymbol(
             stock.symbol
-          );
-
-        return (
-          monitoring.records?.[
-            symbol
-          ]?.state ===
-          "EXIT REVIEW"
-        );
-      }
+          )
+        ]?.state ===
+        "EXIT REVIEW"
     );
   }
 
-  /* ============================================================
-     REPLACEMENT CANDIDATES
-  ============================================================ */
+  function getFreshInvestmentCandidates(
+    monthlyStocks,
+    monitoring
+  ) {
+    return monthlyStocks.filter(
+      stock =>
+        monitoring.records?.[
+          normalizeSymbol(
+            stock.symbol
+          )
+        ]?.state !==
+        "EXIT REVIEW"
+    );
+  }
 
   function getReplacementCandidates(
     ranked,
     monthlyMemory,
     monitoring
   ) {
-    const monthlySymbols =
+    const monthlySet =
       new Set(
         monthlyMemory.symbols.map(
           normalizeSymbol
@@ -842,100 +726,25 @@
             stock.symbol
           );
 
-        /*
-          Must not already be in monthly Top-20.
-        */
-
-        if (
-          monthlySymbols.has(symbol)
-        ) {
-          return false;
-        }
-
-        /*
-          Only stronger daily candidates.
-        */
-
-        if (
-          stock.dailyRank >
-          TARGET_TOP20
-        ) {
-          return false;
-        }
-
-        /*
-          Do not recommend a stock that itself
-          is weak / invalid.
-        */
-
-        const record =
+        return (
+          !monthlySet.has(symbol) &&
+          stock.dailyRank <=
+            TARGET_TOP20 &&
           monitoring.records?.[
             symbol
-          ];
-
-        if (
-          record?.state ===
-          "EXIT REVIEW"
-        ) {
-          return false;
-        }
-
-        return true;
+          ]?.state ===
+            "IMPROVING"
+        );
       })
       .slice(
         0,
         REPLACEMENT_POOL_SIZE
-      )
-      .map(
-        (stock, index) => ({
-          ...stock,
-          replacementRank:
-            index + 1
-        })
       );
   }
 
-  /* ============================================================
-     DECISION STOCKS
-  ============================================================ */
-
-  function getFreshInvestmentCandidates(
-    monthlyStocks,
-    monitoring
-  ) {
-    return monthlyStocks.filter(
-      stock => {
-        const symbol =
-          normalizeSymbol(
-            stock.symbol
-          );
-
-        const monitor =
-          monitoring.records?.[
-            symbol
-          ];
-
-        /*
-          EXIT REVIEW stocks are not
-          allocated new money.
-        */
-
-        if (
-          monitor &&
-          monitor.state ===
-            "EXIT REVIEW"
-        ) {
-          return false;
-        }
-
-        return true;
-      }
-    );
-  }
-
-  /* ============================================================
-     WHOLE SHARE ALLOCATION
-  ============================================================ */
+  /* =========================
+     ALLOCATION
+  ========================= */
 
   function calculateTargetWeights(
     stocks
@@ -976,7 +785,8 @@
     return selected
       .filter(
         s =>
-          s.sector === sector
+          s.sector ===
+          sector
       )
       .reduce(
         (sum, s) =>
@@ -1063,24 +873,18 @@
       return false;
     }
 
-    const sectorLimit =
-      budget *
-      MAX_SECTOR_ALLOCATION;
-
     if (
       sectorTotal(
         selected,
         stock.sector
       ) +
         stock.price >
-      sectorLimit + 0.0001
+      budget *
+        MAX_SECTOR_ALLOCATION +
+        0.0001
     ) {
       return false;
     }
-
-    const groupLimit =
-      budget *
-      MAX_GROUP_ALLOCATION;
 
     if (
       groupTotal(
@@ -1088,7 +892,9 @@
         stock.businessGroup
       ) +
         stock.price >
-      groupLimit + 0.0001
+      budget *
+        MAX_GROUP_ALLOCATION +
+        0.0001
     ) {
       return false;
     }
@@ -1180,6 +986,15 @@
     );
   }
 
+  function countSelected(
+    stocks
+  ) {
+    return stocks.filter(
+      s =>
+        s.quantity > 0
+    ).length;
+  }
+
   function buildSmartPlan(
     stocks,
     budget
@@ -1201,7 +1016,7 @@
 
     /*
       PASS 1:
-      Try to create practical diversification.
+      Diversification.
     */
 
     const affordable =
@@ -1246,7 +1061,8 @@
           balance
         )
       ) {
-        stock.quantity += 1;
+        stock.quantity +=
+          1;
 
         stock.investment =
           stock.quantity *
@@ -1306,7 +1122,8 @@
       const best =
         possible[0];
 
-      best.quantity += 1;
+      best.quantity +=
+        1;
 
       best.investment =
         best.quantity *
@@ -1316,10 +1133,6 @@
         best.price;
     }
 
-    /*
-      Floating point safety.
-    */
-
     if (
       Math.abs(balance) <
       0.005
@@ -1327,12 +1140,10 @@
       balance = 0;
     }
 
-    const invested =
-      budget - balance;
-
     return {
       budget,
-      invested,
+      invested:
+        budget - balance,
       balance,
       selected,
       selectedCount:
@@ -1342,94 +1153,9 @@
     };
   }
 
-  function countSelected(
-    stocks
-  ) {
-    return stocks.filter(
-      s =>
-        s.quantity > 0
-    ).length;
-  }
-
-  /* ============================================================
-     CONCENTRATION
-  ============================================================ */
-
-  function calculateConcentration(
-    stocks,
-    total
-  ) {
-    const sector = {};
-    const group = {};
-
-    stocks.forEach(
-      stock => {
-        if (
-          stock.quantity <= 0
-        ) {
-          return;
-        }
-
-        sector[
-          stock.sector
-        ] =
-          (
-            sector[
-              stock.sector
-            ] || 0
-          ) +
-          stock.investment;
-
-        group[
-          stock.businessGroup
-        ] =
-          (
-            group[
-              stock.businessGroup
-            ] || 0
-          ) +
-          stock.investment;
-      }
-    );
-
-    return {
-      sector:
-        Object.fromEntries(
-          Object.entries(
-            sector
-          ).map(
-            ([key, value]) => [
-              key,
-              total > 0
-                ? value / total
-                : 0
-            ]
-          )
-        ),
-
-      group:
-        Object.fromEntries(
-          Object.entries(
-            group
-          ).map(
-            ([key, value]) => [
-              key,
-              total > 0
-                ? value / total
-                : 0
-            ]
-          )
-        )
-    };
-  }
-
-  /* ============================================================
-     MONTHLY TOP-20 RENDER
-     ------------------------------------------------------------
-     IMPORTANT:
-     This now renders the MONTHLY snapshot,
-     NOT the daily ranking.
-  ============================================================ */
+  /* =========================
+     RENDER MONTHLY TOP 20
+  ========================= */
 
   function renderMonthlyTop20(
     ranked,
@@ -1457,12 +1183,9 @@
                 )
               ];
 
-            const state =
-              record?.state ||
-              "HOLD";
-
             return `
               <div class="top20-item">
+
                 <div>
                   <strong>
                     ${index + 1}
@@ -1476,7 +1199,9 @@
                   ${escapeHtml(
                     stock.symbol
                   )}
-                  • Monthly #${index + 1}
+                  • Monthly #${
+                    index + 1
+                  }
                   • Daily #${
                     stock.dailyRank
                   }
@@ -1484,8 +1209,7 @@
 
                 <div>
                   ${
-                    stock.change >=
-                    0
+                    stock.change >= 0
                       ? "+"
                       : ""
                   }${percent(
@@ -1499,10 +1223,12 @@
                 <div>
                   <strong>
                     ${escapeHtml(
-                      state
+                      record?.state ||
+                      "HOLD"
                     )}
                   </strong>
                 </div>
+
               </div>
             `;
           }
@@ -1510,11 +1236,11 @@
         .join("");
   }
 
-  /* ============================================================
-     DAILY TOP-20 / WATCHLIST
-  ============================================================ */
+  /* =========================
+     WATCHLIST
+  ========================= */
 
-  function renderDailyWatchlist(
+  function renderWatchlist(
     ranked,
     monthlyMemory
   ) {
@@ -1534,7 +1260,7 @@
         )
       );
 
-    const dailyCandidates =
+    const candidates =
       ranked
         .filter(
           stock =>
@@ -1546,14 +1272,15 @@
         )
         .slice(
           0,
-          5
+          3
         );
 
     element.innerHTML =
-      dailyCandidates
+      candidates
         .map(
           stock => `
             <div>
+
               <strong>
                 ${escapeHtml(
                   stock.name
@@ -1562,40 +1289,36 @@
 
               <span>
                 ${escapeHtml(
-                  stock.symbol
+                  stock.sector
                 )}
               </span>
 
-              <span>
-                Daily #${
-                  stock.dailyRank
-                }
-              </span>
-
               <b>
-                IMPROVING
+                WATCH
               </b>
+
             </div>
           `
         )
         .join("");
   }
 
-  /* ============================================================
-     REPLACEMENT HTML
-  ============================================================ */
+  /* =========================
+     REPLACEMENT CANDIDATES
+  ========================= */
 
   function renderReplacementCandidates(
     candidates,
     exitReviews
   ) {
-    let html = `
-      <hr>
+    let html =
+      `
+        <hr>
 
-      <h3>
-        🔄 Replacement Candidates
-      </h3>
-    `;
+        <h3>
+          🔄 Replacement Candidates
+        </h3>
+      `;
 
     if (
       exitReviews.length
@@ -1605,14 +1328,17 @@
           <strong>
             EXIT REVIEW:
           </strong>
-          ${exitReviews
-            .map(
-              s =>
-                escapeHtml(
-                  s.symbol
-                )
-            )
-            .join(", ")}
+
+          ${
+            exitReviews
+              .map(
+                s =>
+                  escapeHtml(
+                    s.symbol
+                  )
+              )
+              .join(", ")
+          }
         </p>
       `;
     }
@@ -1658,6 +1384,7 @@
       stock => {
         html += `
           <tr>
+
             <td>
               <strong>
                 ${escapeHtml(
@@ -1695,6 +1422,7 @@
                 IMPROVING
               </strong>
             </td>
+
           </tr>
         `;
       }
@@ -1708,20 +1436,15 @@
     return html;
   }
 
-  /* ============================================================
+  /* =========================
      MONITORING HTML
-  ============================================================ */
+  ========================= */
 
   function renderMonitoring(
     ranked,
     monthlyMemory,
     monitoring
   ) {
-    const monthlySymbols =
-      monthlyMemory.symbols.map(
-        normalizeSymbol
-      );
-
     const monthlyStocks =
       getMonthlyStocks(
         ranked,
@@ -1742,7 +1465,7 @@
       </h3>
 
       <p>
-        Daily ranking monitoring active hai.
+        Daily monitoring active hai.
         Daily fluctuation se monthly investment
         decision automatically change nahi hota.
       </p>
@@ -1750,7 +1473,9 @@
       <p>
         Monthly Snapshot:
         <strong>
-          ${monthlyMemory.month}
+          ${escapeHtml(
+            monthlyMemory.month
+          )}
         </strong>
       </p>
     `;
@@ -1760,6 +1485,7 @@
     ) {
       html += `
         <div>
+
           <strong>
             ⚠️ EXIT REVIEW REQUIRED
           </strong>
@@ -1796,6 +1522,7 @@
             Automatic sell execute nahi hua hai.
             Review required hai.
           </p>
+
         </div>
       `;
     }
@@ -1808,14 +1535,11 @@
 
     monthlyStocks.forEach(
       stock => {
-        const symbol =
-          normalizeSymbol(
-            stock.symbol
-          );
-
         const record =
           monitoring.records?.[
-            symbol
+            normalizeSymbol(
+              stock.symbol
+            )
           ];
 
         if (!record) {
@@ -1824,9 +1548,10 @@
 
         html += `
           <div class="monitor-row">
+
             <strong>
               ${escapeHtml(
-                symbol
+                stock.symbol
               )}
             </strong>
 
@@ -1854,73 +1579,24 @@
                 record.reason
               )}
             </small>
+
           </div>
         `;
       }
     );
 
-    html += `
-      <h4>
-        Daily Improvement
-      </h4>
-    `;
-
-    ranked
-      .filter(
-        stock =>
-          !monthlySymbols.includes(
-            normalizeSymbol(
-              stock.symbol
-            )
-          )
-      )
-      .slice(
-        0,
-        5
-      )
-      .forEach(
-        stock => {
-          html += `
-            <div class="monitor-row">
-              <strong>
-                ${escapeHtml(
-                  stock.symbol
-                )}
-              </strong>
-
-              —
-              Daily #${
-                stock.dailyRank
-              }
-
-              —
-              <b>
-                IMPROVING
-              </b>
-            </div>
-          `;
-        }
-      );
-
     return html;
   }
 
-  /* ============================================================
+  /* =========================
      PLAN HTML
-  ============================================================ */
+  ========================= */
 
   function renderPlan(
     plan,
     decisionStocks
   ) {
-    calculateConcentration(
-      plan.selected,
-      plan.invested
-    );
-
     let html = `
-      <hr>
-
       <h3>
         🤖 Prototype-1 V8
       </h3>
@@ -1932,7 +1608,9 @@
       <p>
         Budget:
         <strong>
-          ${money(plan.budget)}
+          ${money(
+            plan.budget
+          )}
         </strong>
       </p>
 
@@ -1960,25 +1638,26 @@
       <p>
         Invested:
         <strong>
-          ${money(plan.invested)}
+          ${money(
+            plan.invested
+          )}
         </strong>
       </p>
 
       <p>
         Balance:
         <strong>
-          ${money(plan.balance)}
+          ${money(
+            plan.balance
+          )}
         </strong>
       </p>
 
       <hr>
 
-      <h3>
-        📋 Allocation
-      </h3>
-
       <table>
         <thead>
+
           <tr>
             <th>Monthly Rank</th>
             <th>Company</th>
@@ -1991,6 +1670,7 @@
             <th>Sector</th>
             <th>Group</th>
           </tr>
+
         </thead>
 
         <tbody>
@@ -2003,13 +1683,17 @@
             ? (
                 stock.investment /
                 plan.invested
-              ) * 100
+              ) *
+              100
             : 0;
 
         html += `
           <tr>
+
             <td>
-              #${stock.monthlyRank}
+              #${
+                stock.monthlyRank
+              }
             </td>
 
             <td>
@@ -2048,7 +1732,9 @@
 
             <td>
               <strong>
-                ${stock.quantity}
+                ${
+                  stock.quantity
+                }
               </strong>
             </td>
 
@@ -2075,6 +1761,7 @@
                 stock.businessGroup
               )}
             </td>
+
           </tr>
         `;
       }
@@ -2108,7 +1795,9 @@
                 )}
               </strong>
               —
-              ${stock.quantity}
+              ${
+                stock.quantity
+              }
               share(s)
               —
               ${money(
@@ -2125,90 +1814,86 @@
       <hr>
 
       <h3>
-        🧠 V8 Decision Rules
+        🧠 V8 Decision Logic
       </h3>
 
       <ul>
+
         <li>
-          Monthly Top-20 is the primary
-          investment decision reference.
+          Monthly Top-20 investment decision
+          ka primary reference hai.
         </li>
 
         <li>
-          Daily ranking is monitoring only.
+          Daily ranking sirf monitoring signal hai.
         </li>
 
         <li>
-          Daily fluctuation does not trigger
-          automatic BUY/SELL.
+          Daily fluctuation se automatic BUY/SELL
+          nahi hoga.
         </li>
 
         <li>
-          Existing monthly snapshot is not
-          overwritten during the month.
+          Existing monthly memory ko daily ranking
+          overwrite nahi karegi.
         </li>
 
         <li>
-          Monthly holdings showing significant
-          deterioration receive EXIT REVIEW.
+          Strong deterioration par EXIT REVIEW milega.
         </li>
 
         <li>
-          EXIT REVIEW stocks are removed from
-          fresh allocation.
+          EXIT REVIEW stock ko fresh allocation
+          nahi diya jayega.
         </li>
 
         <li>
-          Improving daily stocks are replacement
-          candidates for the next monthly review.
+          Improving daily stocks next monthly review
+          ke replacement candidates hain.
         </li>
 
         <li>
-          Daily improvement does not immediately
-          replace the monthly snapshot.
+          Daily improvement current monthly
+          investment decision ko immediately
+          replace nahi karega.
         </li>
 
         <li>
-          Whole-share allocation is used.
+          Whole-share allocation use hota hai.
         </li>
 
         <li>
-          Normal stock limit:
-          20%.
+          Normal individual-stock limit 20% hai.
         </li>
 
         <li>
-          Small-budget first-share limit:
-          25%.
+          Small-budget first-share limit 25% hai.
         </li>
 
         <li>
-          Hard stock limit:
-          35%.
+          Hard stock limit 35% hai.
         </li>
 
         <li>
-          Sector limit:
-          40%.
+          Sector limit 40% hai.
         </li>
 
         <li>
-          Business-group limit:
-          30%.
+          Business-group limit 30% hai.
         </li>
 
         <li>
-          Budget will not be exceeded.
+          Budget exceed nahi hoga.
         </li>
 
         <li>
-          No fake research score is generated.
+          Fake research score generate nahi kiya jayega.
         </li>
 
         <li>
-          Only available market-data fields
-          are used.
+          Available market data hi use hoga.
         </li>
+
       </ul>
 
       <hr>
@@ -2247,9 +1932,9 @@
     return html;
   }
 
-  /* ============================================================
-     ANALYZE INVESTMENT
-  ============================================================ */
+  /* =========================
+     ANALYZE
+  ========================= */
 
   async function analyzeInvestmentAmount(
     amount
@@ -2258,9 +1943,7 @@
       safeNumber(amount);
 
     if (
-      !Number.isFinite(
-        budget
-      ) ||
+      !Number.isFinite(budget) ||
       budget <= 0
     ) {
       throw new Error(
@@ -2280,36 +1963,23 @@
       );
     }
 
-    /*
-      STEP 1:
-      Daily ranking.
-    */
-
     const ranked =
       smartRankStocks(
         stocks
       );
-
-    /*
-      STEP 2:
-      Monthly memory.
-    */
 
     const monthlyMemory =
       ensureMonthlyTop20(
         ranked
       );
 
-    if (!monthlyMemory) {
+    if (
+      !monthlyMemory
+    ) {
       throw new Error(
         "Monthly Top-20 snapshot create nahi ho paya."
       );
     }
-
-    /*
-      STEP 3:
-      Daily monitoring.
-    */
 
     const monitoring =
       buildMonitoring(
@@ -2317,26 +1987,16 @@
         monthlyMemory
       );
 
-    /*
-      STEP 4:
-      Render monthly snapshot.
-    */
-
     renderMonthlyTop20(
       ranked,
       monthlyMemory,
       monitoring
     );
 
-    renderDailyWatchlist(
+    renderWatchlist(
       ranked,
       monthlyMemory
     );
-
-    /*
-      STEP 5:
-      Get monthly stocks.
-    */
 
     const monthlyList =
       getMonthlyStocks(
@@ -2344,10 +2004,13 @@
         monthlyMemory
       );
 
-    /*
-      STEP 6:
-      EXIT REVIEW.
-    */
+    if (
+      !monthlyList.length
+    ) {
+      throw new Error(
+        "Current monthly Top-20 stocks live market data mein available nahi hain."
+      );
+    }
 
     const exitReviews =
       getExitReviewStocks(
@@ -2355,23 +2018,11 @@
         monitoring
       );
 
-    /*
-      STEP 7:
-      Fresh investment candidates.
-    */
-
     const decisionStocks =
       getFreshInvestmentCandidates(
         monthlyList,
         monitoring
       );
-
-    /*
-      STEP 8:
-      Replacement candidates.
-      These are NOT inserted into current
-      monthly investment decision.
-    */
 
     const replacementCandidates =
       getReplacementCandidates(
@@ -2388,48 +2039,37 @@
       );
     }
 
-    /*
-      STEP 9:
-      Smart whole-share plan.
-    */
-
     const plan =
       buildSmartPlan(
         decisionStocks,
         budget
       );
 
-    /*
-      STEP 10:
-      Render.
-    */
-
-    const planHtml =
-      renderPlan(
-        plan,
-        decisionStocks
+    if (
+      plan.selectedCount === 0
+    ) {
+      throw new Error(
+        "Is investment amount par whole-share allocation se koi valid stock allocate nahi ho paya."
       );
-
-    const replacementHtml =
-      renderReplacementCandidates(
-        replacementCandidates,
-        exitReviews
-      );
-
-    const monitoringHtml =
-      renderMonitoring(
-        ranked,
-        monthlyMemory,
-        monitoring
-      );
+    }
 
     if (
       recommendation
     ) {
       recommendation.innerHTML =
-        planHtml +
-        replacementHtml +
-        monitoringHtml;
+        renderPlan(
+          plan,
+          decisionStocks
+        ) +
+        renderReplacementCandidates(
+          replacementCandidates,
+          exitReviews
+        ) +
+        renderMonitoring(
+          ranked,
+          monthlyMemory,
+          monitoring
+        );
     }
 
     return {
@@ -2447,11 +2087,10 @@
   window.analyzeInvestmentAmount =
     analyzeInvestmentAmount;
 
-  /* ============================================================
+  /* =========================
      CONNECT LIVE MARKET DATA
-     ------------------------------------------------------------
-     Existing quotes.js flow untouched.
-  ============================================================ */
+     DO NOT CHANGE quotes.js FLOW
+  ========================= */
 
   if (
     connectButton
@@ -2493,20 +2132,14 @@
             true;
 
           /*
-            DO NOT MODIFY:
-            Existing quotes.js function.
+            Existing quotes.js flow.
+            DO NOT MODIFY.
           */
 
           const result =
             await window.fetchMarketData(
               totp
             );
-
-          /*
-            Support both:
-            1. fetchMarketData returns array
-            2. quotes.js populates MARKET_DATA
-          */
 
           if (
             Array.isArray(
@@ -2554,19 +2187,13 @@
               monthlyMemory
             );
 
-          /*
-            IMPORTANT:
-            Display MONTHLY Top-20,
-            not daily Top-20.
-          */
-
           renderMonthlyTop20(
             ranked,
             monthlyMemory,
             monitoring
           );
 
-          renderDailyWatchlist(
+          renderWatchlist(
             ranked,
             monthlyMemory
           );
@@ -2588,6 +2215,7 @@
           ) {
             recommendation.innerHTML = `
               <div>
+
                 <strong>
                   Live Market Data Connected ✅
                 </strong>
@@ -2619,9 +2247,8 @@
                 <strong>
                   ACTIVE
                 </strong>
-              </div>
 
-              <hr>
+              </div>
 
               ${renderMonitoring(
                 ranked,
@@ -2630,6 +2257,7 @@
               )}
             `;
           }
+
         } catch (
           error
         ) {
@@ -2642,6 +2270,7 @@
             error?.message ||
             "Live market data connect nahi ho paya."
           );
+
         } finally {
           connectButton.disabled =
             false;
@@ -2650,9 +2279,9 @@
     );
   }
 
-  /* ============================================================
+  /* =========================
      ANALYZE BUTTON
-  ============================================================ */
+  ========================= */
 
   if (
     analyzeButton
@@ -2699,6 +2328,7 @@
           await analyzeInvestmentAmount(
             amount
           );
+
         } catch (
           error
         ) {
@@ -2712,6 +2342,7 @@
           ) {
             recommendation.innerHTML = `
               <div>
+
                 <strong>
                   ⚠️ Analysis Error
                 </strong>
@@ -2722,6 +2353,7 @@
                   error?.message ||
                   "Investment analysis failed."
                 )}
+
               </div>
             `;
           }
@@ -2730,6 +2362,7 @@
             error?.message ||
             "Investment analysis failed."
           );
+
         } finally {
           analyzeButton.disabled =
             false;
@@ -2738,9 +2371,9 @@
     );
   }
 
-  /* ============================================================
+  /* =========================
      INITIAL UI
-  ============================================================ */
+  ========================= */
 
   try {
     const stocks =
@@ -2775,12 +2408,13 @@
           monitoring
         );
 
-        renderDailyWatchlist(
+        renderWatchlist(
           ranked,
           monthlyMemory
         );
       }
     }
+
   } catch (
     error
   ) {
@@ -2789,10 +2423,6 @@
       error
     );
   }
-
-  /* ============================================================
-     V8 READY
-  ============================================================ */
 
   console.log(
     "Prototype-1 App Engine V8 loaded successfully."
