@@ -2,27 +2,60 @@
 <html lang="en">
 
 <head>
-
   <meta charset="UTF-8">
 
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"
   >
 
-  <meta
-    name="theme-color"
-    content="#070b12"
-  >
+  <meta name="theme-color" content="#070b12">
 
   <title>Prototype-1 | AI Stock Assistant</title>
 
   <style>
 
-    /* =====================================================
-       PROTOTYPE-1 PREMIUM DASHBOARD
-       UI ONLY — V12 ENGINE IDS PRESERVED
-       ===================================================== */
+    /* =========================================================
+       PROTOTYPE-1 PREMIUM DASHBOARD UI
+       Existing JS IDs preserved for compatibility.
+       ========================================================= */
+
+    :root {
+      --bg: #070b12;
+      --bg-soft: #0b111a;
+      --card: rgba(17, 24, 35, 0.88);
+      --card-2: #101722;
+      --card-3: #0c131d;
+
+      --border: rgba(255,255,255,0.075);
+      --border-strong: rgba(255,255,255,0.12);
+
+      --text: #f5f7fa;
+      --text-soft: #b6c0ce;
+      --muted: #748093;
+
+      --green: #24e59a;
+      --green-soft: rgba(36,229,154,0.12);
+
+      --red: #ff6471;
+      --red-soft: rgba(255,100,113,0.12);
+
+      --yellow: #ffd166;
+      --yellow-soft: rgba(255,209,102,0.12);
+
+      --blue: #66a6ff;
+      --blue-soft: rgba(102,166,255,0.12);
+
+      --purple: #9b7cff;
+      --purple-soft: rgba(155,124,255,0.12);
+
+      --radius: 20px;
+      --radius-small: 13px;
+
+      --shadow:
+        0 18px 55px rgba(0,0,0,0.28);
+    }
+
 
     * {
       box-sizing: border-box;
@@ -30,360 +63,680 @@
       padding: 0;
     }
 
-    :root {
-      --bg: #070b12;
-      --bg-soft: #0b111a;
-      --card: rgba(17, 24, 36, 0.88);
-      --card-2: rgba(13, 19, 29, 0.95);
-      --border: rgba(255,255,255,0.08);
-
-      --text: #f5f7fb;
-      --muted: #8d99aa;
-      --muted-2: #647184;
-
-      --green: #27e38a;
-      --green-soft: rgba(39,227,138,0.12);
-
-      --red: #ff6574;
-      --red-soft: rgba(255,101,116,0.12);
-
-      --yellow: #ffd166;
-      --yellow-soft: rgba(255,209,102,0.12);
-
-      --blue: #5ea7ff;
-      --blue-soft: rgba(94,167,255,0.12);
-
-      --purple: #9b7cff;
-      --purple-soft: rgba(155,124,255,0.12);
-
-      --radius: 20px;
-    }
 
     html {
       scroll-behavior: smooth;
     }
 
+
     body {
       min-height: 100vh;
+
       background:
         radial-gradient(
-          circle at 10% 0%,
-          rgba(94,167,255,0.10),
+          circle at 15% 0%,
+          rgba(36,229,154,0.10),
           transparent 28%
         ),
         radial-gradient(
-          circle at 90% 10%,
-          rgba(155,124,255,0.10),
-          transparent 30%
+          circle at 90% 8%,
+          rgba(102,166,255,0.10),
+          transparent 25%
         ),
-        var(--bg);
+        linear-gradient(
+          180deg,
+          #070b12 0%,
+          #080d15 45%,
+          #060a10 100%
+        );
+
       color: var(--text);
+
       font-family:
         Inter,
+        ui-sans-serif,
         -apple-system,
         BlinkMacSystemFont,
         "Segoe UI",
         Roboto,
         Arial,
         sans-serif;
-      padding: 18px;
+
+      padding:
+        0
+        14px
+        35px;
+
+      overflow-x: hidden;
     }
+
 
     button,
     input {
       font: inherit;
     }
 
+
     button {
       -webkit-tap-highlight-color: transparent;
     }
 
+
+    /* =========================================================
+       MAIN CONTAINER
+       ========================================================= */
+
     .container {
       width: 100%;
-      max-width: 980px;
-      margin: 0 auto;
+      max-width: 1080px;
+      margin: auto;
     }
 
-    /* =====================================================
-       HEADER
-       ===================================================== */
 
-    .header {
-      position: relative;
-      padding: 6px 2px 24px;
+    /* =========================================================
+       TOP NAV
+       ========================================================= */
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+
+      margin: 0 -14px 18px;
+      padding: 12px 14px;
+
+      background:
+        linear-gradient(
+          180deg,
+          rgba(7,11,18,0.94),
+          rgba(7,11,18,0.76)
+        );
+
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+
+      border-bottom: 1px solid rgba(255,255,255,0.055);
     }
 
-    .header-top {
+
+    .topbar-inner {
+      max-width: 1080px;
+      margin: auto;
+
       display: flex;
+      align-items: center;
       justify-content: space-between;
-      align-items: flex-start;
-      gap: 15px;
+
+      gap: 12px;
     }
+
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 13px;
+      gap: 11px;
+
+      min-width: 0;
     }
 
+
     .brand-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 15px;
+      width: 43px;
+      height: 43px;
+
       display: flex;
       align-items: center;
       justify-content: center;
+
+      border-radius: 14px;
+
       background:
         linear-gradient(
           135deg,
-          rgba(39,227,138,0.20),
-          rgba(94,167,255,0.16)
+          rgba(36,229,154,0.22),
+          rgba(102,166,255,0.18)
         );
-      border: 1px solid rgba(255,255,255,0.08);
+
+      border: 1px solid rgba(255,255,255,0.09);
+
+      font-size: 21px;
+
       box-shadow:
-        0 10px 30px rgba(0,0,0,0.25);
-      font-size: 24px;
+        0 8px 30px rgba(36,229,154,0.08);
     }
 
-    .brand h1 {
-      font-size: 25px;
+
+    .brand-title {
+      font-size: 15px;
       font-weight: 800;
-      letter-spacing: -0.7px;
+      letter-spacing: -0.2px;
     }
 
-    .brand p {
+
+    .brand-subtitle {
+      margin-top: 2px;
+
       color: var(--muted);
-      font-size: 13px;
-      margin-top: 3px;
+
+      font-size: 10px;
+      font-weight: 700;
+
+      letter-spacing: 0.9px;
+      text-transform: uppercase;
     }
+
 
     .live-pill {
       display: inline-flex;
       align-items: center;
       gap: 7px;
+
       padding: 8px 11px;
+
       border-radius: 999px;
-      background: var(--green-soft);
-      border: 1px solid rgba(39,227,138,0.20);
+
       color: var(--green);
-      font-size: 11px;
+
+      background: var(--green-soft);
+
+      border: 1px solid rgba(36,229,154,0.20);
+
+      font-size: 10px;
       font-weight: 800;
+
       white-space: nowrap;
     }
+
 
     .live-dot {
       width: 7px;
       height: 7px;
+
       border-radius: 50%;
+
       background: var(--green);
-      box-shadow: 0 0 10px rgba(39,227,138,0.75);
+
+      box-shadow:
+        0 0 0 4px rgba(36,229,154,0.10),
+        0 0 12px rgba(36,229,154,0.65);
+
+      animation: livePulse 1.8s infinite;
     }
 
-    /* =====================================================
+
+    @keyframes livePulse {
+      0%, 100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.45;
+      }
+    }
+
+
+    /* =========================================================
        HERO
-       ===================================================== */
+       ========================================================= */
 
     .hero {
       position: relative;
       overflow: hidden;
-      padding: 22px;
+
+      padding: 23px 21px;
+
       margin-bottom: 16px;
+
       border-radius: 24px;
+
       background:
         linear-gradient(
           135deg,
-          rgba(26,43,58,0.96),
-          rgba(13,20,31,0.96)
+          rgba(20,31,43,0.96),
+          rgba(10,16,25,0.95)
         );
-      border: 1px solid rgba(255,255,255,0.08);
-      box-shadow:
-        0 18px 60px rgba(0,0,0,0.30);
+
+      border: 1px solid var(--border);
+
+      box-shadow: var(--shadow);
     }
 
-    .hero::after {
+
+    .hero::before {
       content: "";
+
       position: absolute;
-      width: 190px;
-      height: 190px;
-      right: -80px;
-      top: -90px;
-      border-radius: 50%;
-      background: rgba(39,227,138,0.10);
-      filter: blur(5px);
+
+      width: 230px;
+      height: 230px;
+
+      right: -100px;
+      top: -120px;
+
+      background:
+        radial-gradient(
+          circle,
+          rgba(36,229,154,0.18),
+          transparent 68%
+        );
+
       pointer-events: none;
     }
 
-    .hero-label {
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-    }
 
-    .hero-title {
-      margin-top: 7px;
-      font-size: 26px;
-      font-weight: 800;
-      letter-spacing: -0.8px;
-    }
-
-    .hero-subtitle {
-      margin-top: 6px;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .hero-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-top: 20px;
-    }
-
-    .hero-stat {
-      padding: 13px;
-      border-radius: 14px;
-      background: rgba(0,0,0,0.20);
-      border: 1px solid rgba(255,255,255,0.06);
-    }
-
-    .hero-stat span {
-      display: block;
-      color: var(--muted);
-      font-size: 11px;
-    }
-
-    .hero-stat strong {
-      display: block;
-      margin-top: 5px;
-      font-size: 17px;
-    }
-
-    /* =====================================================
-       INPUT CARD
-       ===================================================== */
-
-    .card {
+    .hero-top {
       position: relative;
-      overflow: hidden;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 19px;
-      margin-bottom: 16px;
-      box-shadow:
-        0 10px 35px rgba(0,0,0,0.18);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-    }
+      z-index: 1;
 
-    .card-title {
       display: flex;
+      align-items: flex-start;
       justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 16px;
+
+      gap: 15px;
     }
 
-    .card-title h2 {
-      font-size: 17px;
-      font-weight: 750;
-      letter-spacing: -0.2px;
-    }
 
-    .section-tag {
-      padding: 5px 8px;
-      border-radius: 7px;
-      background: rgba(255,255,255,0.05);
-      color: var(--muted);
-      font-size: 9px;
+    .hero-eyebrow {
+      color: var(--green);
+
+      font-size: 10px;
       font-weight: 800;
-      letter-spacing: 0.5px;
-    }
 
-    .form-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
 
-    .field label {
-      display: block;
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 700;
       margin-bottom: 7px;
     }
 
+
+    .hero h1 {
+      font-size: clamp(25px, 6vw, 38px);
+
+      line-height: 1.05;
+
+      letter-spacing: -1.3px;
+    }
+
+
+    .hero-description {
+      color: var(--text-soft);
+
+      font-size: 13px;
+      line-height: 1.55;
+
+      margin-top: 9px;
+
+      max-width: 580px;
+    }
+
+
+    .engine-chip {
+      flex-shrink: 0;
+
+      padding: 9px 11px;
+
+      border-radius: 12px;
+
+      background: var(--purple-soft);
+
+      border: 1px solid rgba(155,124,255,0.18);
+
+      color: #c4b5ff;
+
+      font-size: 10px;
+      font-weight: 800;
+
+      white-space: nowrap;
+    }
+
+
+    .hero-stats {
+      position: relative;
+      z-index: 1;
+
+      display: grid;
+
+      grid-template-columns:
+        repeat(3, 1fr);
+
+      gap: 9px;
+
+      margin-top: 20px;
+    }
+
+
+    .hero-stat {
+      padding: 12px;
+
+      border-radius: 14px;
+
+      background:
+        rgba(255,255,255,0.035);
+
+      border: 1px solid rgba(255,255,255,0.055);
+    }
+
+
+    .hero-stat-label {
+      color: var(--muted);
+
+      font-size: 9px;
+      font-weight: 700;
+
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+    }
+
+
+    .hero-stat-value {
+      margin-top: 5px;
+
+      font-size: 17px;
+      font-weight: 800;
+
+      letter-spacing: -0.3px;
+    }
+
+
+    /* =========================================================
+       CARDS
+       ========================================================= */
+
+    .card {
+      position: relative;
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(17,24,35,0.94),
+          rgba(12,18,27,0.94)
+        );
+
+      border: 1px solid var(--border);
+
+      border-radius: var(--radius);
+
+      padding: 19px;
+
+      margin-bottom: 15px;
+
+      box-shadow:
+        0 10px 40px rgba(0,0,0,0.18);
+
+      overflow: hidden;
+    }
+
+
+    .card::after {
+      content: "";
+
+      position: absolute;
+
+      inset: 0;
+
+      pointer-events: none;
+
+      background:
+        linear-gradient(
+          120deg,
+          rgba(255,255,255,0.025),
+          transparent 28%
+        );
+    }
+
+
+    .card-header {
+      position: relative;
+      z-index: 1;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      gap: 10px;
+
+      margin-bottom: 15px;
+    }
+
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+
+      font-size: 16px;
+      font-weight: 800;
+
+      letter-spacing: -0.3px;
+    }
+
+
+    .section-icon {
+      width: 31px;
+      height: 31px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 10px;
+
+      background: rgba(255,255,255,0.045);
+
+      border: 1px solid rgba(255,255,255,0.055);
+
+      font-size: 15px;
+    }
+
+
+    .section-label {
+      color: var(--muted);
+
+      font-size: 9px;
+      font-weight: 800;
+
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+
+    /* =========================================================
+       INVESTMENT SETUP
+       ========================================================= */
+
+    .setup-grid {
+      position: relative;
+      z-index: 1;
+
+      display: grid;
+
+      grid-template-columns:
+        1fr 1fr;
+
+      gap: 12px;
+    }
+
+
+    .field {
+      position: relative;
+    }
+
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+
+    .field-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      color: var(--muted);
+
+      font-size: 9px;
+      font-weight: 800;
+
+      letter-spacing: 0.9px;
+
+      text-transform: uppercase;
+
+      margin-bottom: 7px;
+    }
+
+
+    .secure-label {
+      color: var(--green);
+    }
+
+
+    .input-wrap {
+      position: relative;
+    }
+
+
+    .input-prefix {
+      position: absolute;
+
+      left: 14px;
+      top: 50%;
+
+      transform: translateY(-50%);
+
+      color: var(--muted);
+
+      font-weight: 800;
+
+      pointer-events: none;
+    }
+
+
     .input-box {
       width: 100%;
-      height: 49px;
-      padding: 0 14px;
-      background: var(--bg-soft);
+
+      min-height: 48px;
+
+      padding: 12px 14px 12px 35px;
+
+      background:
+        rgba(5,10,16,0.72);
+
       color: var(--text);
+
       border: 1px solid rgba(255,255,255,0.09);
+
       border-radius: 13px;
+
       outline: none;
-      font-size: 15px;
-      transition: 0.2s ease;
+
+      font-size: 14px;
+      font-weight: 700;
+
+      transition:
+        border-color .2s ease,
+        box-shadow .2s ease,
+        background .2s ease;
     }
+
+
+    #totp {
+      padding-left: 14px;
+      letter-spacing: 4px;
+    }
+
 
     .input-box::placeholder {
-      color: #5e6a7b;
+      color: #566274;
+      font-weight: 500;
     }
+
 
     .input-box:focus {
-      border-color: rgba(39,227,138,0.55);
+      border-color: rgba(36,229,154,0.55);
+
+      background:
+        rgba(7,15,22,0.95);
+
       box-shadow:
-        0 0 0 3px rgba(39,227,138,0.08);
+        0 0 0 4px rgba(36,229,154,0.075);
     }
 
-    .actions {
+
+    .button-row {
+      grid-column: 1 / -1;
+
       display: grid;
-      grid-template-columns: 1fr 1fr;
+
+      grid-template-columns:
+        1fr 1fr;
+
       gap: 10px;
-      margin-top: 15px;
+
+      margin-top: 2px;
     }
+
 
     .button {
       width: 100%;
-      min-height: 49px;
-      padding: 13px 15px;
-      border: 0;
+
+      min-height: 48px;
+
+      border: none;
+
       border-radius: 13px;
+
+      padding: 12px 14px;
+
       background:
         linear-gradient(
           135deg,
-          #35e99a,
-          #19c37d
+          #29e69c,
+          #17c985
         );
-      color: #04120b;
-      font-size: 14px;
-      font-weight: 800;
+
+      color: #03130d;
+
+      font-size: 13px;
+      font-weight: 900;
+
       cursor: pointer;
-      transition:
-        transform 0.15s ease,
-        box-shadow 0.15s ease,
-        opacity 0.15s ease;
+
       box-shadow:
-        0 8px 25px rgba(25,195,125,0.18);
+        0 8px 25px rgba(36,229,154,0.13);
+
+      transition:
+        transform .15s ease,
+        filter .15s ease,
+        opacity .15s ease;
     }
 
+
     .button:hover {
+      filter: brightness(1.08);
       transform: translateY(-1px);
     }
+
 
     .button:active {
       transform: translateY(0);
     }
 
+
     .button.secondary {
-      background: rgba(255,255,255,0.06);
-      color: var(--text);
-      border: 1px solid rgba(255,255,255,0.08);
+      background:
+        linear-gradient(
+          135deg,
+          #1b2736,
+          #141e2b
+        );
+
+      color: #eaf0f7;
+
+      border: 1px solid rgba(255,255,255,0.09);
+
       box-shadow: none;
     }
+
 
     .button:disabled {
       opacity: 0.55;
@@ -391,397 +744,684 @@
       transform: none;
     }
 
-    /* =====================================================
-       MESSAGE BOXES
-       ===================================================== */
+
+    /* =========================================================
+       MESSAGES
+       ========================================================= */
 
     .error-box,
     .success-box {
+      position: relative;
+      z-index: 2;
+
       display: none;
+
       padding: 12px 13px;
+
       border-radius: 12px;
-      margin-top: 12px;
+
+      margin-top: 10px;
+
       font-size: 12px;
+
       line-height: 1.5;
+
       word-break: break-word;
     }
 
+
     .error-box {
       background: var(--red-soft);
-      border: 1px solid rgba(255,101,116,0.20);
-      color: #ff9ba5;
+
+      border: 1px solid rgba(255,100,113,0.22);
+
+      color: #ff9da6;
     }
+
 
     .success-box {
       background: var(--green-soft);
-      border: 1px solid rgba(39,227,138,0.20);
+
+      border: 1px solid rgba(36,229,154,0.22);
+
       color: #7cf0b8;
     }
 
-    /* =====================================================
+
+    /* =========================================================
        ENGINE STATUS
-       ===================================================== */
+       ========================================================= */
+
+    .engine-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      color: var(--green);
+
+      font-size: 9px;
+      font-weight: 900;
+
+      letter-spacing: 1.2px;
+
+      margin-bottom: 13px;
+    }
+
+
+    .engine-banner::before {
+      content: "";
+
+      width: 7px;
+      height: 7px;
+
+      border-radius: 50%;
+
+      background: currentColor;
+
+      box-shadow:
+        0 0 10px currentColor;
+    }
+
 
     .summary {
+      position: relative;
+      z-index: 1;
+
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+
+      grid-template-columns:
+        repeat(4, 1fr);
+
       gap: 10px;
     }
 
+
     .stat {
-      position: relative;
-      padding: 15px;
-      min-height: 82px;
-      border-radius: 15px;
-      background: var(--card-2);
-      border: 1px solid rgba(255,255,255,0.06);
+      min-width: 0;
+
+      padding: 14px;
+
+      border-radius: 14px;
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(255,255,255,0.045),
+          rgba(255,255,255,0.018)
+        );
+
+      border: 1px solid rgba(255,255,255,0.055);
     }
+
 
     .stat small {
       display: block;
+
       color: var(--muted);
-      font-size: 10px;
-      font-weight: 700;
+
+      font-size: 9px;
+      font-weight: 800;
+
+      text-transform: uppercase;
+      letter-spacing: 0.65px;
     }
+
 
     .stat strong {
       display: block;
+
       margin-top: 7px;
-      font-size: 19px;
-      letter-spacing: -0.3px;
+
+      font-size: 20px;
+
+      letter-spacing: -0.5px;
     }
 
-    .stat:nth-child(1)::before,
-    .stat:nth-child(2)::before,
-    .stat:nth-child(3)::before,
-    .stat:nth-child(4)::before {
-      content: "";
-      position: absolute;
-      left: 0;
-      top: 15px;
-      width: 3px;
-      height: 25px;
-      border-radius: 5px;
-    }
-
-    .stat:nth-child(1)::before {
-      background: var(--blue);
-    }
-
-    .stat:nth-child(2)::before {
-      background: var(--purple);
-    }
-
-    .stat:nth-child(3)::before {
-      background: var(--green);
-    }
-
-    .stat:nth-child(4)::before {
-      background: var(--yellow);
-    }
 
     .status-ready {
       color: var(--green);
     }
 
+
     .status-pending {
       color: var(--yellow);
     }
+
 
     .status-error {
       color: var(--red);
     }
 
-    /* =====================================================
-       STOCK LIST
-       ===================================================== */
 
-    #top20List,
-    #watchlist {
-      display: flex;
-      flex-direction: column;
-    }
+    /* =========================================================
+       TOP 20
+       ========================================================= */
 
-    .stock {
+    .top20-toolbar {
+      position: relative;
+      z-index: 1;
+
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      padding: 13px 3px;
-      border-bottom: 1px solid rgba(255,255,255,0.055);
-      transition: 0.15s ease;
+
+      margin-bottom: 10px;
     }
+
+
+    .mode-pill {
+      display: inline-flex;
+      align-items: center;
+
+      padding: 6px 9px;
+
+      border-radius: 8px;
+
+      color: #c6b9ff;
+
+      background: var(--purple-soft);
+
+      border: 1px solid rgba(155,124,255,0.16);
+
+      font-size: 9px;
+      font-weight: 900;
+
+      letter-spacing: .7px;
+    }
+
+
+    #top20List {
+      position: relative;
+      z-index: 1;
+    }
+
+
+    .stock {
+      position: relative;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: space-between;
+
+      gap: 12px;
+
+      padding: 12px 0;
+
+      border-bottom: 1px solid rgba(255,255,255,0.055);
+    }
+
 
     .stock:last-child {
       border-bottom: none;
     }
 
-    .stock:hover {
-      background: rgba(255,255,255,0.018);
-    }
 
     .stock-left {
       display: flex;
+
       align-items: center;
+
       gap: 11px;
+
       min-width: 0;
     }
 
+
     .rank {
-      width: 31px;
-      height: 31px;
-      flex: 0 0 31px;
+      width: 34px;
+      height: 34px;
+
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 9px;
+
+      flex-shrink: 0;
+
+      border-radius: 10px;
+
       background:
         linear-gradient(
-          135deg,
-          rgba(94,167,255,0.13),
-          rgba(155,124,255,0.10)
+          145deg,
+          rgba(36,229,154,0.11),
+          rgba(36,229,154,0.035)
         );
-      border: 1px solid rgba(255,255,255,0.06);
-      color: #9ec6ff;
+
+      border: 1px solid rgba(36,229,154,0.12);
+
+      color: var(--green);
+
       font-size: 11px;
-      font-weight: 850;
+      font-weight: 900;
     }
 
+
     .stock-name {
-      color: var(--text);
+      color: #f2f5f8;
+
       font-size: 13px;
-      font-weight: 800;
+      font-weight: 850;
+
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
+
     .stock-sector {
       color: var(--muted);
+
       font-size: 10px;
-      margin-top: 4px;
+
+      margin-top: 3px;
+
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
+
     .stock-change {
-      min-width: 75px;
+      flex-shrink: 0;
+
+      min-width: 78px;
+
       text-align: right;
+
       font-size: 12px;
-      font-weight: 800;
+      font-weight: 900;
     }
+
 
     .positive {
       color: var(--green);
     }
 
+
     .negative {
       color: var(--red);
     }
+
 
     .badge {
       display: inline-flex;
       align-items: center;
       justify-content: center;
+
       padding: 5px 8px;
+
       border-radius: 7px;
-      font-size: 9px;
-      font-weight: 850;
-      letter-spacing: 0.3px;
-      margin-top: 5px;
+
+      font-size: 8px;
+      font-weight: 900;
+
+      letter-spacing: .5px;
     }
+
 
     .watch {
       background: var(--yellow-soft);
       color: var(--yellow);
-      border: 1px solid rgba(255,209,102,0.13);
+
+      border: 1px solid rgba(255,209,102,0.12);
     }
 
-    /* =====================================================
-       WATCHLIST
-       ===================================================== */
 
-    #watchlist {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
+    .hold {
+      background: var(--green-soft);
+      color: var(--green);
+
+      border: 1px solid rgba(36,229,154,0.12);
     }
 
-    #watchlist .stock {
-      display: block;
-      padding: 14px;
-      border:
-        1px solid rgba(255,255,255,0.06);
-      border-radius: 14px;
-      background: var(--card-2);
+
+    .exit-review {
+      background: var(--red-soft);
+      color: var(--red);
+
+      border: 1px solid rgba(255,100,113,0.14);
     }
 
-    #watchlist .stock-left {
-      margin-bottom: 8px;
-    }
-
-    #watchlist .badge {
-      margin-top: 0;
-    }
-
-    /* =====================================================
-       RECOMMENDATION
-       ===================================================== */
-
-    .recommendation {
-      color: #d8dee7;
-      font-size: 13px;
-      line-height: 1.65;
-      overflow-wrap: anywhere;
-    }
-
-    .recommendation h3 {
-      color: var(--text);
-    }
-
-    .recommendation table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-      overflow: hidden;
-      border-radius: 13px;
-      margin-top: 12px;
-    }
-
-    .recommendation th {
-      color: var(--muted);
-      font-size: 9px;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
-      text-align: left;
-      padding: 10px 8px;
-      background: rgba(255,255,255,0.035);
-    }
-
-    .recommendation td {
-      padding: 10px 8px;
-      border-top: 1px solid rgba(255,255,255,0.05);
-      font-size: 11px;
-    }
-
-    /* =====================================================
-       NOTE
-       ===================================================== */
 
     .note {
       color: var(--muted);
+
       font-size: 11px;
+
       line-height: 1.55;
-      margin-top: 11px;
+
+      margin-top: 9px;
     }
 
-    /* =====================================================
+
+    /* =========================================================
+       WATCHLIST
+       ========================================================= */
+
+    #watchlist {
+      position: relative;
+      z-index: 1;
+
+      display: grid;
+
+      grid-template-columns:
+        repeat(3, 1fr);
+
+      gap: 10px;
+    }
+
+
+    #watchlist .stock {
+      display: block;
+
+      padding: 14px;
+
+      border:
+        1px solid rgba(255,255,255,0.06);
+
+      border-radius: 14px;
+
+      background:
+        rgba(255,255,255,0.025);
+    }
+
+
+    #watchlist .stock .badge {
+      margin-top: 10px;
+    }
+
+
+    /* =========================================================
+       RECOMMENDATION
+       ========================================================= */
+
+    #recommendation {
+      position: relative;
+      z-index: 1;
+    }
+
+
+    .recommendation {
+      color: #d6dde6;
+
+      line-height: 1.65;
+
+      font-size: 12px;
+    }
+
+
+    .recommendation h3,
+    .recommendation h4 {
+      color: #f4f7fa;
+    }
+
+
+    .recommendation table {
+      width: 100%;
+
+      border-collapse: separate;
+
+      border-spacing: 0;
+
+      overflow: hidden;
+
+      border-radius: 13px;
+
+      border: 1px solid rgba(255,255,255,0.065);
+
+      margin-top: 12px;
+
+      font-size: 10px;
+    }
+
+
+    .recommendation th {
+      padding: 10px 8px;
+
+      color: var(--muted);
+
+      background:
+        rgba(255,255,255,0.035);
+
+      font-size: 8px;
+
+      text-transform: uppercase;
+
+      letter-spacing: .5px;
+
+      white-space: nowrap;
+    }
+
+
+    .recommendation td {
+      padding: 10px 8px;
+
+      border-top:
+        1px solid rgba(255,255,255,0.045);
+
+      white-space: nowrap;
+    }
+
+
+    /* =========================================================
+       GENERIC V12 SUMMARY / ALLOCATION STYLING
+       ========================================================= */
+
+    .recommendation .summary,
+    .recommendation .allocation-summary {
+      margin-bottom: 14px;
+    }
+
+
+    .recommendation strong {
+      color: #ffffff;
+    }
+
+
+    .recommendation hr {
+      border: none;
+
+      border-top:
+        1px solid rgba(255,255,255,0.055);
+
+      margin: 16px 0;
+    }
+
+
+    .recommendation ul {
+      padding-left: 18px;
+    }
+
+
+    .recommendation li {
+      margin-bottom: 5px;
+    }
+
+
+    /* =========================================================
+       SCROLLBAR
+       ========================================================= */
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+
+    ::-webkit-scrollbar-thumb {
+      background: #263242;
+      border-radius: 999px;
+    }
+
+
+    /* =========================================================
        FOOTER
-       ===================================================== */
+       ========================================================= */
 
     .footer {
       text-align: center;
-      color: var(--muted-2);
+
+      color: #586577;
+
       font-size: 10px;
+
+      padding: 15px 0 25px;
+
       line-height: 1.7;
-      padding: 12px 0 28px;
     }
 
-    /* =====================================================
-       MOBILE
-       ===================================================== */
 
-    @media (max-width: 720px) {
+    .footer strong {
+      color: #7c8999;
+    }
+
+
+    /* =========================================================
+       MOBILE
+       ========================================================= */
+
+    @media (max-width: 760px) {
 
       body {
-        padding: 12px;
+        padding-left: 10px;
+        padding-right: 10px;
       }
 
-      .header {
-        padding-bottom: 17px;
+
+      .topbar {
+        margin-left: -10px;
+        margin-right: -10px;
       }
 
-      .brand-icon {
-        width: 43px;
-        height: 43px;
-        border-radius: 13px;
-      }
-
-      .brand h1 {
-        font-size: 21px;
-      }
-
-      .live-pill {
-        padding: 7px 9px;
-        font-size: 9px;
-      }
 
       .hero {
-        padding: 18px;
+        padding: 20px 16px;
         border-radius: 20px;
       }
 
-      .hero-title {
-        font-size: 23px;
+
+      .hero-top {
+        display: block;
       }
 
-      .hero-grid {
-        grid-template-columns: 1fr 1fr;
+
+      .engine-chip {
+        display: inline-flex;
+        margin-top: 13px;
       }
 
-      .form-grid {
+
+      .hero-stats {
+        grid-template-columns:
+          repeat(3, 1fr);
+
+        gap: 7px;
+      }
+
+
+      .hero-stat {
+        padding: 10px 8px;
+      }
+
+
+      .hero-stat-value {
+        font-size: 14px;
+      }
+
+
+      .card {
+        padding: 16px;
+
+        border-radius: 17px;
+      }
+
+
+      .setup-grid {
         grid-template-columns: 1fr;
       }
 
-      .actions {
+
+      .field.full {
+        grid-column: auto;
+      }
+
+
+      .button-row {
+        grid-column: auto;
+
         grid-template-columns: 1fr;
       }
+
 
       .summary {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns:
+          repeat(2, 1fr);
       }
+
 
       #watchlist {
         grid-template-columns: 1fr;
       }
 
-      .card {
-        padding: 16px;
-        border-radius: 18px;
+
+      .recommendation {
+        overflow-x: auto;
       }
 
-      .stock {
-        padding: 12px 1px;
+
+      .recommendation table {
+        min-width: 700px;
       }
 
     }
 
-    @media (max-width: 400px) {
 
-      .header-top {
-        align-items: center;
+    @media (max-width: 420px) {
+
+      .brand-subtitle {
+        display: none;
       }
 
-      .brand p {
-        font-size: 11px;
+
+      .live-pill {
+        padding: 7px 8px;
+        font-size: 9px;
       }
 
-      .hero-grid {
-        gap: 7px;
+
+      .hero h1 {
+        font-size: 26px;
       }
 
-      .hero-stat {
-        padding: 11px;
+
+      .hero-description {
+        font-size: 12px;
       }
 
-      .hero-stat strong {
-        font-size: 15px;
+
+      .hero-stats {
+        grid-template-columns:
+          1fr 1fr;
       }
 
-      .summary {
-        gap: 7px;
+
+      .hero-stat:last-child {
+        grid-column: 1 / -1;
       }
 
-      .stat {
-        padding: 12px;
+
+      .stock-name {
+        max-width: 145px;
+      }
+
+
+      .stock-sector {
+        max-width: 145px;
       }
 
     }
@@ -793,16 +1433,17 @@
 
 <body>
 
+
 <div class="container">
 
 
-  <!-- =====================================================
-       HEADER
-       ===================================================== -->
+  <!-- =======================================================
+       TOP BAR
+       ======================================================= -->
 
-  <header class="header">
+  <div class="topbar">
 
-    <div class="header-top">
+    <div class="topbar-inner">
 
       <div class="brand">
 
@@ -812,147 +1453,195 @@
 
         <div>
 
-          <h1>
+          <div class="brand-title">
             Prototype-1
-          </h1>
+          </div>
 
-          <p>
-            AI Stock Assistant
-          </p>
+          <div class="brand-subtitle">
+            AI Portfolio Engine
+          </div>
 
         </div>
 
       </div>
 
 
-      <div
-        id="livePill"
-        class="live-pill"
-      >
+      <div class="live-pill">
 
         <span class="live-dot"></span>
 
-        <span id="livePillText">
-          MARKET READY
+        <span id="topLiveStatus">
+          LIVE • 50/50
         </span>
 
       </div>
 
     </div>
 
-  </header>
+  </div>
 
 
-  <!-- =====================================================
+  <!-- =======================================================
        HERO
-       ===================================================== -->
+       ======================================================= -->
 
   <section class="hero">
 
-    <div class="hero-label">
-      AI PORTFOLIO ENGINE
+    <div class="hero-top">
+
+      <div>
+
+        <div class="hero-eyebrow">
+          AI STOCK ASSISTANT
+        </div>
+
+        <h1>
+          Smarter Monthly<br>
+          Investing
+        </h1>
+
+        <p class="hero-description">
+          Monthly Top-20 decisions with continuous
+          daily monitoring.
+        </p>
+
+      </div>
+
+
+      <div class="engine-chip">
+        V12 • MONTHLY
+      </div>
+
     </div>
 
-    <div class="hero-title">
-      Smarter Monthly Investing
-    </div>
 
-    <div class="hero-subtitle">
-      Monthly Top-20 decisions with continuous daily monitoring.
-    </div>
-
-
-    <div class="hero-grid">
+    <div class="hero-stats">
 
       <div class="hero-stat">
 
-        <span>
+        <div class="hero-stat-label">
           Investment Budget
-        </span>
+        </div>
 
-        <strong id="heroBudget">
-          ₹10,000
-        </strong>
+        <div
+          id="heroBudget"
+          class="hero-stat-value"
+        >
+          ₹15,000
+        </div>
 
       </div>
 
 
       <div class="hero-stat">
 
-        <span>
+        <div class="hero-stat-label">
           Target Stocks
-        </span>
+        </div>
 
-        <strong>
+        <div class="hero-stat-value">
           20
-        </strong>
+        </div>
 
       </div>
 
 
       <div class="hero-stat">
 
-        <span>
+        <div class="hero-stat-label">
           Decision Mode
-        </span>
+        </div>
 
-        <strong>
+        <div class="hero-stat-value">
           MONTHLY
-        </strong>
+        </div>
 
       </div>
-
 
     </div>
 
   </section>
 
 
-  <!-- =====================================================
-       INVESTMENT CONTROL
-       ===================================================== -->
+  <!-- =======================================================
+       INVESTMENT SETUP
+       ======================================================= -->
 
   <section class="card">
 
-    <div class="card-title">
+    <div class="card-header">
 
-      <h2>
-        💰 Investment Setup
-      </h2>
+      <div class="section-title">
 
-      <span class="section-tag">
-        SECURE
-      </span>
+        <div class="section-icon">
+          💰
+        </div>
 
-    </div>
-
-
-    <div class="form-grid">
-
-
-      <div class="field">
-
-        <label for="amount">
-          INVESTMENT AMOUNT
-        </label>
-
-        <input
-          id="amount"
-          class="input-box"
-          type="number"
-          min="1"
-          step="1"
-          placeholder="e.g. 10000"
-        >
+        Investment Setup
 
       </div>
 
 
+      <div class="section-label">
+        SECURE
+      </div>
+
+    </div>
+
+
+    <div class="setup-grid">
+
+
+      <!-- INVESTMENT -->
+
       <div class="field">
 
-        <label for="totp">
-          KOTAK NEO TOTP
-        </label>
+        <div class="field-label">
+
+          <span>
+            Investment Amount
+          </span>
+
+        </div>
+
+
+        <div class="input-wrap">
+
+          <span class="input-prefix">
+            ₹
+          </span>
+
+          <input
+            id="amount"
+            class="input-box"
+            type="number"
+            min="1"
+            step="1"
+            placeholder="e.g. 15000"
+            autocomplete="off"
+          >
+
+        </div>
+
+      </div>
+
+
+      <!-- TOTP -->
+
+      <div class="field">
+
+        <div class="field-label">
+
+          <span>
+            Kotak Neo TOTP
+          </span>
+
+          <span class="secure-label">
+            🔒 SECURE
+          </span>
+
+        </div>
+
 
         <input
           id="totp"
@@ -967,61 +1656,71 @@
       </div>
 
 
-    </div>
+      <!-- MESSAGES -->
+
+      <div
+        id="errorBox"
+        class="error-box"
+      ></div>
 
 
-    <div
-      id="errorBox"
-      class="error-box"
-    ></div>
+      <div
+        id="successBox"
+        class="success-box"
+      ></div>
 
 
-    <div
-      id="successBox"
-      class="success-box"
-    ></div>
+      <!-- BUTTONS -->
+
+      <div class="button-row">
+
+        <button
+          id="connectButton"
+          type="button"
+          class="button secondary"
+        >
+          ⚡ Connect Live Market Data
+        </button>
 
 
-    <div class="actions">
+        <button
+          id="analyzeButton"
+          type="button"
+          class="button"
+        >
+          🤖 Analyze Investment
+        </button>
 
-      <button
-        id="connectButton"
-        type="button"
-        class="button secondary"
-      >
-        ⚡ Connect Live Market Data
-      </button>
-
-
-      <button
-        id="analyzeButton"
-        type="button"
-        class="button"
-      >
-        🤖 Analyze Investment
-      </button>
+      </div>
 
     </div>
 
   </section>
 
 
-  <!-- =====================================================
+  <!-- =======================================================
        ENGINE STATUS
-       ===================================================== -->
+       ======================================================= -->
 
   <section class="card">
 
-    <div class="card-title">
+    <div class="card-header">
 
-      <h2>
-        📊 Engine Status
-      </h2>
+      <div class="section-title">
 
-      <span class="section-tag">
-        LIVE ENGINE
-      </span>
+        <div class="section-icon">
+          📊
+        </div>
 
+        Engine Status
+
+      </div>
+
+    </div>
+
+
+    <div class="engine-banner">
+      LIVE ENGINE
     </div>
 
 
@@ -1088,21 +1787,28 @@
   </section>
 
 
-  <!-- =====================================================
-       TOP 20
-       ===================================================== -->
+  <!-- =======================================================
+       CURRENT TOP 20
+       ======================================================= -->
 
   <section class="card">
 
-    <div class="card-title">
+    <div class="card-header">
 
-      <h2>
-        🏆 Current Top 20
-      </h2>
+      <div class="section-title">
 
-      <span class="section-tag">
+        <div class="section-icon">
+          🏆
+        </div>
+
+        Current Top 20
+
+      </div>
+
+
+      <div class="mode-pill">
         MONTHLY
-      </span>
+      </div>
 
     </div>
 
@@ -1110,7 +1816,7 @@
     <div id="top20List">
 
       <p class="note">
-        Kotak Neo TOTP enter karke
+        TOTP enter karke
         "Connect Live Market Data"
         dabaiye.
       </p>
@@ -1126,21 +1832,28 @@
   </section>
 
 
-  <!-- =====================================================
+  <!-- =======================================================
        WATCHLIST
-       ===================================================== -->
+       ======================================================= -->
 
   <section class="card">
 
-    <div class="card-title">
+    <div class="card-header">
 
-      <h2>
-        ⭐ AI Watchlist
-      </h2>
+      <div class="section-title">
 
-      <span class="section-tag">
+        <div class="section-icon">
+          ⭐
+        </div>
+
+        AI Watchlist
+
+      </div>
+
+
+      <div class="section-label">
         WATCH
-      </span>
+      </div>
 
     </div>
 
@@ -1150,21 +1863,18 @@
 
       <div class="stock">
 
-        <div class="stock-left">
+        <div>
 
-          <div>
+          <div class="stock-name">
+            HDFC Bank
+          </div>
 
-            <div class="stock-name">
-              HDFC Bank
-            </div>
-
-            <div class="stock-sector">
-              Financial Services
-            </div>
-
+          <div class="stock-sector">
+            Financial Services
           </div>
 
         </div>
+
 
         <span class="badge watch">
           WATCH
@@ -1175,21 +1885,18 @@
 
       <div class="stock">
 
-        <div class="stock-left">
+        <div>
 
-          <div>
+          <div class="stock-name">
+            Reliance Industries
+          </div>
 
-            <div class="stock-name">
-              Reliance Industries
-            </div>
-
-            <div class="stock-sector">
-              Oil, Gas & Consumable Fuels
-            </div>
-
+          <div class="stock-sector">
+            Oil, Gas & Consumable Fuels
           </div>
 
         </div>
+
 
         <span class="badge watch">
           WATCH
@@ -1200,21 +1907,18 @@
 
       <div class="stock">
 
-        <div class="stock-left">
+        <div>
 
-          <div>
+          <div class="stock-name">
+            ICICI Bank
+          </div>
 
-            <div class="stock-name">
-              ICICI Bank
-            </div>
-
-            <div class="stock-sector">
-              Financial Services
-            </div>
-
+          <div class="stock-sector">
+            Financial Services
           </div>
 
         </div>
+
 
         <span class="badge watch">
           WATCH
@@ -1228,21 +1932,28 @@
   </section>
 
 
-  <!-- =====================================================
+  <!-- =======================================================
        AI RECOMMENDATION
-       ===================================================== -->
+       ======================================================= -->
 
   <section class="card">
 
-    <div class="card-title">
+    <div class="card-header">
 
-      <h2>
-        🤖 AI Recommendation
-      </h2>
+      <div class="section-title">
 
-      <span class="section-tag">
+        <div class="section-icon">
+          🤖
+        </div>
+
+        AI Recommendation
+
+      </div>
+
+
+      <div class="engine-chip">
         V12
-      </span>
+      </div>
 
     </div>
 
@@ -1260,11 +1971,11 @@
   </section>
 
 
-  <!-- =====================================================
+  <!-- =======================================================
        FOOTER
-       ===================================================== -->
+       ======================================================= -->
 
-  <footer class="footer">
+  <div class="footer">
 
     <strong>
       Prototype-1
@@ -1278,15 +1989,16 @@
 
     Investment ka final decision aapka hai.
 
-  </footer>
+  </div>
 
 
 </div>
 
 
-<!-- =====================================================
+<!-- =========================================================
      ORIGINAL PROJECT SCRIPTS
-     ===================================================== -->
+     DO NOT REMOVE
+     ========================================================= -->
 
 <script src="./market-data.js"></script>
 
@@ -1295,9 +2007,10 @@
 <script src="./app.js"></script>
 
 
-<!-- =====================================================
-     STABLE CONNECT CONTROLLER
-     ===================================================== -->
+<!-- =========================================================
+     SAFE UI CONTROLLER
+     Existing live-data flow preserved.
+     ========================================================= -->
 
 <script>
 
@@ -1323,15 +2036,15 @@
         );
 
 
-      const amountInput =
-        document.getElementById(
-          "amount"
-        );
-
-
       const status =
         document.getElementById(
           "marketStatus"
+        );
+
+
+      const topLiveStatus =
+        document.getElementById(
+          "topLiveStatus"
         );
 
 
@@ -1353,9 +2066,9 @@
         );
 
 
-      const livePillText =
+      const amountInput =
         document.getElementById(
-          "livePillText"
+          "amount"
         );
 
 
@@ -1364,6 +2077,55 @@
           "heroBudget"
         );
 
+
+      /* =====================================================
+         UPDATE HERO BUDGET
+         ===================================================== */
+
+      function updateHeroBudget() {
+
+        if (!amountInput || !heroBudget) {
+          return;
+        }
+
+
+        const value =
+          Number(
+            amountInput.value
+          );
+
+
+        if (
+          Number.isFinite(value) &&
+          value > 0
+        ) {
+
+          heroBudget.innerText =
+            `₹${value.toLocaleString(
+              "en-IN",
+              {
+                maximumFractionDigits: 0
+              }
+            )}`;
+
+        }
+
+      }
+
+
+      if (amountInput) {
+
+        amountInput.addEventListener(
+          "input",
+          updateHeroBudget
+        );
+
+      }
+
+
+      /* =====================================================
+         CONNECT CONTROLLER
+         ===================================================== */
 
       if (!connectButton) {
 
@@ -1381,53 +2143,9 @@
       );
 
 
-      /* =================================================
-         LIVE BUDGET DISPLAY
-         ================================================= */
-
-      if (amountInput) {
-
-        amountInput.addEventListener(
-          "input",
-          function () {
-
-            const amount =
-              Number(
-                amountInput.value
-              );
-
-            if (
-              heroBudget &&
-              Number.isFinite(amount) &&
-              amount > 0
-            ) {
-
-              heroBudget.innerText =
-                "₹" +
-                amount.toLocaleString(
-                  "en-IN"
-                );
-
-            }
-
-          }
-        );
-
-      }
-
-
-      /* =================================================
-         CONNECT BUTTON
-         ================================================= */
-
       connectButton.addEventListener(
         "click",
         async function () {
-
-
-          console.log(
-            "Prototype-1: CONNECT BUTTON CLICKED"
-          );
 
 
           hideMessages();
@@ -1439,7 +2157,11 @@
             ).trim();
 
 
-          if (!/^\d{6}$/.test(totp)) {
+          if (
+            !/^\d{6}$/.test(
+              totp
+            )
+          ) {
 
 
             showError(
@@ -1447,23 +2169,10 @@
             );
 
 
-            if (status) {
-
-              status.innerText =
-                "TOTP REQUIRED";
-
-              status.className =
-                "status-pending";
-
-            }
-
-
-            if (livePillText) {
-
-              livePillText.innerText =
-                "TOTP REQUIRED";
-
-            }
+            setStatus(
+              "TOTP REQUIRED",
+              "status-pending"
+            );
 
 
             if (top20List) {
@@ -1501,23 +2210,10 @@
             );
 
 
-            if (status) {
-
-              status.innerText =
-                "ENGINE ERROR";
-
-              status.className =
-                "status-error";
-
-            }
-
-
-            if (livePillText) {
-
-              livePillText.innerText =
-                "ENGINE ERROR";
-
-            }
+            setStatus(
+              "ENGINE ERROR",
+              "status-error"
+            );
 
 
             return;
@@ -1533,20 +2229,15 @@
             "⏳ Connecting...";
 
 
-          if (status) {
-
-            status.innerText =
-              "LOADING";
-
-            status.className =
-              "status-pending";
-
-          }
+          setStatus(
+            "LOADING",
+            "status-pending"
+          );
 
 
-          if (livePillText) {
+          if (topLiveStatus) {
 
-            livePillText.innerText =
+            topLiveStatus.innerText =
               "CONNECTING";
 
           }
@@ -1625,6 +2316,7 @@
                 .map(
                   function (stock) {
 
+
                     const cleanSymbol =
                       String(
                         stock.symbol ||
@@ -1647,8 +2339,13 @@
 
                               return (
                                 String(
-                                  item.symbol
+                                  item.symbol ||
+                                  ""
                                 )
+                                  .replace(
+                                    /-EQ$/i,
+                                    ""
+                                  )
                                   .toUpperCase()
                                   ===
                                 cleanSymbol
@@ -1657,6 +2354,24 @@
                             }
                           )
                         : null;
+
+
+                    const price =
+                      Number(
+                        stock.price ??
+                        stock.ltp ??
+                        stock.lastPrice ??
+                        stock.lastTradedPrice
+                      );
+
+
+                    const change =
+                      Number(
+                        stock.perChange ??
+                        stock.changePercent ??
+                        stock.change ??
+                        stock.netChange
+                      );
 
 
                     return {
@@ -1675,16 +2390,18 @@
                         "Nifty 50",
 
                       price:
-                        Number(
-                          stock.price ||
-                          stock.ltp
-                        ) || 0,
+                        Number.isFinite(
+                          price
+                        )
+                          ? price
+                          : 0,
 
                       change:
-                        Number(
-                          stock.perChange ??
-                          stock.change
-                        ) || 0
+                        Number.isFinite(
+                          change
+                        )
+                          ? change
+                          : 0
 
                     };
 
@@ -1711,57 +2428,98 @@
             }
 
 
-            enrichedStocks.sort(
-              function (a, b) {
-
-                return (
-                  b.change -
-                  a.change
-                );
-
-              }
-            );
+            /*
+             * NOTE:
+             * Existing ranking-engine.js / app.js remains
+             * the primary ranking logic.
+             *
+             * This fallback only creates a display list
+             * if the existing app has not already rendered it.
+             */
 
 
-            const top20 =
-              enrichedStocks.slice(
-                0,
-                20
-              );
+            if (
+              !window.TOP_20_STOCKS &&
+              !window.REAL_TOP_20
+            ) {
+
+              const displayTop20 =
+                enrichedStocks
+                  .slice()
+                  .sort(
+                    function (a, b) {
+
+                      return (
+                        b.change -
+                        a.change
+                      );
+
+                    }
+                  )
+                  .slice(
+                    0,
+                    20
+                  );
 
 
-            window.TOP_20_STOCKS =
-              top20;
+              window.TOP_20_STOCKS =
+                displayTop20;
 
 
-            window.REAL_TOP_20 =
-              top20;
-
-
-            renderTop20(
-              top20
-            );
-
-
-            if (status) {
-
-              status.innerText =
-                `LIVE • ${
-                  rawStocks.length
-                }/50`;
-
-              status.className =
-                "status-ready";
+              window.REAL_TOP_20 =
+                displayTop20;
 
             }
 
 
-            if (livePillText) {
+            /*
+             * If app.js has its own renderer, allow it
+             * to remain responsible for the V12 display.
+             *
+             * Only render fallback when the container
+             * is still empty/loading.
+             */
 
-              livePillText.innerText =
-                `LIVE • ${
-                  rawStocks.length
-                }/50`;
+            const currentText =
+              String(
+                top20List?.innerText || ""
+              ).trim();
+
+
+            if (
+              top20List &&
+              (
+                !currentText ||
+                currentText.includes(
+                  "live market data load ho raha hai"
+                )
+              )
+            ) {
+
+              renderFallbackTop20(
+                (
+                  window.TOP_20_STOCKS ||
+                  window.REAL_TOP_20 ||
+                  enrichedStocks.slice(
+                    0,
+                    20
+                  )
+                )
+              );
+
+            }
+
+
+            setStatus(
+              `LIVE • ${rawStocks.length}/50`,
+              "status-ready"
+            );
+
+
+            if (topLiveStatus) {
+
+              topLiveStatus.innerText =
+                `LIVE • ${rawStocks.length}/50`;
 
             }
 
@@ -1777,9 +2535,22 @@
             }
 
 
+            const stockCount =
+              document.getElementById(
+                "stockCount"
+              );
+
+
+            if (stockCount) {
+
+              stockCount.innerText =
+                rawStocks.length;
+
+            }
+
+
             console.log(
-              "Prototype-1: LIVE MARKET DATA READY",
-              top20
+              "Prototype-1: LIVE MARKET DATA READY"
             );
 
 
@@ -1794,21 +2565,16 @@
             );
 
 
-            if (status) {
-
-              status.innerText =
-                "ERROR";
-
-              status.className =
-                "status-error";
-
-            }
+            setStatus(
+              "ERROR",
+              "status-error"
+            );
 
 
-            if (livePillText) {
+            if (topLiveStatus) {
 
-              livePillText.innerText =
-                "LIVE DATA ERROR";
+              topLiveStatus.innerText =
+                "OFFLINE";
 
             }
 
@@ -1850,19 +2616,17 @@
       );
 
 
-      /* =================================================
-         TOP 20 RENDER
-         ================================================= */
+      /* =====================================================
+         FALLBACK TOP 20 RENDERER
+         ===================================================== */
 
-      function renderTop20(
+      function renderFallbackTop20(
         stocks
       ) {
 
 
         if (!top20List) {
-
           return;
-
         }
 
 
@@ -1918,15 +2682,15 @@
 
                   <div class="stock-name">
                     ${escapeHTML(
-                      stock.name
+                      stock.symbol
                     )}
                   </div>
 
                   <div class="stock-sector">
                     ${escapeHTML(
-                      stock.symbol
+                      stock.name ||
+                      "Nifty 50"
                     )}
-                    • Nifty 50
                   </div>
 
                 </div>
@@ -1967,9 +2731,34 @@
       }
 
 
-      /* =================================================
+      /* =====================================================
+         STATUS
+         ===================================================== */
+
+      function setStatus(
+        text,
+        className
+      ) {
+
+
+        if (!status) {
+          return;
+        }
+
+
+        status.innerText =
+          text;
+
+
+        status.className =
+          className;
+
+      }
+
+
+      /* =====================================================
          MESSAGES
-         ================================================= */
+         ===================================================== */
 
       function hideMessages() {
 
@@ -2004,9 +2793,7 @@
 
 
         if (!errorBox) {
-
           return;
-
         }
 
 
@@ -2022,9 +2809,9 @@
       }
 
 
-      /* =================================================
+      /* =====================================================
          HTML ESCAPE
-         ================================================= */
+         ===================================================== */
 
       function escapeHTML(
         value
