@@ -1,2858 +1,1265 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"
-  >
-
-  <meta name="theme-color" content="#070b12">
-
-  <title>Prototype-1 | AI Stock Assistant</title>
-
-  <style>
-
-    /* =========================================================
-       PROTOTYPE-1 PREMIUM DASHBOARD UI
-       Existing JS IDs preserved for compatibility.
-       ========================================================= */
-
-    :root {
-      --bg: #070b12;
-      --bg-soft: #0b111a;
-      --card: rgba(17, 24, 35, 0.88);
-      --card-2: #101722;
-      --card-3: #0c131d;
-
-      --border: rgba(255,255,255,0.075);
-      --border-strong: rgba(255,255,255,0.12);
-
-      --text: #f5f7fa;
-      --text-soft: #b6c0ce;
-      --muted: #748093;
-
-      --green: #24e59a;
-      --green-soft: rgba(36,229,154,0.12);
-
-      --red: #ff6471;
-      --red-soft: rgba(255,100,113,0.12);
-
-      --yellow: #ffd166;
-      --yellow-soft: rgba(255,209,102,0.12);
-
-      --blue: #66a6ff;
-      --blue-soft: rgba(102,166,255,0.12);
-
-      --purple: #9b7cff;
-      --purple-soft: rgba(155,124,255,0.12);
-
-      --radius: 20px;
-      --radius-small: 13px;
-
-      --shadow:
-        0 18px 55px rgba(0,0,0,0.28);
-    }
-
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-
-    html {
-      scroll-behavior: smooth;
-    }
-
-
-    body {
-      min-height: 100vh;
-
-      background:
-        radial-gradient(
-          circle at 15% 0%,
-          rgba(36,229,154,0.10),
-          transparent 28%
-        ),
-        radial-gradient(
-          circle at 90% 8%,
-          rgba(102,166,255,0.10),
-          transparent 25%
-        ),
-        linear-gradient(
-          180deg,
-          #070b12 0%,
-          #080d15 45%,
-          #060a10 100%
-        );
-
-      color: var(--text);
-
-      font-family:
-        Inter,
-        ui-sans-serif,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        Roboto,
-        Arial,
-        sans-serif;
-
-      padding:
-        0
-        14px
-        35px;
-
-      overflow-x: hidden;
-    }
-
-
-    button,
-    input {
-      font: inherit;
-    }
-
-
-    button {
-      -webkit-tap-highlight-color: transparent;
-    }
-
-
-    /* =========================================================
-       MAIN CONTAINER
-       ========================================================= */
-
-    .container {
-      width: 100%;
-      max-width: 1080px;
-      margin: auto;
-    }
-
-
-    /* =========================================================
-       TOP NAV
-       ========================================================= */
-
-    .topbar {
-      position: sticky;
-      top: 0;
-      z-index: 50;
-
-      margin: 0 -14px 18px;
-      padding: 12px 14px;
-
-      background:
-        linear-gradient(
-          180deg,
-          rgba(7,11,18,0.94),
-          rgba(7,11,18,0.76)
-        );
-
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-
-      border-bottom: 1px solid rgba(255,255,255,0.055);
-    }
-
-
-    .topbar-inner {
-      max-width: 1080px;
-      margin: auto;
-
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-
-      gap: 12px;
-    }
-
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 11px;
-
-      min-width: 0;
-    }
-
-
-    .brand-icon {
-      width: 43px;
-      height: 43px;
-
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      border-radius: 14px;
-
-      background:
-        linear-gradient(
-          135deg,
-          rgba(36,229,154,0.22),
-          rgba(102,166,255,0.18)
-        );
-
-      border: 1px solid rgba(255,255,255,0.09);
-
-      font-size: 21px;
-
-      box-shadow:
-        0 8px 30px rgba(36,229,154,0.08);
-    }
-
-
-    .brand-title {
-      font-size: 15px;
-      font-weight: 800;
-      letter-spacing: -0.2px;
-    }
-
-
-    .brand-subtitle {
-      margin-top: 2px;
-
-      color: var(--muted);
-
-      font-size: 10px;
-      font-weight: 700;
-
-      letter-spacing: 0.9px;
-      text-transform: uppercase;
-    }
-
-
-    .live-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-
-      padding: 8px 11px;
-
-      border-radius: 999px;
-
-      color: var(--green);
-
-      background: var(--green-soft);
-
-      border: 1px solid rgba(36,229,154,0.20);
-
-      font-size: 10px;
-      font-weight: 800;
-
-      white-space: nowrap;
-    }
-
-
-    .live-dot {
-      width: 7px;
-      height: 7px;
-
-      border-radius: 50%;
-
-      background: var(--green);
-
-      box-shadow:
-        0 0 0 4px rgba(36,229,154,0.10),
-        0 0 12px rgba(36,229,154,0.65);
-
-      animation: livePulse 1.8s infinite;
-    }
-
-
-    @keyframes livePulse {
-      0%, 100% {
-        opacity: 1;
-      }
-
-      50% {
-        opacity: 0.45;
-      }
-    }
-
-
-    /* =========================================================
-       HERO
-       ========================================================= */
-
-    .hero {
-      position: relative;
-      overflow: hidden;
-
-      padding: 23px 21px;
-
-      margin-bottom: 16px;
-
-      border-radius: 24px;
-
-      background:
-        linear-gradient(
-          135deg,
-          rgba(20,31,43,0.96),
-          rgba(10,16,25,0.95)
-        );
-
-      border: 1px solid var(--border);
-
-      box-shadow: var(--shadow);
-    }
-
-
-    .hero::before {
-      content: "";
-
-      position: absolute;
-
-      width: 230px;
-      height: 230px;
-
-      right: -100px;
-      top: -120px;
-
-      background:
-        radial-gradient(
-          circle,
-          rgba(36,229,154,0.18),
-          transparent 68%
-        );
-
-      pointer-events: none;
-    }
-
-
-    .hero-top {
-      position: relative;
-      z-index: 1;
-
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-
-      gap: 15px;
-    }
-
-
-    .hero-eyebrow {
-      color: var(--green);
-
-      font-size: 10px;
-      font-weight: 800;
-
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-
-      margin-bottom: 7px;
-    }
-
-
-    .hero h1 {
-      font-size: clamp(25px, 6vw, 38px);
-
-      line-height: 1.05;
-
-      letter-spacing: -1.3px;
-    }
-
-
-    .hero-description {
-      color: var(--text-soft);
-
-      font-size: 13px;
-      line-height: 1.55;
-
-      margin-top: 9px;
-
-      max-width: 580px;
-    }
-
-
-    .engine-chip {
-      flex-shrink: 0;
-
-      padding: 9px 11px;
-
-      border-radius: 12px;
-
-      background: var(--purple-soft);
-
-      border: 1px solid rgba(155,124,255,0.18);
-
-      color: #c4b5ff;
-
-      font-size: 10px;
-      font-weight: 800;
-
-      white-space: nowrap;
-    }
-
-
-    .hero-stats {
-      position: relative;
-      z-index: 1;
-
-      display: grid;
-
-      grid-template-columns:
-        repeat(3, 1fr);
-
-      gap: 9px;
-
-      margin-top: 20px;
-    }
-
-
-    .hero-stat {
-      padding: 12px;
-
-      border-radius: 14px;
-
-      background:
-        rgba(255,255,255,0.035);
-
-      border: 1px solid rgba(255,255,255,0.055);
-    }
-
-
-    .hero-stat-label {
-      color: var(--muted);
-
-      font-size: 9px;
-      font-weight: 700;
-
-      text-transform: uppercase;
-      letter-spacing: 0.7px;
-    }
-
-
-    .hero-stat-value {
-      margin-top: 5px;
-
-      font-size: 17px;
-      font-weight: 800;
-
-      letter-spacing: -0.3px;
-    }
-
-
-    /* =========================================================
-       CARDS
-       ========================================================= */
-
-    .card {
-      position: relative;
-
-      background:
-        linear-gradient(
-          145deg,
-          rgba(17,24,35,0.94),
-          rgba(12,18,27,0.94)
-        );
-
-      border: 1px solid var(--border);
-
-      border-radius: var(--radius);
-
-      padding: 19px;
-
-      margin-bottom: 15px;
-
-      box-shadow:
-        0 10px 40px rgba(0,0,0,0.18);
-
-      overflow: hidden;
-    }
-
-
-    .card::after {
-      content: "";
-
-      position: absolute;
-
-      inset: 0;
-
-      pointer-events: none;
-
-      background:
-        linear-gradient(
-          120deg,
-          rgba(255,255,255,0.025),
-          transparent 28%
-        );
-    }
-
-
-    .card-header {
-      position: relative;
-      z-index: 1;
-
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-
-      gap: 10px;
-
-      margin-bottom: 15px;
-    }
-
-
-    .section-title {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-
-      font-size: 16px;
-      font-weight: 800;
-
-      letter-spacing: -0.3px;
-    }
-
-
-    .section-icon {
-      width: 31px;
-      height: 31px;
-
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      border-radius: 10px;
-
-      background: rgba(255,255,255,0.045);
-
-      border: 1px solid rgba(255,255,255,0.055);
-
-      font-size: 15px;
-    }
-
-
-    .section-label {
-      color: var(--muted);
-
-      font-size: 9px;
-      font-weight: 800;
-
-      letter-spacing: 1px;
-      text-transform: uppercase;
-    }
-
-
-    /* =========================================================
-       INVESTMENT SETUP
-       ========================================================= */
-
-    .setup-grid {
-      position: relative;
-      z-index: 1;
-
-      display: grid;
-
-      grid-template-columns:
-        1fr 1fr;
-
-      gap: 12px;
-    }
-
-
-    .field {
-      position: relative;
-    }
-
-
-    .field.full {
-      grid-column: 1 / -1;
-    }
-
-
-    .field-label {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-
-      color: var(--muted);
-
-      font-size: 9px;
-      font-weight: 800;
-
-      letter-spacing: 0.9px;
-
-      text-transform: uppercase;
-
-      margin-bottom: 7px;
-    }
-
-
-    .secure-label {
-      color: var(--green);
-    }
-
-
-    .input-wrap {
-      position: relative;
-    }
-
-
-    .input-prefix {
-      position: absolute;
-
-      left: 14px;
-      top: 50%;
-
-      transform: translateY(-50%);
-
-      color: var(--muted);
-
-      font-weight: 800;
-
-      pointer-events: none;
-    }
-
-
-    .input-box {
-      width: 100%;
-
-      min-height: 48px;
-
-      padding: 12px 14px 12px 35px;
-
-      background:
-        rgba(5,10,16,0.72);
-
-      color: var(--text);
-
-      border: 1px solid rgba(255,255,255,0.09);
-
-      border-radius: 13px;
-
-      outline: none;
-
-      font-size: 14px;
-      font-weight: 700;
-
-      transition:
-        border-color .2s ease,
-        box-shadow .2s ease,
-        background .2s ease;
-    }
-
-
-    #totp {
-      padding-left: 14px;
-      letter-spacing: 4px;
-    }
-
-
-    .input-box::placeholder {
-      color: #566274;
-      font-weight: 500;
-    }
-
-
-    .input-box:focus {
-      border-color: rgba(36,229,154,0.55);
-
-      background:
-        rgba(7,15,22,0.95);
-
-      box-shadow:
-        0 0 0 4px rgba(36,229,154,0.075);
-    }
-
-
-    .button-row {
-      grid-column: 1 / -1;
-
-      display: grid;
-
-      grid-template-columns:
-        1fr 1fr;
-
-      gap: 10px;
-
-      margin-top: 2px;
-    }
-
-
-    .button {
-      width: 100%;
-
-      min-height: 48px;
-
-      border: none;
-
-      border-radius: 13px;
-
-      padding: 12px 14px;
-
-      background:
-        linear-gradient(
-          135deg,
-          #29e69c,
-          #17c985
-        );
-
-      color: #03130d;
-
-      font-size: 13px;
-      font-weight: 900;
-
-      cursor: pointer;
-
-      box-shadow:
-        0 8px 25px rgba(36,229,154,0.13);
-
-      transition:
-        transform .15s ease,
-        filter .15s ease,
-        opacity .15s ease;
-    }
-
-
-    .button:hover {
-      filter: brightness(1.08);
-      transform: translateY(-1px);
-    }
-
-
-    .button:active {
-      transform: translateY(0);
-    }
-
-
-    .button.secondary {
-      background:
-        linear-gradient(
-          135deg,
-          #1b2736,
-          #141e2b
-        );
-
-      color: #eaf0f7;
-
-      border: 1px solid rgba(255,255,255,0.09);
-
-      box-shadow: none;
-    }
-
-
-    .button:disabled {
-      opacity: 0.55;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-
-    /* =========================================================
-       MESSAGES
-       ========================================================= */
-
-    .error-box,
-    .success-box {
-      position: relative;
-      z-index: 2;
-
-      display: none;
-
-      padding: 12px 13px;
-
-      border-radius: 12px;
-
-      margin-top: 10px;
-
-      font-size: 12px;
-
-      line-height: 1.5;
-
-      word-break: break-word;
-    }
-
-
-    .error-box {
-      background: var(--red-soft);
-
-      border: 1px solid rgba(255,100,113,0.22);
-
-      color: #ff9da6;
-    }
-
-
-    .success-box {
-      background: var(--green-soft);
-
-      border: 1px solid rgba(36,229,154,0.22);
-
-      color: #7cf0b8;
-    }
-
-
-    /* =========================================================
-       ENGINE STATUS
-       ========================================================= */
-
-    .engine-banner {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-
-      color: var(--green);
-
-      font-size: 9px;
-      font-weight: 900;
-
-      letter-spacing: 1.2px;
-
-      margin-bottom: 13px;
-    }
-
-
-    .engine-banner::before {
-      content: "";
-
-      width: 7px;
-      height: 7px;
-
-      border-radius: 50%;
-
-      background: currentColor;
-
-      box-shadow:
-        0 0 10px currentColor;
-    }
-
-
-    .summary {
-      position: relative;
-      z-index: 1;
-
-      display: grid;
-
-      grid-template-columns:
-        repeat(4, 1fr);
-
-      gap: 10px;
-    }
-
-
-    .stat {
-      min-width: 0;
-
-      padding: 14px;
-
-      border-radius: 14px;
-
-      background:
-        linear-gradient(
-          145deg,
-          rgba(255,255,255,0.045),
-          rgba(255,255,255,0.018)
-        );
-
-      border: 1px solid rgba(255,255,255,0.055);
-    }
-
-
-    .stat small {
-      display: block;
-
-      color: var(--muted);
-
-      font-size: 9px;
-      font-weight: 800;
-
-      text-transform: uppercase;
-      letter-spacing: 0.65px;
-    }
-
-
-    .stat strong {
-      display: block;
-
-      margin-top: 7px;
-
-      font-size: 20px;
-
-      letter-spacing: -0.5px;
-    }
-
-
-    .status-ready {
-      color: var(--green);
-    }
-
-
-    .status-pending {
-      color: var(--yellow);
-    }
-
-
-    .status-error {
-      color: var(--red);
-    }
-
-
-    /* =========================================================
-       TOP 20
-       ========================================================= */
-
-    .top20-toolbar {
-      position: relative;
-      z-index: 1;
-
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-
-      margin-bottom: 10px;
-    }
-
-
-    .mode-pill {
-      display: inline-flex;
-      align-items: center;
-
-      padding: 6px 9px;
-
-      border-radius: 8px;
-
-      color: #c6b9ff;
-
-      background: var(--purple-soft);
-
-      border: 1px solid rgba(155,124,255,0.16);
-
-      font-size: 9px;
-      font-weight: 900;
-
-      letter-spacing: .7px;
-    }
-
-
-    #top20List {
-      position: relative;
-      z-index: 1;
-    }
-
-
-    .stock {
-      position: relative;
-
-      display: flex;
-
-      align-items: center;
-      justify-content: space-between;
-
-      gap: 12px;
-
-      padding: 12px 0;
-
-      border-bottom: 1px solid rgba(255,255,255,0.055);
-    }
-
-
-    .stock:last-child {
-      border-bottom: none;
-    }
-
-
-    .stock-left {
-      display: flex;
-
-      align-items: center;
-
-      gap: 11px;
-
-      min-width: 0;
-    }
-
-
-    .rank {
-      width: 34px;
-      height: 34px;
-
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      flex-shrink: 0;
-
-      border-radius: 10px;
-
-      background:
-        linear-gradient(
-          145deg,
-          rgba(36,229,154,0.11),
-          rgba(36,229,154,0.035)
-        );
-
-      border: 1px solid rgba(36,229,154,0.12);
-
-      color: var(--green);
-
-      font-size: 11px;
-      font-weight: 900;
-    }
-
-
-    .stock-name {
-      color: #f2f5f8;
-
-      font-size: 13px;
-      font-weight: 850;
-
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-
-    .stock-sector {
-      color: var(--muted);
-
-      font-size: 10px;
-
-      margin-top: 3px;
-
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-
-    .stock-change {
-      flex-shrink: 0;
-
-      min-width: 78px;
-
-      text-align: right;
-
-      font-size: 12px;
-      font-weight: 900;
-    }
-
-
-    .positive {
-      color: var(--green);
-    }
-
-
-    .negative {
-      color: var(--red);
-    }
-
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-
-      padding: 5px 8px;
-
-      border-radius: 7px;
-
-      font-size: 8px;
-      font-weight: 900;
-
-      letter-spacing: .5px;
-    }
-
-
-    .watch {
-      background: var(--yellow-soft);
-      color: var(--yellow);
-
-      border: 1px solid rgba(255,209,102,0.12);
-    }
-
-
-    .hold {
-      background: var(--green-soft);
-      color: var(--green);
-
-      border: 1px solid rgba(36,229,154,0.12);
-    }
-
-
-    .exit-review {
-      background: var(--red-soft);
-      color: var(--red);
-
-      border: 1px solid rgba(255,100,113,0.14);
-    }
-
-
-    .note {
-      color: var(--muted);
-
-      font-size: 11px;
-
-      line-height: 1.55;
-
-      margin-top: 9px;
-    }
-
-
-    /* =========================================================
-       WATCHLIST
-       ========================================================= */
-
-    #watchlist {
-      position: relative;
-      z-index: 1;
-
-      display: grid;
-
-      grid-template-columns:
-        repeat(3, 1fr);
-
-      gap: 10px;
-    }
-
-
-    #watchlist .stock {
-      display: block;
-
-      padding: 14px;
-
-      border:
-        1px solid rgba(255,255,255,0.06);
-
-      border-radius: 14px;
-
-      background:
-        rgba(255,255,255,0.025);
-    }
-
-
-    #watchlist .stock .badge {
-      margin-top: 10px;
-    }
-
-
-    /* =========================================================
-       RECOMMENDATION
-       ========================================================= */
-
-    #recommendation {
-      position: relative;
-      z-index: 1;
-    }
-
-
-    .recommendation {
-      color: #d6dde6;
-
-      line-height: 1.65;
-
-      font-size: 12px;
-    }
-
-
-    .recommendation h3,
-    .recommendation h4 {
-      color: #f4f7fa;
-    }
-
-
-    .recommendation table {
-      width: 100%;
-
-      border-collapse: separate;
-
-      border-spacing: 0;
-
-      overflow: hidden;
-
-      border-radius: 13px;
-
-      border: 1px solid rgba(255,255,255,0.065);
-
-      margin-top: 12px;
-
-      font-size: 10px;
-    }
-
-
-    .recommendation th {
-      padding: 10px 8px;
-
-      color: var(--muted);
-
-      background:
-        rgba(255,255,255,0.035);
-
-      font-size: 8px;
-
-      text-transform: uppercase;
-
-      letter-spacing: .5px;
-
-      white-space: nowrap;
-    }
-
-
-    .recommendation td {
-      padding: 10px 8px;
-
-      border-top:
-        1px solid rgba(255,255,255,0.045);
-
-      white-space: nowrap;
-    }
-
-
-    /* =========================================================
-       GENERIC V12 SUMMARY / ALLOCATION STYLING
-       ========================================================= */
-
-    .recommendation .summary,
-    .recommendation .allocation-summary {
-      margin-bottom: 14px;
-    }
-
-
-    .recommendation strong {
-      color: #ffffff;
-    }
-
-
-    .recommendation hr {
-      border: none;
-
-      border-top:
-        1px solid rgba(255,255,255,0.055);
-
-      margin: 16px 0;
-    }
-
-
-    .recommendation ul {
-      padding-left: 18px;
-    }
-
-
-    .recommendation li {
-      margin-bottom: 5px;
-    }
-
-
-    /* =========================================================
-       SCROLLBAR
-       ========================================================= */
-
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-
-
-    ::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-
-    ::-webkit-scrollbar-thumb {
-      background: #263242;
-      border-radius: 999px;
-    }
-
-
-    /* =========================================================
-       FOOTER
-       ========================================================= */
-
-    .footer {
-      text-align: center;
-
-      color: #586577;
-
-      font-size: 10px;
-
-      padding: 15px 0 25px;
-
-      line-height: 1.7;
-    }
-
-
-    .footer strong {
-      color: #7c8999;
-    }
-
-
-    /* =========================================================
-       MOBILE
-       ========================================================= */
-
-    @media (max-width: 760px) {
-
-      body {
-        padding-left: 10px;
-        padding-right: 10px;
-      }
-
-
-      .topbar {
-        margin-left: -10px;
-        margin-right: -10px;
-      }
-
-
-      .hero {
-        padding: 20px 16px;
-        border-radius: 20px;
-      }
-
-
-      .hero-top {
-        display: block;
-      }
-
-
-      .engine-chip {
-        display: inline-flex;
-        margin-top: 13px;
-      }
-
-
-      .hero-stats {
-        grid-template-columns:
-          repeat(3, 1fr);
-
-        gap: 7px;
-      }
-
-
-      .hero-stat {
-        padding: 10px 8px;
-      }
-
-
-      .hero-stat-value {
-        font-size: 14px;
-      }
-
-
-      .card {
-        padding: 16px;
-
-        border-radius: 17px;
-      }
-
-
-      .setup-grid {
-        grid-template-columns: 1fr;
-      }
-
-
-      .field.full {
-        grid-column: auto;
-      }
-
-
-      .button-row {
-        grid-column: auto;
-
-        grid-template-columns: 1fr;
-      }
-
-
-      .summary {
-        grid-template-columns:
-          repeat(2, 1fr);
-      }
-
-
-      #watchlist {
-        grid-template-columns: 1fr;
-      }
-
-
-      .recommendation {
-        overflow-x: auto;
-      }
-
-
-      .recommendation table {
-        min-width: 700px;
-      }
-
-    }
-
-
-    @media (max-width: 420px) {
-
-      .brand-subtitle {
-        display: none;
-      }
-
-
-      .live-pill {
-        padding: 7px 8px;
-        font-size: 9px;
-      }
-
-
-      .hero h1 {
-        font-size: 26px;
-      }
-
-
-      .hero-description {
-        font-size: 12px;
-      }
-
-
-      .hero-stats {
-        grid-template-columns:
-          1fr 1fr;
-      }
-
-
-      .hero-stat:last-child {
-        grid-column: 1 / -1;
-      }
-
-
-      .stock-name {
-        max-width: 145px;
-      }
-
-
-      .stock-sector {
-        max-width: 145px;
-      }
-
-    }
-
-  </style>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Prototype-1 | AI Stock Assistant</title>
+
+<style>
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+  font-family:Inter,Arial,sans-serif;
+}
+
+body{
+  background:
+    radial-gradient(circle at top left,#172b32 0,#0b1016 38%,#080c11 100%);
+  color:#fff;
+  padding:16px;
+}
+
+.container{
+  max-width:760px;
+  margin:auto;
+}
+
+/* HEADER */
+
+.header{
+  padding:8px 4px 22px;
+}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.brand-icon{
+  width:46px;
+  height:46px;
+  border-radius:14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:23px;
+  background:linear-gradient(135deg,#19c37d,#0d8f61);
+  box-shadow:0 8px 25px rgba(25,195,125,.22);
+}
+
+.header h1{
+  font-size:25px;
+  letter-spacing:-.5px;
+}
+
+.header p{
+  color:#8995a5;
+  font-size:13px;
+  margin-top:3px;
+}
+
+.live-pill{
+  margin-left:auto;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:7px 10px;
+  border:1px solid #214e3c;
+  background:#0d2119;
+  border-radius:30px;
+  color:#58e6a6;
+  font-size:11px;
+  font-weight:700;
+}
+
+.live-dot{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#35e998;
+  box-shadow:0 0 10px #35e998;
+}
+
+/* HERO */
+
+.hero{
+  background:
+    linear-gradient(135deg,rgba(25,195,125,.16),rgba(20,28,38,.88));
+  border:1px solid #254137;
+  border-radius:22px;
+  padding:22px;
+  margin-bottom:16px;
+  box-shadow:0 15px 40px rgba(0,0,0,.2);
+}
+
+.hero-label{
+  color:#55e3a2;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:1.3px;
+  margin-bottom:8px;
+}
+
+.hero h2{
+  font-size:28px;
+  line-height:1.1;
+  margin-bottom:8px;
+}
+
+.hero p{
+  color:#a4afbd;
+  font-size:13px;
+  line-height:1.5;
+}
+
+.hero-stats{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin-top:18px;
+}
+
+.hero-stat{
+  background:rgba(8,13,18,.5);
+  border:1px solid #26333e;
+  border-radius:13px;
+  padding:12px;
+}
+
+.hero-stat small{
+  color:#7f8a98;
+  display:block;
+  font-size:10px;
+}
+
+.hero-stat strong{
+  display:block;
+  margin-top:5px;
+  font-size:17px;
+}
+
+/* CARD */
+
+.card{
+  background:rgba(18,24,32,.92);
+  border:1px solid #27323e;
+  border-radius:18px;
+  padding:18px;
+  margin-bottom:15px;
+  box-shadow:0 10px 30px rgba(0,0,0,.16);
+}
+
+.card-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:15px;
+}
+
+.card-title{
+  display:flex;
+  align-items:center;
+  gap:9px;
+}
+
+.card-title-icon{
+  width:34px;
+  height:34px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#101820;
+  border:1px solid #27343f;
+  border-radius:10px;
+}
+
+.card h2{
+  font-size:17px;
+}
+
+.section-label{
+  color:#7d8998;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:1px;
+}
+
+/* INPUT */
+
+.input-label{
+  color:#9aa5b3;
+  font-size:11px;
+  font-weight:700;
+  margin:12px 0 7px;
+  display:block;
+}
+
+.input-wrap{
+  position:relative;
+}
+
+.input-box{
+  width:100%;
+  padding:14px;
+  padding-right:50px;
+  background:#0c1218;
+  color:#fff;
+  border:1px solid #303d49;
+  border-radius:12px;
+  font-size:16px;
+  outline:none;
+  transition:.2s;
+}
+
+.input-box:focus{
+  border-color:#19c37d;
+  box-shadow:0 0 0 3px rgba(25,195,125,.08);
+}
+
+.totp-toggle{
+  position:absolute;
+  right:7px;
+  top:50%;
+  transform:translateY(-50%);
+  border:0;
+  background:#18212b;
+  color:#aeb9c6;
+  width:37px;
+  height:34px;
+  border-radius:9px;
+  cursor:pointer;
+  font-size:17px;
+}
+
+.security{
+  color:#6f7d8c;
+  font-size:10px;
+  margin-top:6px;
+}
+
+.button{
+  width:100%;
+  padding:14px;
+  border:none;
+  border-radius:12px;
+  font-size:14px;
+  font-weight:800;
+  cursor:pointer;
+  margin-top:10px;
+  transition:.2s;
+}
+
+.button:hover{
+  transform:translateY(-1px);
+}
+
+.button.primary{
+  background:linear-gradient(135deg,#22d58d,#13ae70);
+  color:#06130d;
+  box-shadow:0 8px 22px rgba(25,195,125,.16);
+}
+
+.button.secondary{
+  background:#202a35;
+  color:#fff;
+  border:1px solid #34414e;
+}
+
+.button:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+}
+
+/* STATUS */
+
+.summary{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:9px;
+}
+
+.stat{
+  background:#0c1218;
+  border:1px solid #202b35;
+  padding:14px;
+  border-radius:13px;
+}
+
+.stat small{
+  color:#788594;
+  font-size:10px;
+}
+
+.stat strong{
+  display:block;
+  font-size:19px;
+  margin-top:5px;
+}
+
+.status-ready{
+  color:#39e99a;
+}
+
+.status-pending{
+  color:#ffd166;
+}
+
+.status-error{
+  color:#ff6b6b;
+}
+
+/* TOP 20 */
+
+.top20-wrapper{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.top20-item{
+  position:relative;
+  display:grid;
+  grid-template-columns:40px 1fr auto;
+  align-items:center;
+  gap:11px;
+  padding:12px;
+  background:
+    linear-gradient(90deg,#101820,#0d141b);
+  border:1px solid #222d38;
+  border-radius:14px;
+  transition:.18s;
+}
+
+.top20-item:hover{
+  border-color:#315044;
+  transform:translateX(2px);
+}
+
+.top20-rank{
+  width:36px;
+  height:36px;
+  border-radius:11px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:900;
+  font-size:13px;
+  background:#18212a;
+  color:#8e9baa;
+}
+
+.top20-item:nth-child(1) .top20-rank,
+.top20-item:nth-child(2) .top20-rank,
+.top20-item:nth-child(3) .top20-rank{
+  background:linear-gradient(135deg,#193d32,#152a25);
+  color:#54e5a4;
+}
+
+.stock-name{
+  font-weight:800;
+  font-size:13px;
+  letter-spacing:.1px;
+}
+
+.stock-meta{
+  color:#758291;
+  font-size:10px;
+  margin-top:4px;
+}
+
+.stock-right{
+  text-align:right;
+}
+
+.stock-price{
+  font-size:13px;
+  font-weight:800;
+}
+
+.stock-change{
+  font-size:11px;
+  font-weight:800;
+  margin-top:3px;
+}
+
+.positive{
+  color:#3be99b;
+}
+
+.negative{
+  color:#ff7272;
+}
+
+.badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:5px 8px;
+  border-radius:7px;
+  font-size:9px;
+  font-weight:900;
+  margin-top:5px;
+}
+
+.badge.hold{
+  background:#123325;
+  color:#4ce5a0;
+}
+
+.badge.watch{
+  background:#352d16;
+  color:#ffd166;
+}
+
+.badge.exit{
+  background:#381c20;
+  color:#ff7777;
+}
+
+.top20-footer{
+  display:flex;
+  justify-content:space-between;
+  color:#657382;
+  font-size:10px;
+  padding-top:8px;
+}
+
+/* WATCHLIST */
+
+.watch-item{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:13px;
+  background:#0d141b;
+  border:1px solid #222d37;
+  border-radius:12px;
+  margin-bottom:8px;
+}
+
+.watch-item:last-child{
+  margin-bottom:0;
+}
+
+.watch-symbol{
+  font-size:13px;
+  font-weight:800;
+}
+
+.watch-sector{
+  color:#718090;
+  font-size:10px;
+  margin-top:4px;
+}
+
+/* RECOMMENDATION */
+
+.recommendation{
+  background:#0d141b;
+  border:1px solid #25323d;
+  border-radius:14px;
+  padding:15px;
+  color:#d7dee7;
+  line-height:1.65;
+  font-size:13px;
+}
+
+/* MESSAGE */
+
+.error-box,
+.success-box{
+  display:none;
+  padding:12px;
+  border-radius:11px;
+  margin-top:10px;
+  font-size:12px;
+  line-height:1.5;
+}
+
+.error-box{
+  background:#351b1b;
+  border:1px solid #713333;
+  color:#ff9b9b;
+}
+
+.success-box{
+  background:#10291f;
+  border:1px solid #1f694b;
+  color:#7cf0b8;
+}
+
+.note{
+  color:#74818f;
+  font-size:11px;
+  line-height:1.5;
+  margin-top:10px;
+}
+
+.footer{
+  text-align:center;
+  color:#586573;
+  font-size:10px;
+  padding:12px 0 25px;
+  line-height:1.7;
+}
+
+@media(max-width:520px){
+
+  body{
+    padding:11px;
+  }
+
+  .hero{
+    padding:18px;
+  }
+
+  .hero h2{
+    font-size:24px;
+  }
+
+  .hero-stats{
+    grid-template-columns:1fr;
+  }
+
+  .card{
+    padding:14px;
+    border-radius:16px;
+  }
+
+  .top20-item{
+    grid-template-columns:36px 1fr auto;
+    padding:10px;
+  }
+
+  .top20-rank{
+    width:32px;
+    height:32px;
+  }
+
+  .stock-name{
+    font-size:12px;
+  }
+
+  .stock-meta{
+    font-size:9px;
+  }
+
+  .stock-price{
+    font-size:12px;
+  }
+
+  .live-pill{
+    font-size:9px;
+  }
+}
+</style>
 </head>
-
 
 <body>
 
-
 <div class="container">
 
+<!-- HEADER -->
 
-  <!-- =======================================================
-       TOP BAR
-       ======================================================= -->
+<div class="header">
 
-  <div class="topbar">
+  <div class="brand">
 
-    <div class="topbar-inner">
+    <div class="brand-icon">📊</div>
 
-      <div class="brand">
+    <div>
+      <h1>Prototype-1</h1>
+      <p>AI Stock Assistant</p>
+    </div>
 
-        <div class="brand-icon">
-          📊
-        </div>
-
-        <div>
-
-          <div class="brand-title">
-            Prototype-1
-          </div>
-
-          <div class="brand-subtitle">
-            AI Portfolio Engine
-          </div>
-
-        </div>
-
-      </div>
-
-
-      <div class="live-pill">
-
-        <span class="live-dot"></span>
-
-        <span id="topLiveStatus">
-          LIVE • 50/50
-        </span>
-
-      </div>
-
+    <div class="live-pill">
+      <span class="live-dot"></span>
+      LIVE • 50/50
     </div>
 
   </div>
-
-
-  <!-- =======================================================
-       HERO
-       ======================================================= -->
-
-  <section class="hero">
-
-    <div class="hero-top">
-
-      <div>
-
-        <div class="hero-eyebrow">
-          AI STOCK ASSISTANT
-        </div>
-
-        <h1>
-          Smarter Monthly<br>
-          Investing
-        </h1>
-
-        <p class="hero-description">
-          Monthly Top-20 decisions with continuous
-          daily monitoring.
-        </p>
-
-      </div>
-
-
-      <div class="engine-chip">
-        V12 • MONTHLY
-      </div>
-
-    </div>
-
-
-    <div class="hero-stats">
-
-      <div class="hero-stat">
-
-        <div class="hero-stat-label">
-          Investment Budget
-        </div>
-
-        <div
-          id="heroBudget"
-          class="hero-stat-value"
-        >
-          ₹15,000
-        </div>
-
-      </div>
-
-
-      <div class="hero-stat">
-
-        <div class="hero-stat-label">
-          Target Stocks
-        </div>
-
-        <div class="hero-stat-value">
-          20
-        </div>
-
-      </div>
-
-
-      <div class="hero-stat">
-
-        <div class="hero-stat-label">
-          Decision Mode
-        </div>
-
-        <div class="hero-stat-value">
-          MONTHLY
-        </div>
-
-      </div>
-
-    </div>
-
-  </section>
-
-
-  <!-- =======================================================
-       INVESTMENT SETUP
-       ======================================================= -->
-
-  <section class="card">
-
-    <div class="card-header">
-
-      <div class="section-title">
-
-        <div class="section-icon">
-          💰
-        </div>
-
-        Investment Setup
-
-      </div>
-
-
-      <div class="section-label">
-        SECURE
-      </div>
-
-    </div>
-
-
-    <div class="setup-grid">
-
-
-      <!-- INVESTMENT -->
-
-      <div class="field">
-
-        <div class="field-label">
-
-          <span>
-            Investment Amount
-          </span>
-
-        </div>
-
-
-        <div class="input-wrap">
-
-          <span class="input-prefix">
-            ₹
-          </span>
-
-          <input
-            id="amount"
-            class="input-box"
-            type="number"
-            min="1"
-            step="1"
-            placeholder="e.g. 15000"
-            autocomplete="off"
-          >
-
-        </div>
-
-      </div>
-
-
-      <!-- TOTP -->
-
-      <div class="field">
-
-        <div class="field-label">
-
-          <span>
-            Kotak Neo TOTP
-          </span>
-
-          <span class="secure-label">
-            🔒 SECURE
-          </span>
-
-        </div>
-
-
-        <input
-          id="totp"
-          class="input-box"
-          type="password"
-          inputmode="numeric"
-          maxlength="6"
-          placeholder="6-digit TOTP"
-          autocomplete="one-time-code"
-        >
-
-      </div>
-
-
-      <!-- MESSAGES -->
-
-      <div
-        id="errorBox"
-        class="error-box"
-      ></div>
-
-
-      <div
-        id="successBox"
-        class="success-box"
-      ></div>
-
-
-      <!-- BUTTONS -->
-
-      <div class="button-row">
-
-        <button
-          id="connectButton"
-          type="button"
-          class="button secondary"
-        >
-          ⚡ Connect Live Market Data
-        </button>
-
-
-        <button
-          id="analyzeButton"
-          type="button"
-          class="button"
-        >
-          🤖 Analyze Investment
-        </button>
-
-      </div>
-
-    </div>
-
-  </section>
-
-
-  <!-- =======================================================
-       ENGINE STATUS
-       ======================================================= -->
-
-  <section class="card">
-
-    <div class="card-header">
-
-      <div class="section-title">
-
-        <div class="section-icon">
-          📊
-        </div>
-
-        Engine Status
-
-      </div>
-
-    </div>
-
-
-    <div class="engine-banner">
-      LIVE ENGINE
-    </div>
-
-
-    <div class="summary">
-
-
-      <div class="stat">
-
-        <small>
-          Nifty 50 Stocks
-        </small>
-
-        <strong id="stockCount">
-          50
-        </strong>
-
-      </div>
-
-
-      <div class="stat">
-
-        <small>
-          Target Top Stocks
-        </small>
-
-        <strong>
-          20
-        </strong>
-
-      </div>
-
-
-      <div class="stat">
-
-        <small>
-          Market Data
-        </small>
-
-        <strong
-          id="marketStatus"
-          class="status-pending"
-        >
-          WAITING
-        </strong>
-
-      </div>
-
-
-      <div class="stat">
-
-        <small>
-          AI Engine
-        </small>
-
-        <strong>
-          V12
-        </strong>
-
-      </div>
-
-
-    </div>
-
-  </section>
-
-
-  <!-- =======================================================
-       CURRENT TOP 20
-       ======================================================= -->
-
-  <section class="card">
-
-    <div class="card-header">
-
-      <div class="section-title">
-
-        <div class="section-icon">
-          🏆
-        </div>
-
-        Current Top 20
-
-      </div>
-
-
-      <div class="mode-pill">
-        MONTHLY
-      </div>
-
-    </div>
-
-
-    <div id="top20List">
-
-      <p class="note">
-        TOTP enter karke
-        "Connect Live Market Data"
-        dabaiye.
-      </p>
-
-    </div>
-
-
-    <p class="note">
-      Live ranking available market data
-      ke basis par calculate ho rahi hai.
-    </p>
-
-  </section>
-
-
-  <!-- =======================================================
-       WATCHLIST
-       ======================================================= -->
-
-  <section class="card">
-
-    <div class="card-header">
-
-      <div class="section-title">
-
-        <div class="section-icon">
-          ⭐
-        </div>
-
-        AI Watchlist
-
-      </div>
-
-
-      <div class="section-label">
-        WATCH
-      </div>
-
-    </div>
-
-
-    <div id="watchlist">
-
-
-      <div class="stock">
-
-        <div>
-
-          <div class="stock-name">
-            HDFC Bank
-          </div>
-
-          <div class="stock-sector">
-            Financial Services
-          </div>
-
-        </div>
-
-
-        <span class="badge watch">
-          WATCH
-        </span>
-
-      </div>
-
-
-      <div class="stock">
-
-        <div>
-
-          <div class="stock-name">
-            Reliance Industries
-          </div>
-
-          <div class="stock-sector">
-            Oil, Gas & Consumable Fuels
-          </div>
-
-        </div>
-
-
-        <span class="badge watch">
-          WATCH
-        </span>
-
-      </div>
-
-
-      <div class="stock">
-
-        <div>
-
-          <div class="stock-name">
-            ICICI Bank
-          </div>
-
-          <div class="stock-sector">
-            Financial Services
-          </div>
-
-        </div>
-
-
-        <span class="badge watch">
-          WATCH
-        </span>
-
-      </div>
-
-
-    </div>
-
-  </section>
-
-
-  <!-- =======================================================
-       AI RECOMMENDATION
-       ======================================================= -->
-
-  <section class="card">
-
-    <div class="card-header">
-
-      <div class="section-title">
-
-        <div class="section-icon">
-          🤖
-        </div>
-
-        AI Recommendation
-
-      </div>
-
-
-      <div class="engine-chip">
-        V12
-      </div>
-
-    </div>
-
-
-    <div
-      id="recommendation"
-      class="recommendation"
-    >
-
-      Investment amount enter karke
-      “Analyze Investment” dabaiye.
-
-    </div>
-
-  </section>
-
-
-  <!-- =======================================================
-       FOOTER
-       ======================================================= -->
-
-  <div class="footer">
-
-    <strong>
-      Prototype-1
-    </strong>
-
-    <br>
-
-    AI analysis based on available market data.
-
-    <br>
-
-    Investment ka final decision aapka hai.
-
-  </div>
-
 
 </div>
 
 
-<!-- =========================================================
-     ORIGINAL PROJECT SCRIPTS
-     DO NOT REMOVE
-     ========================================================= -->
+<!-- HERO -->
+
+<div class="hero">
+
+  <div class="hero-label">
+    AI PORTFOLIO ENGINE
+  </div>
+
+  <h2>
+    Smarter Monthly<br>
+    Investing
+  </h2>
+
+  <p>
+    Monthly Top-20 decisions with continuous
+    daily monitoring.
+  </p>
+
+  <div class="hero-stats">
+
+    <div class="hero-stat">
+      <small>Investment Budget</small>
+      <strong id="heroBudget">₹15,000</strong>
+    </div>
+
+    <div class="hero-stat">
+      <small>Target Stocks</small>
+      <strong>20</strong>
+    </div>
+
+    <div class="hero-stat">
+      <small>Decision Mode</small>
+      <strong>MONTHLY</strong>
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- INVESTMENT SETUP -->
+
+<div class="card">
+
+  <div class="card-header">
+
+    <div class="card-title">
+
+      <div class="card-title-icon">💰</div>
+
+      <div>
+        <div class="section-label">SECURE</div>
+        <h2>Investment Setup</h2>
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <label class="input-label">
+    INVESTMENT AMOUNT
+  </label>
+
+  <div class="input-wrap">
+
+    <span
+      style="
+      position:absolute;
+      left:14px;
+      top:50%;
+      transform:translateY(-50%);
+      color:#7d8997;
+      font-weight:bold;
+      "
+    >₹</span>
+
+    <input
+      id="amount"
+      class="input-box"
+      style="padding-left:32px"
+      type="number"
+      min="1"
+      step="1"
+      placeholder="Enter amount"
+    >
+
+  </div>
+
+
+  <label class="input-label">
+    KOTAK NEO TOTP
+  </label>
+
+  <div class="input-wrap">
+
+    <input
+      id="totp"
+      class="input-box"
+      type="password"
+      inputmode="numeric"
+      maxlength="6"
+      placeholder="Enter current 6-digit TOTP"
+      autocomplete="one-time-code"
+    >
+
+    <button
+      id="totpToggle"
+      type="button"
+      class="totp-toggle"
+      aria-label="Show TOTP"
+    >
+      👁
+    </button>
+
+  </div>
+
+  <div class="security">
+    🔒 TOTP is visible only while you choose to show it.
+  </div>
+
+
+  <div id="errorBox" class="error-box"></div>
+
+  <div id="successBox" class="success-box"></div>
+
+
+  <button
+    id="connectButton"
+    type="button"
+    class="button secondary"
+  >
+    ⚡ Connect Live Market Data
+  </button>
+
+
+  <button
+    id="analyzeButton"
+    type="button"
+    class="button primary"
+  >
+    🤖 Analyze Investment
+  </button>
+
+</div>
+
+
+<!-- ENGINE STATUS -->
+
+<div class="card">
+
+  <div class="card-header">
+
+    <div class="card-title">
+
+      <div class="card-title-icon">📊</div>
+
+      <div>
+        <div class="section-label">LIVE ENGINE</div>
+        <h2>Engine Status</h2>
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <div class="summary">
+
+    <div class="stat">
+      <small>Nifty 50 Stocks</small>
+      <strong id="stockCount">50</strong>
+    </div>
+
+    <div class="stat">
+      <small>Target Top Stocks</small>
+      <strong>20</strong>
+    </div>
+
+    <div class="stat">
+      <small>Market Data</small>
+      <strong
+        id="marketStatus"
+        class="status-pending"
+      >
+        WAITING
+      </strong>
+    </div>
+
+    <div class="stat">
+      <small>AI Engine</small>
+      <strong>V12</strong>
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- TOP 20 -->
+
+<div class="card">
+
+  <div class="card-header">
+
+    <div class="card-title">
+
+      <div class="card-title-icon">🏆</div>
+
+      <div>
+        <div class="section-label">MONTHLY</div>
+        <h2>Current Top 20</h2>
+      </div>
+
+    </div>
+
+    <div
+      class="section-label"
+      style="color:#46dfa0"
+    >
+      LIVE RANKING
+    </div>
+
+  </div>
+
+
+  <div id="top20List">
+
+    <p class="note">
+      TOTP enter karke "Connect Live Market Data"
+      dabaiye.
+    </p>
+
+  </div>
+
+
+  <div class="top20-footer">
+    <span>Monthly = decision</span>
+    <span>Daily = monitoring</span>
+  </div>
+
+</div>
+
+
+<!-- WATCHLIST -->
+
+<div class="card">
+
+  <div class="card-header">
+
+    <div class="card-title">
+
+      <div class="card-title-icon">⭐</div>
+
+      <div>
+        <div class="section-label">WATCH</div>
+        <h2>AI Watchlist</h2>
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <div id="watchlist">
+
+    <div class="watch-item">
+
+      <div>
+        <div class="watch-symbol">
+          ADANIENT-EQ
+        </div>
+        <div class="watch-sector">
+          Metals & Mining
+        </div>
+      </div>
+
+      <span class="badge watch">
+        WATCH
+      </span>
+
+    </div>
+
+
+    <div class="watch-item">
+
+      <div>
+        <div class="watch-symbol">
+          CIPLA-EQ
+        </div>
+        <div class="watch-sector">
+          Healthcare
+        </div>
+      </div>
+
+      <span class="badge watch">
+        WATCH
+      </span>
+
+    </div>
+
+
+    <div class="watch-item">
+
+      <div>
+        <div class="watch-symbol">
+          BEL-EQ
+        </div>
+        <div class="watch-sector">
+          Defence
+        </div>
+      </div>
+
+      <span class="badge watch">
+        WATCH
+      </span>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- AI RECOMMENDATION -->
+
+<div class="card">
+
+  <div class="card-header">
+
+    <div class="card-title">
+
+      <div class="card-title-icon">🤖</div>
+
+      <div>
+        <div class="section-label">V12</div>
+        <h2>AI Recommendation</h2>
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <div
+    id="recommendation"
+    class="recommendation"
+  >
+    Investment amount enter karke
+    “Analyze Investment” dabaiye.
+  </div>
+
+</div>
+
+
+<!-- FOOTER -->
+
+<div class="footer">
+
+  <strong>Prototype-1</strong>
+
+  <br>
+
+  AI analysis based on available market data.
+
+  <br>
+
+  Investment ka final decision aapka hai.
+
+</div>
+
+</div>
+
+
+<!-- EXISTING PROJECT SCRIPTS -->
 
 <script src="./market-data.js"></script>
-
 <script src="./ranking-engine.js"></script>
-
 <script src="./app.js"></script>
 
 
-<!-- =========================================================
-     SAFE UI CONTROLLER
-     Existing live-data flow preserved.
-     ========================================================= -->
+<!-- UI CONTROLLER -->
 
 <script>
 
-(function () {
+(function(){
 
-  "use strict";
+"use strict";
 
 
-  document.addEventListener(
-    "DOMContentLoaded",
-    function () {
+/* ================================
+   TOTP SHOW / HIDE
+================================ */
 
+document.addEventListener(
+"DOMContentLoaded",
+function(){
 
-      const connectButton =
-        document.getElementById(
-          "connectButton"
-        );
+const totp =
+document.getElementById("totp");
 
+const toggle =
+document.getElementById("totpToggle");
 
-      const totpInput =
-        document.getElementById(
-          "totp"
-        );
+if(totp && toggle){
 
+toggle.addEventListener(
+"click",
+function(){
 
-      const status =
-        document.getElementById(
-          "marketStatus"
-        );
+if(totp.type === "password"){
 
+totp.type = "text";
 
-      const topLiveStatus =
-        document.getElementById(
-          "topLiveStatus"
-        );
+toggle.innerText = "🙈";
 
+toggle.setAttribute(
+"aria-label",
+"Hide TOTP"
+);
 
-      const top20List =
-        document.getElementById(
-          "top20List"
-        );
+}else{
 
+totp.type = "password";
 
-      const errorBox =
-        document.getElementById(
-          "errorBox"
-        );
+toggle.innerText = "👁";
 
+toggle.setAttribute(
+"aria-label",
+"Show TOTP"
+);
 
-      const successBox =
-        document.getElementById(
-          "successBox"
-        );
+}
 
+}
+);
 
-      const amountInput =
-        document.getElementById(
-          "amount"
-        );
+}
 
 
-      const heroBudget =
-        document.getElementById(
-          "heroBudget"
-        );
+/* ================================
+   AUTO UPDATE HERO BUDGET
+================================ */
 
+const amount =
+document.getElementById("amount");
 
-      /* =====================================================
-         UPDATE HERO BUDGET
-         ===================================================== */
+const heroBudget =
+document.getElementById("heroBudget");
 
-      function updateHeroBudget() {
+if(amount && heroBudget){
 
-        if (!amountInput || !heroBudget) {
-          return;
-        }
+amount.addEventListener(
+"input",
+function(){
 
+const value =
+Number(amount.value);
 
-        const value =
-          Number(
-            amountInput.value
-          );
+if(value > 0){
 
+heroBudget.innerText =
+"₹" +
+value.toLocaleString(
+"en-IN"
+);
 
-        if (
-          Number.isFinite(value) &&
-          value > 0
-        ) {
+}else{
 
-          heroBudget.innerText =
-            `₹${value.toLocaleString(
-              "en-IN",
-              {
-                maximumFractionDigits: 0
-              }
-            )}`;
+heroBudget.innerText =
+"₹15,000";
 
-        }
+}
 
-      }
+}
+);
 
+}
 
-      if (amountInput) {
-
-        amountInput.addEventListener(
-          "input",
-          updateHeroBudget
-        );
-
-      }
-
-
-      /* =====================================================
-         CONNECT CONTROLLER
-         ===================================================== */
-
-      if (!connectButton) {
-
-        console.error(
-          "Prototype-1: connectButton not found."
-        );
-
-        return;
-
-      }
-
-
-      console.log(
-        "Prototype-1: Premium UI controller ready."
-      );
-
-
-      connectButton.addEventListener(
-        "click",
-        async function () {
-
-
-          hideMessages();
-
-
-          const totp =
-            String(
-              totpInput?.value || ""
-            ).trim();
-
-
-          if (
-            !/^\d{6}$/.test(
-              totp
-            )
-          ) {
-
-
-            showError(
-              "Current 6-digit Kotak Neo TOTP enter karein."
-            );
-
-
-            setStatus(
-              "TOTP REQUIRED",
-              "status-pending"
-            );
-
-
-            if (top20List) {
-
-              top20List.innerHTML =
-                `
-                <p class="note">
-                  Valid 6-digit TOTP enter karein.
-                </p>
-                `;
-
-            }
-
-
-            if (totpInput) {
-
-              totpInput.focus();
-
-            }
-
-
-            return;
-
-          }
-
-
-          if (
-            typeof window.fetchMarketData !==
-            "function"
-          ) {
-
-
-            showError(
-              "market-data.js load nahi hua. Page refresh karke dobara try karein."
-            );
-
-
-            setStatus(
-              "ENGINE ERROR",
-              "status-error"
-            );
-
-
-            return;
-
-          }
-
-
-          connectButton.disabled =
-            true;
-
-
-          connectButton.innerText =
-            "⏳ Connecting...";
-
-
-          setStatus(
-            "LOADING",
-            "status-pending"
-          );
-
-
-          if (topLiveStatus) {
-
-            topLiveStatus.innerText =
-              "CONNECTING";
-
-          }
-
-
-          if (top20List) {
-
-            top20List.innerHTML =
-              `
-              <p class="note">
-                Kotak Neo se live market data load ho raha hai...
-              </p>
-              `;
-
-          }
-
-
-          try {
-
-
-            console.log(
-              "Prototype-1: Calling fetchMarketData()"
-            );
-
-
-            const result =
-              await window.fetchMarketData(
-                totp
-              );
-
-
-            console.log(
-              "Prototype-1: fetch result =",
-              result
-            );
-
-
-            if (!result) {
-
-              throw new Error(
-                "Kotak Neo se live market data receive nahi hua."
-              );
-
-            }
-
-
-            const market =
-              window.MARKET_DATA;
-
-
-            const stockMap =
-              market &&
-              market.stocks &&
-              typeof market.stocks === "object"
-                ? market.stocks
-                : {};
-
-
-            const rawStocks =
-              Object.values(
-                stockMap
-              );
-
-
-            if (!rawStocks.length) {
-
-              throw new Error(
-                "Live response mila, lekin stocks frontend mein map nahi hue."
-              );
-
-            }
-
-
-            const enrichedStocks =
-              rawStocks
-                .map(
-                  function (stock) {
-
-
-                    const cleanSymbol =
-                      String(
-                        stock.symbol ||
-                        stock.displaySymbol ||
-                        ""
-                      )
-                        .replace(
-                          /-EQ$/i,
-                          ""
-                        )
-                        .toUpperCase();
-
-
-                    const master =
-                      Array.isArray(
-                        window.NIFTY_50_STOCKS
-                      )
-                        ? window.NIFTY_50_STOCKS.find(
-                            function (item) {
-
-                              return (
-                                String(
-                                  item.symbol ||
-                                  ""
-                                )
-                                  .replace(
-                                    /-EQ$/i,
-                                    ""
-                                  )
-                                  .toUpperCase()
-                                  ===
-                                cleanSymbol
-                              );
-
-                            }
-                          )
-                        : null;
-
-
-                    const price =
-                      Number(
-                        stock.price ??
-                        stock.ltp ??
-                        stock.lastPrice ??
-                        stock.lastTradedPrice
-                      );
-
-
-                    const change =
-                      Number(
-                        stock.perChange ??
-                        stock.changePercent ??
-                        stock.change ??
-                        stock.netChange
-                      );
-
-
-                    return {
-
-                      symbol:
-                        cleanSymbol,
-
-                      name:
-                        master?.name ||
-                        stock.name ||
-                        cleanSymbol,
-
-                      sector:
-                        master?.sector ||
-                        stock.sector ||
-                        "Nifty 50",
-
-                      price:
-                        Number.isFinite(
-                          price
-                        )
-                          ? price
-                          : 0,
-
-                      change:
-                        Number.isFinite(
-                          change
-                        )
-                          ? change
-                          : 0
-
-                    };
-
-                  }
-                )
-                .filter(
-                  function (stock) {
-
-                    return (
-                      stock.symbol &&
-                      stock.price > 0
-                    );
-
-                  }
-                );
-
-
-            if (!enrichedStocks.length) {
-
-              throw new Error(
-                "Valid live stock prices nahi mile."
-              );
-
-            }
-
-
-            /*
-             * NOTE:
-             * Existing ranking-engine.js / app.js remains
-             * the primary ranking logic.
-             *
-             * This fallback only creates a display list
-             * if the existing app has not already rendered it.
-             */
-
-
-            if (
-              !window.TOP_20_STOCKS &&
-              !window.REAL_TOP_20
-            ) {
-
-              const displayTop20 =
-                enrichedStocks
-                  .slice()
-                  .sort(
-                    function (a, b) {
-
-                      return (
-                        b.change -
-                        a.change
-                      );
-
-                    }
-                  )
-                  .slice(
-                    0,
-                    20
-                  );
-
-
-              window.TOP_20_STOCKS =
-                displayTop20;
-
-
-              window.REAL_TOP_20 =
-                displayTop20;
-
-            }
-
-
-            /*
-             * If app.js has its own renderer, allow it
-             * to remain responsible for the V12 display.
-             *
-             * Only render fallback when the container
-             * is still empty/loading.
-             */
-
-            const currentText =
-              String(
-                top20List?.innerText || ""
-              ).trim();
-
-
-            if (
-              top20List &&
-              (
-                !currentText ||
-                currentText.includes(
-                  "live market data load ho raha hai"
-                )
-              )
-            ) {
-
-              renderFallbackTop20(
-                (
-                  window.TOP_20_STOCKS ||
-                  window.REAL_TOP_20 ||
-                  enrichedStocks.slice(
-                    0,
-                    20
-                  )
-                )
-              );
-
-            }
-
-
-            setStatus(
-              `LIVE • ${rawStocks.length}/50`,
-              "status-ready"
-            );
-
-
-            if (topLiveStatus) {
-
-              topLiveStatus.innerText =
-                `LIVE • ${rawStocks.length}/50`;
-
-            }
-
-
-            if (successBox) {
-
-              successBox.innerText =
-                `Live market data connected successfully. ${rawStocks.length}/50 stocks received.`;
-
-              successBox.style.display =
-                "block";
-
-            }
-
-
-            const stockCount =
-              document.getElementById(
-                "stockCount"
-              );
-
-
-            if (stockCount) {
-
-              stockCount.innerText =
-                rawStocks.length;
-
-            }
-
-
-            console.log(
-              "Prototype-1: LIVE MARKET DATA READY"
-            );
-
-
-          }
-
-          catch (error) {
-
-
-            console.error(
-              "Prototype-1 CONNECT ERROR:",
-              error
-            );
-
-
-            setStatus(
-              "ERROR",
-              "status-error"
-            );
-
-
-            if (topLiveStatus) {
-
-              topLiveStatus.innerText =
-                "OFFLINE";
-
-            }
-
-
-            if (top20List) {
-
-              top20List.innerHTML =
-                `
-                <p class="note">
-                  Live market data load nahi hua.
-                </p>
-                `;
-
-            }
-
-
-            showError(
-              error?.message ||
-              "Live market data connect karte waqt error aaya."
-            );
-
-
-          }
-
-          finally {
-
-
-            connectButton.disabled =
-              false;
-
-
-            connectButton.innerText =
-              "⚡ Connect Live Market Data";
-
-
-          }
-
-        }
-      );
-
-
-      /* =====================================================
-         FALLBACK TOP 20 RENDERER
-         ===================================================== */
-
-      function renderFallbackTop20(
-        stocks
-      ) {
-
-
-        if (!top20List) {
-          return;
-        }
-
-
-        top20List.innerHTML =
-          "";
-
-
-        stocks.forEach(
-          function (
-            stock,
-            index
-          ) {
-
-
-            const row =
-              document.createElement(
-                "div"
-              );
-
-
-            row.className =
-              "stock";
-
-
-            const change =
-              Number(
-                stock.change
-              ) || 0;
-
-
-            const changeClass =
-              change >= 0
-                ? "positive"
-                : "negative";
-
-
-            const sign =
-              change >= 0
-                ? "+"
-                : "";
-
-
-            row.innerHTML =
-              `
-
-              <div class="stock-left">
-
-                <div class="rank">
-                  ${index + 1}
-                </div>
-
-                <div>
-
-                  <div class="stock-name">
-                    ${escapeHTML(
-                      stock.symbol
-                    )}
-                  </div>
-
-                  <div class="stock-sector">
-                    ${escapeHTML(
-                      stock.name ||
-                      "Nifty 50"
-                    )}
-                  </div>
-
-                </div>
-
-              </div>
-
-
-              <div class="stock-change">
-
-                <div class="${changeClass}">
-                  ${sign}${change.toFixed(2)}%
-                </div>
-
-                <div class="stock-sector">
-                  ₹${Number(
-                    stock.price
-                  ).toLocaleString(
-                    "en-IN",
-                    {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    }
-                  )}
-                </div>
-
-              </div>
-
-              `;
-
-
-            top20List.appendChild(
-              row
-            );
-
-          }
-        );
-
-      }
-
-
-      /* =====================================================
-         STATUS
-         ===================================================== */
-
-      function setStatus(
-        text,
-        className
-      ) {
-
-
-        if (!status) {
-          return;
-        }
-
-
-        status.innerText =
-          text;
-
-
-        status.className =
-          className;
-
-      }
-
-
-      /* =====================================================
-         MESSAGES
-         ===================================================== */
-
-      function hideMessages() {
-
-
-        if (errorBox) {
-
-          errorBox.style.display =
-            "none";
-
-          errorBox.innerText =
-            "";
-
-        }
-
-
-        if (successBox) {
-
-          successBox.style.display =
-            "none";
-
-          successBox.innerText =
-            "";
-
-        }
-
-      }
-
-
-      function showError(
-        message
-      ) {
-
-
-        if (!errorBox) {
-          return;
-        }
-
-
-        errorBox.innerText =
-          String(
-            message
-          );
-
-
-        errorBox.style.display =
-          "block";
-
-      }
-
-
-      /* =====================================================
-         HTML ESCAPE
-         ===================================================== */
-
-      function escapeHTML(
-        value
-      ) {
-
-
-        return String(
-          value || ""
-        )
-          .replace(
-            /&/g,
-            "&amp;"
-          )
-          .replace(
-            /</g,
-            "&lt;"
-          )
-          .replace(
-            />/g,
-            "&gt;"
-          )
-          .replace(
-            /"/g,
-            "&quot;"
-          )
-          .replace(
-            /'/g,
-            "&#039;"
-          );
-
-      }
-
-
-    }
-  );
+});
 
 })();
+
+
+/* ==========================================
+   SAFE TOP-20 RENDERER
+========================================== */
+
+function renderModernTop20(stocks){
+
+const container =
+document.getElementById("top20List");
+
+if(!container) return;
+
+if(!Array.isArray(stocks) || !stocks.length){
+
+container.innerHTML =
+`
+<p class="note">
+Live market data available nahi hai.
+</p>
+`;
+
+return;
+
+}
+
+
+container.innerHTML = "";
+
+
+stocks
+.slice(0,20)
+.forEach(function(stock,index){
+
+const row =
+document.createElement("div");
+
+row.className =
+"top20-item";
+
+
+const change =
+Number(
+stock.change ??
+stock.perChange ??
+stock.pChange ??
+0
+) || 0;
+
+
+const price =
+Number(
+stock.price ??
+stock.ltp ??
+0
+) || 0;
+
+
+let state =
+"HOLD";
+
+if(
+stock.state
+){
+
+state =
+String(stock.state)
+.toUpperCase();
+
+}else if(change < -1){
+
+state =
+"EXIT REVIEW";
+
+}else if(change < 0){
+
+state =
+"WATCH";
+
+}
+
+
+let badgeClass =
+"hold";
+
+if(state === "WATCH")
+badgeClass = "watch";
+
+if(
+state === "EXIT REVIEW"
+)
+badgeClass = "exit";
+
+
+const sign =
+change >= 0
+? "+"
+: "";
+
+
+row.innerHTML =
+`
+
+<div class="top20-rank">
+${index + 1}
+</div>
+
+
+<div>
+
+  <div class="stock-name">
+    ${escapeHTML(
+      stock.symbol ||
+      stock.displaySymbol ||
+      stock.name ||
+      "UNKNOWN"
+    )}
+  </div>
+
+  <div class="stock-meta">
+    ${
+      stock.monthlyRank
+      ? "Monthly #" +
+        stock.monthlyRank +
+        " • "
+      : ""
+    }
+    ${
+      stock.dailyRank
+      ? "Daily #" +
+        stock.dailyRank
+        : "Nifty 50"
+    }
+  </div>
+
+  <span class="badge ${badgeClass}">
+    ${escapeHTML(state)}
+  </span>
+
+</div>
+
+
+<div class="stock-right">
+
+  <div class="stock-price">
+    ₹${price.toLocaleString(
+      "en-IN",
+      {
+        minimumFractionDigits:2,
+        maximumFractionDigits:2
+      }
+    )}
+  </div>
+
+  <div class="stock-change ${
+    change >= 0
+    ? "positive"
+    : "negative"
+  }">
+
+    ${sign}${change.toFixed(2)}%
+
+  </div>
+
+</div>
+
+`;
+
+container.appendChild(row);
+
+});
+
+}
+
+
+/* ==========================================
+   HTML ESCAPE
+========================================== */
+
+function escapeHTML(value){
+
+return String(value || "")
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#039;");
+
+}
 
 </script>
 
 
 </body>
-
 </html>
