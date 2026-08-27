@@ -10,239 +10,780 @@
     content="width=device-width, initial-scale=1.0"
   >
 
+  <meta
+    name="theme-color"
+    content="#070b12"
+  >
+
   <title>Prototype-1 | AI Stock Assistant</title>
 
   <style>
+
+    /* =====================================================
+       PROTOTYPE-1 PREMIUM DASHBOARD
+       UI ONLY — V12 ENGINE IDS PRESERVED
+       ===================================================== */
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: Arial, sans-serif;
+    }
+
+    :root {
+      --bg: #070b12;
+      --bg-soft: #0b111a;
+      --card: rgba(17, 24, 36, 0.88);
+      --card-2: rgba(13, 19, 29, 0.95);
+      --border: rgba(255,255,255,0.08);
+
+      --text: #f5f7fb;
+      --muted: #8d99aa;
+      --muted-2: #647184;
+
+      --green: #27e38a;
+      --green-soft: rgba(39,227,138,0.12);
+
+      --red: #ff6574;
+      --red-soft: rgba(255,101,116,0.12);
+
+      --yellow: #ffd166;
+      --yellow-soft: rgba(255,209,102,0.12);
+
+      --blue: #5ea7ff;
+      --blue-soft: rgba(94,167,255,0.12);
+
+      --purple: #9b7cff;
+      --purple-soft: rgba(155,124,255,0.12);
+
+      --radius: 20px;
+    }
+
+    html {
+      scroll-behavior: smooth;
     }
 
     body {
-      background: #0b0f14;
-      color: white;
+      min-height: 100vh;
+      background:
+        radial-gradient(
+          circle at 10% 0%,
+          rgba(94,167,255,0.10),
+          transparent 28%
+        ),
+        radial-gradient(
+          circle at 90% 10%,
+          rgba(155,124,255,0.10),
+          transparent 30%
+        ),
+        var(--bg);
+      color: var(--text);
+      font-family:
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Arial,
+        sans-serif;
       padding: 18px;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      -webkit-tap-highlight-color: transparent;
     }
 
     .container {
-      max-width: 700px;
-      margin: auto;
+      width: 100%;
+      max-width: 980px;
+      margin: 0 auto;
     }
+
+    /* =====================================================
+       HEADER
+       ===================================================== */
 
     .header {
-      margin-bottom: 20px;
+      position: relative;
+      padding: 6px 2px 24px;
     }
 
-    .header h1 {
-      font-size: 28px;
-      margin-bottom: 6px;
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 15px;
     }
 
-    .header p {
-      color: #9aa4b2;
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 13px;
     }
+
+    .brand-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        linear-gradient(
+          135deg,
+          rgba(39,227,138,0.20),
+          rgba(94,167,255,0.16)
+        );
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow:
+        0 10px 30px rgba(0,0,0,0.25);
+      font-size: 24px;
+    }
+
+    .brand h1 {
+      font-size: 25px;
+      font-weight: 800;
+      letter-spacing: -0.7px;
+    }
+
+    .brand p {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 3px;
+    }
+
+    .live-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 11px;
+      border-radius: 999px;
+      background: var(--green-soft);
+      border: 1px solid rgba(39,227,138,0.20);
+      color: var(--green);
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 10px rgba(39,227,138,0.75);
+    }
+
+    /* =====================================================
+       HERO
+       ===================================================== */
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 22px;
+      margin-bottom: 16px;
+      border-radius: 24px;
+      background:
+        linear-gradient(
+          135deg,
+          rgba(26,43,58,0.96),
+          rgba(13,20,31,0.96)
+        );
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow:
+        0 18px 60px rgba(0,0,0,0.30);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 190px;
+      height: 190px;
+      right: -80px;
+      top: -90px;
+      border-radius: 50%;
+      background: rgba(39,227,138,0.10);
+      filter: blur(5px);
+      pointer-events: none;
+    }
+
+    .hero-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .hero-title {
+      margin-top: 7px;
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.8px;
+    }
+
+    .hero-subtitle {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .hero-stat {
+      padding: 13px;
+      border-radius: 14px;
+      background: rgba(0,0,0,0.20);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .hero-stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .hero-stat strong {
+      display: block;
+      margin-top: 5px;
+      font-size: 17px;
+    }
+
+    /* =====================================================
+       INPUT CARD
+       ===================================================== */
 
     .card {
-      background: #151b23;
-      border: 1px solid #26303c;
-      border-radius: 14px;
-      padding: 18px;
+      position: relative;
+      overflow: hidden;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 19px;
+      margin-bottom: 16px;
+      box-shadow:
+        0 10px 35px rgba(0,0,0,0.18);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .card-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
       margin-bottom: 16px;
     }
 
-    .card h2 {
-      font-size: 19px;
-      margin-bottom: 12px;
+    .card-title h2 {
+      font-size: 17px;
+      font-weight: 750;
+      letter-spacing: -0.2px;
+    }
+
+    .section-tag {
+      padding: 5px 8px;
+      border-radius: 7px;
+      background: rgba(255,255,255,0.05);
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .field label {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 7px;
     }
 
     .input-box {
       width: 100%;
-      padding: 14px;
-      background: #0d1218;
-      color: white;
-      border: 1px solid #394554;
-      border-radius: 10px;
-      font-size: 16px;
-      margin-bottom: 12px;
+      height: 49px;
+      padding: 0 14px;
+      background: var(--bg-soft);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 13px;
       outline: none;
+      font-size: 15px;
+      transition: 0.2s ease;
+    }
+
+    .input-box::placeholder {
+      color: #5e6a7b;
     }
 
     .input-box:focus {
-      border-color: #19c37d;
+      border-color: rgba(39,227,138,0.55);
+      box-shadow:
+        0 0 0 3px rgba(39,227,138,0.08);
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 15px;
     }
 
     .button {
       width: 100%;
-      padding: 14px;
-      border: none;
-      border-radius: 10px;
-      background: #19c37d;
-      color: #06130d;
-      font-size: 16px;
-      font-weight: bold;
+      min-height: 49px;
+      padding: 13px 15px;
+      border: 0;
+      border-radius: 13px;
+      background:
+        linear-gradient(
+          135deg,
+          #35e99a,
+          #19c37d
+        );
+      color: #04120b;
+      font-size: 14px;
+      font-weight: 800;
       cursor: pointer;
-      margin-bottom: 10px;
+      transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease,
+        opacity 0.15s ease;
+      box-shadow:
+        0 8px 25px rgba(25,195,125,0.18);
+    }
+
+    .button:hover {
+      transform: translateY(-1px);
+    }
+
+    .button:active {
+      transform: translateY(0);
     }
 
     .button.secondary {
-      background: #26303c;
-      color: white;
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: none;
     }
 
     .button:disabled {
-      opacity: 0.6;
+      opacity: 0.55;
       cursor: not-allowed;
+      transform: none;
     }
+
+    /* =====================================================
+       MESSAGE BOXES
+       ===================================================== */
+
+    .error-box,
+    .success-box {
+      display: none;
+      padding: 12px 13px;
+      border-radius: 12px;
+      margin-top: 12px;
+      font-size: 12px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    .error-box {
+      background: var(--red-soft);
+      border: 1px solid rgba(255,101,116,0.20);
+      color: #ff9ba5;
+    }
+
+    .success-box {
+      background: var(--green-soft);
+      border: 1px solid rgba(39,227,138,0.20);
+      color: #7cf0b8;
+    }
+
+    /* =====================================================
+       ENGINE STATUS
+       ===================================================== */
 
     .summary {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(4, 1fr);
       gap: 10px;
     }
 
     .stat {
-      background: #0d1218;
-      padding: 14px;
-      border-radius: 10px;
+      position: relative;
+      padding: 15px;
+      min-height: 82px;
+      border-radius: 15px;
+      background: var(--card-2);
+      border: 1px solid rgba(255,255,255,0.06);
     }
 
     .stat small {
-      color: #8994a3;
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
     }
 
     .stat strong {
       display: block;
-      font-size: 20px;
-      margin-top: 5px;
+      margin-top: 7px;
+      font-size: 19px;
+      letter-spacing: -0.3px;
+    }
+
+    .stat:nth-child(1)::before,
+    .stat:nth-child(2)::before,
+    .stat:nth-child(3)::before,
+    .stat:nth-child(4)::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 15px;
+      width: 3px;
+      height: 25px;
+      border-radius: 5px;
+    }
+
+    .stat:nth-child(1)::before {
+      background: var(--blue);
+    }
+
+    .stat:nth-child(2)::before {
+      background: var(--purple);
+    }
+
+    .stat:nth-child(3)::before {
+      background: var(--green);
+    }
+
+    .stat:nth-child(4)::before {
+      background: var(--yellow);
     }
 
     .status-ready {
-      color: #38e89a;
+      color: var(--green);
     }
 
     .status-pending {
-      color: #ffd166;
+      color: var(--yellow);
     }
 
     .status-error {
-      color: #ff6b6b;
+      color: var(--red);
+    }
+
+    /* =====================================================
+       STOCK LIST
+       ===================================================== */
+
+    #top20List,
+    #watchlist {
+      display: flex;
+      flex-direction: column;
     }
 
     .stock {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding: 13px 0;
-      border-bottom: 1px solid #252d38;
-      gap: 10px;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 3px;
+      border-bottom: 1px solid rgba(255,255,255,0.055);
+      transition: 0.15s ease;
     }
 
     .stock:last-child {
       border-bottom: none;
     }
 
+    .stock:hover {
+      background: rgba(255,255,255,0.018);
+    }
+
     .stock-left {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 11px;
       min-width: 0;
     }
 
     .rank {
-      width: 30px;
-      height: 30px;
+      width: 31px;
+      height: 31px;
+      flex: 0 0 31px;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #0d1218;
-      border-radius: 8px;
-      font-weight: bold;
-      color: #19c37d;
-      flex-shrink: 0;
+      border-radius: 9px;
+      background:
+        linear-gradient(
+          135deg,
+          rgba(94,167,255,0.13),
+          rgba(155,124,255,0.10)
+        );
+      border: 1px solid rgba(255,255,255,0.06);
+      color: #9ec6ff;
+      font-size: 11px;
+      font-weight: 850;
     }
 
     .stock-name {
-      font-weight: bold;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .stock-sector {
-      color: #8994a3;
-      font-size: 12px;
-      margin-top: 3px;
+      color: var(--muted);
+      font-size: 10px;
+      margin-top: 4px;
     }
 
     .stock-change {
+      min-width: 75px;
       text-align: right;
-      font-weight: bold;
-      flex-shrink: 0;
+      font-size: 12px;
+      font-weight: 800;
     }
 
     .positive {
-      color: #38e89a;
+      color: var(--green);
     }
 
     .negative {
-      color: #ff6b6b;
+      color: var(--red);
     }
 
     .badge {
-      padding: 6px 9px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 5px 8px;
       border-radius: 7px;
-      font-size: 11px;
-      font-weight: bold;
+      font-size: 9px;
+      font-weight: 850;
+      letter-spacing: 0.3px;
+      margin-top: 5px;
     }
 
     .watch {
-      background: #403719;
-      color: #ffd166;
+      background: var(--yellow-soft);
+      color: var(--yellow);
+      border: 1px solid rgba(255,209,102,0.13);
     }
+
+    /* =====================================================
+       WATCHLIST
+       ===================================================== */
+
+    #watchlist {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    #watchlist .stock {
+      display: block;
+      padding: 14px;
+      border:
+        1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      background: var(--card-2);
+    }
+
+    #watchlist .stock-left {
+      margin-bottom: 8px;
+    }
+
+    #watchlist .badge {
+      margin-top: 0;
+    }
+
+    /* =====================================================
+       RECOMMENDATION
+       ===================================================== */
 
     .recommendation {
-      line-height: 1.6;
       color: #d8dee7;
+      font-size: 13px;
+      line-height: 1.65;
+      overflow-wrap: anywhere;
     }
 
-    .error-box {
-      display: none;
-      background: #351b1b;
-      border: 1px solid #713333;
-      color: #ff9b9b;
-      padding: 12px;
-      border-radius: 10px;
-      margin-bottom: 12px;
-      font-size: 13px;
-      line-height: 1.5;
-      word-break: break-word;
+    .recommendation h3 {
+      color: var(--text);
     }
 
-    .success-box {
-      display: none;
-      background: #10291f;
-      border: 1px solid #1f694b;
-      color: #7cf0b8;
-      padding: 12px;
-      border-radius: 10px;
-      margin-bottom: 12px;
-      font-size: 13px;
-      line-height: 1.5;
+    .recommendation table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      overflow: hidden;
+      border-radius: 13px;
+      margin-top: 12px;
     }
+
+    .recommendation th {
+      color: var(--muted);
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      text-align: left;
+      padding: 10px 8px;
+      background: rgba(255,255,255,0.035);
+    }
+
+    .recommendation td {
+      padding: 10px 8px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      font-size: 11px;
+    }
+
+    /* =====================================================
+       NOTE
+       ===================================================== */
 
     .note {
-      color: #8994a3;
-      font-size: 12px;
-      line-height: 1.5;
-      margin-top: 10px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.55;
+      margin-top: 11px;
     }
+
+    /* =====================================================
+       FOOTER
+       ===================================================== */
 
     .footer {
       text-align: center;
-      color: #697586;
-      font-size: 12px;
-      padding: 15px 0 25px;
-      line-height: 1.6;
+      color: var(--muted-2);
+      font-size: 10px;
+      line-height: 1.7;
+      padding: 12px 0 28px;
+    }
+
+    /* =====================================================
+       MOBILE
+       ===================================================== */
+
+    @media (max-width: 720px) {
+
+      body {
+        padding: 12px;
+      }
+
+      .header {
+        padding-bottom: 17px;
+      }
+
+      .brand-icon {
+        width: 43px;
+        height: 43px;
+        border-radius: 13px;
+      }
+
+      .brand h1 {
+        font-size: 21px;
+      }
+
+      .live-pill {
+        padding: 7px 9px;
+        font-size: 9px;
+      }
+
+      .hero {
+        padding: 18px;
+        border-radius: 20px;
+      }
+
+      .hero-title {
+        font-size: 23px;
+      }
+
+      .hero-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .actions {
+        grid-template-columns: 1fr;
+      }
+
+      .summary {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      #watchlist {
+        grid-template-columns: 1fr;
+      }
+
+      .card {
+        padding: 16px;
+        border-radius: 18px;
+      }
+
+      .stock {
+        padding: 12px 1px;
+      }
+
+    }
+
+    @media (max-width: 400px) {
+
+      .header-top {
+        align-items: center;
+      }
+
+      .brand p {
+        font-size: 11px;
+      }
+
+      .hero-grid {
+        gap: 7px;
+      }
+
+      .hero-stat {
+        padding: 11px;
+      }
+
+      .hero-stat strong {
+        font-size: 15px;
+      }
+
+      .summary {
+        gap: 7px;
+      }
+
+      .stat {
+        padding: 12px;
+      }
+
     }
 
   </style>
@@ -255,50 +796,178 @@
 <div class="container">
 
 
-  <!-- HEADER -->
+  <!-- =====================================================
+       HEADER
+       ===================================================== -->
 
-  <div class="header">
+  <header class="header">
 
-    <h1>📊 Prototype-1</h1>
+    <div class="header-top">
 
-    <p>
-      AI Stock Assistant
-    </p>
+      <div class="brand">
 
-  </div>
+        <div class="brand-icon">
+          📊
+        </div>
 
+        <div>
 
-  <!-- INVESTMENT + KOTAK -->
+          <h1>
+            Prototype-1
+          </h1>
 
-  <div class="card">
+          <p>
+            AI Stock Assistant
+          </p>
 
-    <h2>
-      💰 Investment Amount
-    </h2>
+        </div>
 
-    <input
-      id="amount"
-      class="input-box"
-      type="number"
-      min="1"
-      step="1"
-      placeholder="Enter amount e.g. 10000"
-    >
+      </div>
 
 
-    <h2>
-      🔐 Kotak Neo TOTP
-    </h2>
+      <div
+        id="livePill"
+        class="live-pill"
+      >
 
-    <input
-      id="totp"
-      class="input-box"
-      type="password"
-      inputmode="numeric"
-      maxlength="6"
-      placeholder="Enter current 6-digit TOTP"
-      autocomplete="one-time-code"
-    >
+        <span class="live-dot"></span>
+
+        <span id="livePillText">
+          MARKET READY
+        </span>
+
+      </div>
+
+    </div>
+
+  </header>
+
+
+  <!-- =====================================================
+       HERO
+       ===================================================== -->
+
+  <section class="hero">
+
+    <div class="hero-label">
+      AI PORTFOLIO ENGINE
+    </div>
+
+    <div class="hero-title">
+      Smarter Monthly Investing
+    </div>
+
+    <div class="hero-subtitle">
+      Monthly Top-20 decisions with continuous daily monitoring.
+    </div>
+
+
+    <div class="hero-grid">
+
+      <div class="hero-stat">
+
+        <span>
+          Investment Budget
+        </span>
+
+        <strong id="heroBudget">
+          ₹10,000
+        </strong>
+
+      </div>
+
+
+      <div class="hero-stat">
+
+        <span>
+          Target Stocks
+        </span>
+
+        <strong>
+          20
+        </strong>
+
+      </div>
+
+
+      <div class="hero-stat">
+
+        <span>
+          Decision Mode
+        </span>
+
+        <strong>
+          MONTHLY
+        </strong>
+
+      </div>
+
+
+    </div>
+
+  </section>
+
+
+  <!-- =====================================================
+       INVESTMENT CONTROL
+       ===================================================== -->
+
+  <section class="card">
+
+    <div class="card-title">
+
+      <h2>
+        💰 Investment Setup
+      </h2>
+
+      <span class="section-tag">
+        SECURE
+      </span>
+
+    </div>
+
+
+    <div class="form-grid">
+
+
+      <div class="field">
+
+        <label for="amount">
+          INVESTMENT AMOUNT
+        </label>
+
+        <input
+          id="amount"
+          class="input-box"
+          type="number"
+          min="1"
+          step="1"
+          placeholder="e.g. 10000"
+        >
+
+      </div>
+
+
+      <div class="field">
+
+        <label for="totp">
+          KOTAK NEO TOTP
+        </label>
+
+        <input
+          id="totp"
+          class="input-box"
+          type="password"
+          inputmode="numeric"
+          maxlength="6"
+          placeholder="6-digit TOTP"
+          autocomplete="one-time-code"
+        >
+
+      </div>
+
+
+    </div>
 
 
     <div
@@ -313,33 +982,47 @@
     ></div>
 
 
-    <button
-      id="connectButton"
-      type="button"
-      class="button secondary"
-    >
-      Connect Live Market Data
-    </button>
+    <div class="actions">
+
+      <button
+        id="connectButton"
+        type="button"
+        class="button secondary"
+      >
+        ⚡ Connect Live Market Data
+      </button>
 
 
-    <button
-      id="analyzeButton"
-      type="button"
-      class="button"
-    >
-      Analyze Investment
-    </button>
+      <button
+        id="analyzeButton"
+        type="button"
+        class="button"
+      >
+        🤖 Analyze Investment
+      </button>
 
-  </div>
+    </div>
+
+  </section>
 
 
-  <!-- ENGINE STATUS -->
+  <!-- =====================================================
+       ENGINE STATUS
+       ===================================================== -->
 
-  <div class="card">
+  <section class="card">
 
-    <h2>
-      📊 Engine Status
-    </h2>
+    <div class="card-title">
+
+      <h2>
+        📊 Engine Status
+      </h2>
+
+      <span class="section-tag">
+        LIVE ENGINE
+      </span>
+
+    </div>
 
 
     <div class="summary">
@@ -394,7 +1077,7 @@
         </small>
 
         <strong>
-          Prototype
+          V12
         </strong>
 
       </div>
@@ -402,22 +1085,32 @@
 
     </div>
 
-  </div>
+  </section>
 
 
-  <!-- CURRENT TOP 20 -->
+  <!-- =====================================================
+       TOP 20
+       ===================================================== -->
 
-  <div class="card">
+  <section class="card">
 
-    <h2>
-      🏆 Current Top 20
-    </h2>
+    <div class="card-title">
+
+      <h2>
+        🏆 Current Top 20
+      </h2>
+
+      <span class="section-tag">
+        MONTHLY
+      </span>
+
+    </div>
 
 
     <div id="top20List">
 
       <p class="note">
-        TOTP enter karke
+        Kotak Neo TOTP enter karke
         "Connect Live Market Data"
         dabaiye.
       </p>
@@ -430,16 +1123,26 @@
       ke basis par calculate ho rahi hai.
     </p>
 
-  </div>
+  </section>
 
 
-  <!-- AI WATCHLIST -->
+  <!-- =====================================================
+       WATCHLIST
+       ===================================================== -->
 
-  <div class="card">
+  <section class="card">
 
-    <h2>
-      ⭐ AI Watchlist
-    </h2>
+    <div class="card-title">
+
+      <h2>
+        ⭐ AI Watchlist
+      </h2>
+
+      <span class="section-tag">
+        WATCH
+      </span>
+
+    </div>
 
 
     <div id="watchlist">
@@ -447,35 +1150,18 @@
 
       <div class="stock">
 
-        <div>
+        <div class="stock-left">
 
-          <div class="stock-name">
-            HDFC Bank
-          </div>
+          <div>
 
-          <div class="stock-sector">
-            Financial Services
-          </div>
+            <div class="stock-name">
+              HDFC Bank
+            </div>
 
-        </div>
+            <div class="stock-sector">
+              Financial Services
+            </div>
 
-        <span class="badge watch">
-          WATCH
-        </span>
-
-      </div>
-
-
-      <div class="stock">
-
-        <div>
-
-          <div class="stock-name">
-            Reliance Industries
-          </div>
-
-          <div class="stock-sector">
-            Oil, Gas & Consumable Fuels
           </div>
 
         </div>
@@ -489,14 +1175,43 @@
 
       <div class="stock">
 
-        <div>
+        <div class="stock-left">
 
-          <div class="stock-name">
-            ICICI Bank
+          <div>
+
+            <div class="stock-name">
+              Reliance Industries
+            </div>
+
+            <div class="stock-sector">
+              Oil, Gas & Consumable Fuels
+            </div>
+
           </div>
 
-          <div class="stock-sector">
-            Financial Services
+        </div>
+
+        <span class="badge watch">
+          WATCH
+        </span>
+
+      </div>
+
+
+      <div class="stock">
+
+        <div class="stock-left">
+
+          <div>
+
+            <div class="stock-name">
+              ICICI Bank
+            </div>
+
+            <div class="stock-sector">
+              Financial Services
+            </div>
+
           </div>
 
         </div>
@@ -510,16 +1225,26 @@
 
     </div>
 
-  </div>
+  </section>
 
 
-  <!-- AI RECOMMENDATION -->
+  <!-- =====================================================
+       AI RECOMMENDATION
+       ===================================================== -->
 
-  <div class="card">
+  <section class="card">
 
-    <h2>
-      🤖 AI Recommendation
-    </h2>
+    <div class="card-title">
+
+      <h2>
+        🤖 AI Recommendation
+      </h2>
+
+      <span class="section-tag">
+        V12
+      </span>
+
+    </div>
 
 
     <div
@@ -532,32 +1257,36 @@
 
     </div>
 
-  </div>
+  </section>
 
 
-  <!-- FOOTER -->
+  <!-- =====================================================
+       FOOTER
+       ===================================================== -->
 
-  <div class="footer">
+  <footer class="footer">
 
-    Prototype-1
+    <strong>
+      Prototype-1
+    </strong>
 
     <br>
 
-    AI analysis based on available data.
+    AI analysis based on available market data.
 
     <br>
 
     Investment ka final decision aapka hai.
 
-  </div>
+  </footer>
 
 
 </div>
 
 
-<!-- ================================================= -->
-<!-- ORIGINAL PROJECT SCRIPTS                           -->
-<!-- ================================================= -->
+<!-- =====================================================
+     ORIGINAL PROJECT SCRIPTS
+     ===================================================== -->
 
 <script src="./market-data.js"></script>
 
@@ -566,9 +1295,9 @@
 <script src="./app.js"></script>
 
 
-<!-- ================================================= -->
-<!-- STABLE CONNECT CONTROLLER                         -->
-<!-- ================================================= -->
+<!-- =====================================================
+     STABLE CONNECT CONTROLLER
+     ===================================================== -->
 
 <script>
 
@@ -591,6 +1320,12 @@
       const totpInput =
         document.getElementById(
           "totp"
+        );
+
+
+      const amountInput =
+        document.getElementById(
+          "amount"
         );
 
 
@@ -618,6 +1353,18 @@
         );
 
 
+      const livePillText =
+        document.getElementById(
+          "livePillText"
+        );
+
+
+      const heroBudget =
+        document.getElementById(
+          "heroBudget"
+        );
+
+
       if (!connectButton) {
 
         console.error(
@@ -630,9 +1377,48 @@
 
 
       console.log(
-        "Prototype-1: Connect controller ready."
+        "Prototype-1: Premium UI controller ready."
       );
 
+
+      /* =================================================
+         LIVE BUDGET DISPLAY
+         ================================================= */
+
+      if (amountInput) {
+
+        amountInput.addEventListener(
+          "input",
+          function () {
+
+            const amount =
+              Number(
+                amountInput.value
+              );
+
+            if (
+              heroBudget &&
+              Number.isFinite(amount) &&
+              amount > 0
+            ) {
+
+              heroBudget.innerText =
+                "₹" +
+                amount.toLocaleString(
+                  "en-IN"
+                );
+
+            }
+
+          }
+        );
+
+      }
+
+
+      /* =================================================
+         CONNECT BUTTON
+         ================================================= */
 
       connectButton.addEventListener(
         "click",
@@ -668,6 +1454,14 @@
 
               status.className =
                 "status-pending";
+
+            }
+
+
+            if (livePillText) {
+
+              livePillText.innerText =
+                "TOTP REQUIRED";
 
             }
 
@@ -718,6 +1512,14 @@
             }
 
 
+            if (livePillText) {
+
+              livePillText.innerText =
+                "ENGINE ERROR";
+
+            }
+
+
             return;
 
           }
@@ -728,7 +1530,7 @@
 
 
           connectButton.innerText =
-            "Connecting...";
+            "⏳ Connecting...";
 
 
           if (status) {
@@ -738,6 +1540,14 @@
 
             status.className =
               "status-pending";
+
+          }
+
+
+          if (livePillText) {
+
+            livePillText.innerText =
+              "CONNECTING";
 
           }
 
@@ -946,6 +1756,16 @@
             }
 
 
+            if (livePillText) {
+
+              livePillText.innerText =
+                `LIVE • ${
+                  rawStocks.length
+                }/50`;
+
+            }
+
+
             if (successBox) {
 
               successBox.innerText =
@@ -985,6 +1805,14 @@
             }
 
 
+            if (livePillText) {
+
+              livePillText.innerText =
+                "LIVE DATA ERROR";
+
+            }
+
+
             if (top20List) {
 
               top20List.innerHTML =
@@ -1013,7 +1841,7 @@
 
 
             connectButton.innerText =
-              "Connect Live Market Data";
+              "⚡ Connect Live Market Data";
 
 
           }
@@ -1021,6 +1849,10 @@
         }
       );
 
+
+      /* =================================================
+         TOP 20 RENDER
+         ================================================= */
 
       function renderTop20(
         stocks
@@ -1135,6 +1967,10 @@
       }
 
 
+      /* =================================================
+         MESSAGES
+         ================================================= */
+
       function hideMessages() {
 
 
@@ -1185,6 +2021,10 @@
 
       }
 
+
+      /* =================================================
+         HTML ESCAPE
+         ================================================= */
 
       function escapeHTML(
         value
