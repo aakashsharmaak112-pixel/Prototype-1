@@ -1,5 +1,5 @@
 /* ============================================================
-   PROTOTYPE-1 — APP ENGINE V12 (FULL BUG FIX)
+   PROTOTYPE-1 — APP ENGINE (V11-COMPATIBLE LIVE DATA FIX)
    Monthly Top-20 + Daily Monitoring + Replacement Candidates
    Smart Whole-Share Allocation
    Existing quotes.js / fetchMarketData() flow untouched
@@ -27,24 +27,18 @@
   const DAILY_KEY = "prototype1_daily_monitoring_v12";
 
   const OLD_PORTFOLIO_KEYS = [
-    "prototype1_portfolio_v12",
-    "prototype1_portfolio_v13",
     "prototype1_portfolio_v7",
     "prototype1_portfolio_v6",
     "prototype1_portfolio_v5"
   ];
 
   const OLD_MONTHLY_KEYS = [
-    "prototype1_monthly_top20_v12",
-    "prototype1_monthly_top20_v13",
     "prototype1_monthly_top20_v7",
     "prototype1_monthly_top20_v6",
     "prototype1_monthly_top20_v5"
   ];
 
   const OLD_DAILY_KEYS = [
-    "prototype1_daily_monitoring_v12",
-    "prototype1_daily_monitoring_v13",
     "prototype1_daily_monitoring_v7",
     "prototype1_daily_monitoring_v6",
     "prototype1_daily_monitoring_v5"
@@ -95,20 +89,12 @@
 
   function currentMonthKey() {
     const d = new Date();
-
-    return `${d.getFullYear()}-${String(
-      d.getMonth() + 1
-    ).padStart(2, "0")}`;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   }
 
   function todayKey() {
     const d = new Date();
-
-    return `${d.getFullYear()}-${String(
-      d.getMonth() + 1
-    ).padStart(2, "0")}-${String(
-      d.getDate()
-    ).padStart(2, "0")}`;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   }
 
   function normalizeSymbol(symbol) {
@@ -121,10 +107,7 @@
   function storageRead(key, fallback = null) {
     try {
       const raw = localStorage.getItem(key);
-
-      return raw
-        ? JSON.parse(raw)
-        : fallback;
+      return raw ? JSON.parse(raw) : fallback;
     } catch {
       return fallback;
     }
@@ -132,11 +115,7 @@
 
   function storageWrite(key, value) {
     try {
-      localStorage.setItem(
-        key,
-        JSON.stringify(value)
-      );
-
+      localStorage.setItem(key, JSON.stringify(value));
       return true;
     } catch {
       return false;
@@ -148,13 +127,10 @@
   ========================= */
 
   function findNiftyStock(symbol) {
-    const target =
-      normalizeSymbol(symbol);
-
-    const master =
-      Array.isArray(window.NIFTY_50_STOCKS)
-        ? window.NIFTY_50_STOCKS
-        : [];
+    const target = normalizeSymbol(symbol);
+    const master = Array.isArray(window.NIFTY_50_STOCKS)
+      ? window.NIFTY_50_STOCKS
+      : [];
 
     return master.find(item =>
       normalizeSymbol(
@@ -166,8 +142,7 @@
   }
 
   function inferBusinessGroup(symbol) {
-    const s =
-      normalizeSymbol(symbol);
+    const s = normalizeSymbol(symbol);
 
     const groups = {
       HDFCBANK: "HDFC Group",
@@ -207,78 +182,76 @@
      NORMALIZATION
   ========================= */
 
+  function firstDefined(obj, keys, fallback = undefined) {
+    for (const key of keys) {
+      const value = obj?.[key];
+
+      if (
+        value !== undefined &&
+        value !== null &&
+        value !== ""
+      ) {
+        return value;
+      }
+    }
+
+    return fallback;
+  }
+
   function normalizeStock(stock) {
-    stock =
-      stock &&
-      typeof stock === "object"
-        ? stock
-        : {};
+    stock = stock || {};
 
-    /*
-      Kotak Neo quotes.js can return:
+    const rawSymbol = firstDefined(
+      stock,
+      [
+        "symbol",
+        "tradingsymbol",
+        "ticker",
+        "neoSymbol",
+        "displaySymbol",
+        "instrumentName",
+        "instrument_name",
+        "tradingSymbol",
+        "trading_symbol"
+      ],
+      ""
+    );
 
-      symbol
-      tradingsymbol
-      tradingSymbol
-      ticker
-      displaySymbol
-      display_symbol
+    const symbol = normalizeSymbol(rawSymbol);
+    const master = findNiftyStock(symbol);
 
-      Price can be:
+    const rawPrice = firstDefined(
+      stock,
+      [
+        "price",
+        "ltp",
+        "lastPrice",
+        "last_price",
+        "close",
+        "lastTradedPrice",
+        "last_traded_price",
+        "lp",
+        "closePrice"
+      ],
+      0
+    );
 
-      price
-      lastPrice
-      last_price
-      ltp
-      close
-      ohlc.close
-
-      Percentage change can be:
-
-      perChange
-      per_change
-      changePercent
-      change_percentage
-      pChange
-      p_change
-
-      Keep quotes.js untouched and normalize everything here.
-    */
-
-    const rawSymbol =
-      stock.symbol ||
-      stock.tradingsymbol ||
-      stock.tradingSymbol ||
-      stock.ticker ||
-      stock.displaySymbol ||
-      stock.display_symbol ||
-      stock.name ||
-      "";
-
-    const symbol =
-      normalizeSymbol(rawSymbol);
-
-    const master =
-      findNiftyStock(symbol);
-
-    const rawChange =
-      stock.perChange ??
-      stock.per_change ??
-      stock.changePercent ??
-      stock.change_percentage ??
-      stock.pChange ??
-      stock.p_change ??
-      stock.change ??
-      0;
-
-    const rawPrice =
-      stock.price ??
-      stock.lastPrice ??
-      stock.last_price ??
-      stock.ltp ??
-      stock.close ??
-      stock.ohlc?.close ??
-      0;
+    const rawChange = firstDefined(
+      stock,
+      [
+        "perChange",
+        "pChange",
+        "changePercent",
+        "percentChange",
+        "change_percent",
+        "percentageChange",
+        "netChangePercent",
+        "change",
+        "netChange",
+        "net_change"
+      ],
+      0
+    );
 
     return {
       ...stock,
@@ -286,57 +259,89 @@
       symbol,
 
       name: String(
-        stock.name ||
-        stock.companyName ||
-        stock.company_name ||
-        stock.displaySymbol ||
-        stock.display_symbol ||
-        master?.name ||
-        symbol
+        firstDefined(
+          stock,
+          [
+            "name",
+            "companyName",
+            "company_name",
+            "displayName",
+            "displaySymbol"
+          ],
+          master?.name || symbol
+        )
       ).trim(),
 
-      sector: String(
-        stock.sector ||
-        stock.industry ||
-        master?.sector ||
-        "Other"
-      ).trim(),
+      sector:
+        firstDefined(
+          stock,
+          ["sector", "industry"],
+          master?.sector || "Other"
+        ),
 
-      businessGroup: String(
-        stock.businessGroup ||
-        stock.business_group ||
-        stock.group ||
-        stock.parentGroup ||
-        master?.businessGroup ||
-        inferBusinessGroup(symbol)
-      ).trim(),
+      businessGroup:
+        firstDefined(
+          stock,
+          [
+            "businessGroup",
+            "group",
+            "parentGroup",
+            "business_group"
+          ],
+          master?.businessGroup ||
+          master?.group ||
+          inferBusinessGroup(symbol)
+        ),
 
-      price:
-        safeNumber(rawPrice),
+      price: safeNumber(rawPrice),
 
-      change:
-        safeNumber(rawChange),
+      change: safeNumber(rawChange),
 
       chartScore:
         safeNumber(
-          stock.chartScore ??
-          stock.technicalScore
+          firstDefined(
+            stock,
+            [
+              "chartScore",
+              "technicalScore",
+              "technical_score"
+            ]
+          )
         ),
 
       fundamentalScore:
         safeNumber(
-          stock.fundamentalScore
+          firstDefined(
+            stock,
+            [
+              "fundamentalScore",
+              "fundamental_score"
+            ]
+          )
         ),
 
       newsScore:
         safeNumber(
-          stock.newsScore
+          firstDefined(
+            stock,
+            [
+              "newsScore",
+              "news_score"
+            ]
+          )
         ),
 
       priority:
         safeNumber(
-          stock.priority ??
-          master?.priority
+          firstDefined(
+            stock,
+            [
+              "priority",
+              "rankPriority",
+              "rank_priority"
+            ],
+            master?.priority
+          )
         )
     };
   }
@@ -353,24 +358,13 @@
 
   /* =========================
      MARKET DATA ADAPTER
-     Accept existing quotes.js result.
-
-     Possible structures:
-
-     1) Array
-     2) { stocks: [...] }
-     3) { quotes: [...] }
-     4) { data: [...] }
-     5) { results: [...] }
-     6) { items: [...] }
-     7) Nested data/result/payload
-     8) Single quote object
+     Accept many existing quotes.js
+     response shapes without changing
+     fetchMarketData() itself.
   ========================= */
 
-  function extractQuoteRows(source) {
-    if (!source) {
-      return [];
-    }
+  function extractMarketRows(source) {
+    if (!source) return [];
 
     if (Array.isArray(source)) {
       return source;
@@ -384,88 +378,98 @@
       "stocks",
       "quotes",
       "data",
+      "result",
       "results",
-      "items"
+      "items",
+      "payload",
+      "records",
+      "rows",
+      "marketData",
+      "market_data"
     ];
 
     for (const key of directKeys) {
-      if (Array.isArray(source[key])) {
-        return source[key];
+      const value = source[key];
+
+      if (Array.isArray(value)) {
+        return value;
+      }
+
+      if (
+        value &&
+        typeof value === "object"
+      ) {
+        const nested = extractMarketRows(value);
+
+        if (nested.length) {
+          return nested;
+        }
       }
     }
 
-    if (
-      source.data &&
-      typeof source.data === "object"
-    ) {
-      const nested =
-        extractQuoteRows(
-          source.data
+    /*
+      Object-keyed quote map support:
+      {
+        HDFCBANK: {...},
+        RELIANCE: {...}
+      }
+    */
+
+    const keys = Object.keys(source);
+
+    const looksLikeQuoteMap =
+      keys.length > 0 &&
+      keys.some(key => {
+        const value = source[key];
+
+        return (
+          value &&
+          typeof value === "object" &&
+          (
+            value.symbol ||
+            value.tradingsymbol ||
+            value.ticker ||
+            value.neoSymbol ||
+            value.displaySymbol ||
+            value.ltp ||
+            value.lastPrice ||
+            value.price ||
+            value.pChange ||
+            value.perChange
+          )
         );
+      });
 
-      if (nested.length) {
-        return nested;
-      }
-    }
+    if (looksLikeQuoteMap) {
+      return keys.map(key => {
+        const value = source[key];
 
-    if (
-      source.result &&
-      typeof source.result === "object"
-    ) {
-      const nested =
-        extractQuoteRows(
-          source.result
-        );
+        return {
+          ...(value || {}),
 
-      if (nested.length) {
-        return nested;
-      }
-    }
-
-    if (
-      source.payload &&
-      typeof source.payload === "object"
-    ) {
-      const nested =
-        extractQuoteRows(
-          source.payload
-        );
-
-      if (nested.length) {
-        return nested;
-      }
-    }
-
-    const symbol =
-      source.symbol ||
-      source.tradingsymbol ||
-      source.tradingSymbol ||
-      source.ticker ||
-      source.displaySymbol ||
-      source.display_symbol;
-
-    const price =
-      source.price ??
-      source.lastPrice ??
-      source.last_price ??
-      source.ltp ??
-      source.close;
-
-    if (
-      symbol &&
-      price != null
-    ) {
-      return [source];
+          symbol:
+            firstDefined(
+              value || {},
+              [
+                "symbol",
+                "tradingsymbol",
+                "ticker",
+                "neoSymbol",
+                "displaySymbol",
+                "tradingSymbol",
+                "trading_symbol"
+              ],
+              key
+            )
+        };
+      });
     }
 
     return [];
   }
 
   function getStocksFromMarketData() {
-    const rows =
-      extractQuoteRows(
-        window.MARKET_DATA
-      );
+    const rows = extractMarketRows(window.MARKET_DATA);
 
     return rows
       .map(normalizeStock)
@@ -479,25 +483,18 @@
   function smartRankStocks(stocks) {
     return stocks
       .map(stock => {
-        const momentum =
-          Math.max(
-            -5,
-            Math.min(
-              5,
-              safeNumber(
-                stock.chartScore
-              )
-            )
-          );
+        const momentum = Math.max(
+          -5,
+          Math.min(
+            5,
+            safeNumber(stock.chartScore)
+          )
+        );
 
         const engineScore =
-          safeNumber(
-            stock.change
-          ) +
+          safeNumber(stock.change) +
           momentum * 0.10 +
-          safeNumber(
-            stock.priority
-          ) * 0.001;
+          safeNumber(stock.priority) * 0.001;
 
         return {
           ...stock,
@@ -505,16 +502,16 @@
           engineScore
         };
       })
+
       .sort(
         (a, b) =>
-          b.engineScore -
-          a.engineScore
+          b.engineScore - a.engineScore
       )
+
       .map(
         (stock, index) => ({
           ...stock,
-          dailyRank:
-            index + 1
+          dailyRank: index + 1
         })
       );
   }
@@ -524,10 +521,7 @@
   ========================= */
 
   function normalizeMonthlyRecord(record) {
-    if (
-      !record ||
-      typeof record !== "object"
-    ) {
+    if (!record || typeof record !== "object") {
       return null;
     }
 
@@ -542,32 +536,21 @@
       record.symbols
         .map(normalizeSymbol)
         .filter(Boolean)
-        .slice(
-          0,
-          TARGET_TOP20
-        );
+        .slice(0, TARGET_TOP20);
 
-    if (
-      symbols.length !==
-      TARGET_TOP20
-    ) {
+    if (symbols.length !== TARGET_TOP20) {
       return null;
     }
 
     return {
-      month:
-        record.month,
-
+      month: record.month,
       symbols,
-
       createdAt:
         record.createdAt ||
         new Date().toISOString(),
-
       updatedAt:
         record.updatedAt ||
         new Date().toISOString(),
-
       source:
         record.source ||
         "existing"
@@ -580,16 +563,8 @@
 
     const current =
       normalizeMonthlyRecord(
-        storageRead(
-          MONTHLY_KEY
-        )
+        storageRead(MONTHLY_KEY)
       );
-
-    /*
-      IMPORTANT:
-      Current month's snapshot is locked.
-      Daily ranking NEVER overwrites it.
-    */
 
     if (
       current &&
@@ -598,14 +573,7 @@
       return current;
     }
 
-    /*
-      Migrate only a matching current-month
-      snapshot from older versions.
-    */
-
-    for (
-      const key of OLD_MONTHLY_KEYS
-    ) {
+    for (const key of OLD_MONTHLY_KEYS) {
       const old =
         normalizeMonthlyRecord(
           storageRead(key)
@@ -617,10 +585,8 @@
       ) {
         const migrated = {
           ...old,
-
           updatedAt:
             new Date().toISOString(),
-
           source:
             "migrated_to_v12"
         };
@@ -639,14 +605,8 @@
 
   function saveMonthlyTop20(
     top20,
-    reason =
-      "monthly_initialization"
+    reason = "monthly_initialization"
   ) {
-    /*
-      NEVER overwrite an existing
-      current-month snapshot.
-    */
-
     const existing =
       getSavedMonthlyMemory();
 
@@ -656,10 +616,7 @@
 
     const symbols =
       top20
-        .slice(
-          0,
-          TARGET_TOP20
-        )
+        .slice(0, TARGET_TOP20)
         .map(
           s =>
             normalizeSymbol(
@@ -676,19 +633,13 @@
     }
 
     const record = {
-      month:
-        currentMonthKey(),
-
+      month: currentMonthKey(),
       symbols,
-
       createdAt:
         new Date().toISOString(),
-
       updatedAt:
         new Date().toISOString(),
-
-      source:
-        reason
+      source: reason
     };
 
     storageWrite(
@@ -699,9 +650,7 @@
     return record;
   }
 
-  function ensureMonthlyTop20(
-    ranked
-  ) {
+  function ensureMonthlyTop20(ranked) {
     const existing =
       getSavedMonthlyMemory();
 
@@ -742,9 +691,7 @@
       .map(
         symbol =>
           bySymbol.get(
-            normalizeSymbol(
-              symbol
-            )
+            normalizeSymbol(symbol)
           )
       )
       .filter(Boolean)
@@ -763,9 +710,7 @@
 
   function loadDailyMonitoring() {
     const current =
-      storageRead(
-        DAILY_KEY
-      );
+      storageRead(DAILY_KEY);
 
     if (
       current &&
@@ -776,14 +721,7 @@
       return current;
     }
 
-    /*
-      Migrate today's monitoring
-      from old versions if present.
-    */
-
-    for (
-      const key of OLD_DAILY_KEYS
-    ) {
+    for (const key of OLD_DAILY_KEYS) {
       const old =
         storageRead(key);
 
@@ -793,7 +731,6 @@
       ) {
         const migrated = {
           ...old,
-
           updatedAt:
             new Date().toISOString()
         };
@@ -808,9 +745,7 @@
     }
 
     return {
-      date:
-        todayKey(),
-
+      date: todayKey(),
       records: {}
     };
   }
@@ -820,121 +755,84 @@
     monthlyMemory
   ) {
     const monthlySymbols =
-      monthlyMemory.symbols
-        .map(normalizeSymbol);
+      monthlyMemory.symbols.map(
+        normalizeSymbol
+      );
 
     const previous =
       loadDailyMonitoring();
 
     const records = {};
 
-    ranked.forEach(
-      stock => {
-        const symbol =
-          normalizeSymbol(
-            stock.symbol
-          );
+    ranked.forEach(stock => {
+      const symbol =
+        normalizeSymbol(
+          stock.symbol
+        );
 
-        const inMonthly =
-          monthlySymbols.includes(
-            symbol
-          );
+      const inMonthly =
+        monthlySymbols.includes(
+          symbol
+        );
 
-        let state;
-
-        if (inMonthly) {
-          if (
-            stock.dailyRank <=
-            TARGET_TOP20
-          ) {
-            state = {
+      const state = inMonthly
+        ? stock.dailyRank <=
+          TARGET_TOP20
+          ? {
               state: "HOLD",
-
               reason:
                 "Monthly Top-20 mein hai; daily fluctuation normal hai."
-            };
-          } else if (
-            stock.dailyRank <= 30
-          ) {
-            state = {
-              state: "WATCH",
-
-              reason:
-                "Monthly Top-20 holding hai, lekin daily ranking weaken hui hai. Automatic exit nahi."
-            };
-          } else {
-            state = {
-              state:
-                "EXIT REVIEW",
-
-              reason:
-                "Monthly Top-20 holding ki daily ranking significantly deteriorate hui hai. Review required."
-            };
-          }
-        } else {
-          if (
-            stock.dailyRank <=
-            TARGET_TOP20
-          ) {
-            state = {
-              state:
-                "IMPROVING",
-
+            }
+          : stock.dailyRank <= 30
+            ? {
+                state: "WATCH",
+                reason:
+                  "Monthly Top-20 holding hai, lekin daily ranking weaken hui hai. Automatic exit nahi."
+              }
+            : {
+                state: "EXIT REVIEW",
+                reason:
+                  "Monthly Top-20 holding ki daily ranking significantly deteriorate hui hai. Review required."
+              }
+        : stock.dailyRank <=
+          TARGET_TOP20
+          ? {
+              state: "IMPROVING",
               reason:
                 "Current daily Top-20 mein improve hua hai. Next monthly review mein consider kiya jayega."
-            };
-          } else {
-            state = {
+            }
+          : {
               state: "WATCH",
-
               reason:
                 "Current daily ranking monthly investment decision ko automatically change nahi karegi."
             };
-          }
-        }
 
-        const previousRecord =
-          previous.records?.[
+      const previousRecord =
+        previous.records?.[symbol];
+
+      records[symbol] = {
+        symbol,
+        dailyRank:
+          stock.dailyRank,
+        monthlyRank:
+          monthlySymbols.indexOf(
             symbol
-          ];
-
-        records[symbol] = {
-          symbol,
-
-          dailyRank:
-            stock.dailyRank,
-
-          monthlyRank:
-            monthlySymbols.indexOf(
-              symbol
-            ) + 1,
-
-          state:
-            state.state,
-
-          reason:
-            state.reason,
-
-          previousDailyRank:
-            previousRecord?.dailyRank ??
-            null,
-
-          date:
-            todayKey(),
-
-          updatedAt:
-            new Date().toISOString()
-        };
-      }
-    );
+          ) + 1,
+        state: state.state,
+        reason: state.reason,
+        previousDailyRank:
+          previousRecord?.dailyRank ??
+          null,
+        date: todayKey(),
+        updatedAt:
+          new Date().toISOString()
+      };
+    });
 
     const data = {
-      date:
-        todayKey(),
-
+      date: todayKey(),
       month:
         monthlyMemory.month,
-
       records
     };
 
@@ -1000,9 +898,7 @@
           );
 
         return (
-          !monthlySet.has(
-            symbol
-          ) &&
+          !monthlySet.has(symbol) &&
           stock.dailyRank <=
             TARGET_TOP20 &&
           monitoring.records?.[
@@ -1032,8 +928,7 @@
     }
 
     const totalWeight =
-      (count * (count + 1)) /
-      2;
+      (count * (count + 1)) / 2;
 
     return stocks.map(
       (stock, index) => {
@@ -1042,9 +937,7 @@
 
         return {
           ...stock,
-
           rankWeight,
-
           targetPercent:
             rankWeight /
             totalWeight
@@ -1059,15 +952,10 @@
   ) {
     return selected
       .filter(
-        s =>
-          s.sector ===
-          sector
+        s => s.sector === sector
       )
       .reduce(
-        (
-          sum,
-          s
-        ) =>
+        (sum, s) =>
           sum +
           safeNumber(
             s.investment
@@ -1087,10 +975,7 @@
           group
       )
       .reduce(
-        (
-          sum,
-          s
-        ) =>
+        (sum, s) =>
           sum +
           safeNumber(
             s.investment
@@ -1129,14 +1014,7 @@
       );
 
     const currentInvestment =
-      existing?.investment ||
-      0;
-
-    /*
-      Small-budget exception:
-      first share can be up to 25%
-      when budget is below ₹20,000.
-    */
+      existing?.investment || 0;
 
     const smallBudgetException =
       budget <
@@ -1208,8 +1086,7 @@
       );
 
     const current =
-      existing?.investment ||
-      0;
+      existing?.investment || 0;
 
     const target =
       stock.targetPercent *
@@ -1282,8 +1159,7 @@
     stocks
   ) {
     return stocks.filter(
-      s =>
-        s.quantity > 0
+      s => s.quantity > 0
     ).length;
   }
 
@@ -1297,42 +1173,27 @@
       );
 
     const selected =
-      weighted.map(
-        stock => ({
-          ...stock,
-
-          quantity: 0,
-
-          investment: 0
-        })
-      );
+      weighted.map(stock => ({
+        ...stock,
+        quantity: 0,
+        investment: 0
+      }));
 
     let balance =
       budget;
-
-    /*
-      PASS 1:
-      Try to create at least
-      five diversified stocks.
-    */
 
     const affordable =
       [...selected]
         .filter(
           s =>
-            s.price <=
-            budget
+            s.price <= budget
         )
         .sort(
           (a, b) =>
-            (
-              b.rankWeight /
-              b.price
-            ) -
-            (
-              a.rankWeight /
+            b.rankWeight /
+              b.price -
+            a.rankWeight /
               a.price
-            )
         );
 
     for (
@@ -1369,11 +1230,6 @@
       }
     }
 
-    /*
-      PASS 2:
-      Whole-share smart allocation.
-    */
-
     let guard = 0;
 
     while (
@@ -1393,9 +1249,7 @@
             )
         );
 
-      if (
-        !possible.length
-      ) {
+      if (!possible.length) {
         break;
       }
 
@@ -1437,15 +1291,10 @@
 
     return {
       budget,
-
       invested:
-        budget -
-        balance,
-
+        budget - balance,
       balance,
-
       selected,
-
       selectedCount:
         countSelected(
           selected
@@ -1455,6 +1304,10 @@
 
   /* =========================
      PORTFOLIO / TRACKING
+     Analysis is treated as the
+     current simulated plan.
+     Stale positions are replaced,
+     never silently carried forward.
   ========================= */
 
   function savePlanAsTrackedPortfolio(
@@ -1464,50 +1317,39 @@
 
     plan.selected
       .filter(
-        s =>
-          s.quantity > 0
+        s => s.quantity > 0
       )
-      .forEach(
-        stock => {
-          positions[
+      .forEach(stock => {
+        positions[
+          normalizeSymbol(
+            stock.symbol
+          )
+        ] = {
+          symbol:
             normalizeSymbol(
               stock.symbol
-            )
-          ] = {
-            symbol:
-              normalizeSymbol(
-                stock.symbol
-              ),
-
-            name:
-              stock.name,
-
-            quantity:
-              stock.quantity,
-
-            averagePrice:
-              stock.price,
-
-            invested:
-              stock.investment,
-
-            lastPrice:
-              stock.price
-          };
-        }
-      );
+            ),
+          name:
+            stock.name,
+          quantity:
+            stock.quantity,
+          averagePrice:
+            stock.price,
+          invested:
+            stock.investment,
+          lastPrice:
+            stock.price
+        };
+      });
 
     storageWrite(
       PORTFOLIO_KEY,
       {
         budget:
           plan.budget,
-
         positions,
-
         updatedAt:
           new Date().toISOString(),
-
         source:
           "prototype1_v12_analysis"
       }
@@ -1545,41 +1387,38 @@
 
     Object.values(
       portfolio.positions || {}
-    ).forEach(
-      pos => {
-        const qty =
-          safeNumber(
-            pos.quantity
-          );
+    ).forEach(pos => {
+      const qty =
+        safeNumber(
+          pos.quantity
+        );
 
-        const buyPrice =
-          safeNumber(
-            pos.averagePrice
-          );
+      const buyPrice =
+        safeNumber(
+          pos.averagePrice
+        );
 
-        const liveStock =
-          live.get(
-            normalizeSymbol(
-              pos.symbol
+      const liveStock =
+        live.get(
+          normalizeSymbol(
+            pos.symbol
+          )
+        );
+
+      const currentPrice =
+        liveStock
+          ? safeNumber(
+              liveStock.price
             )
-          );
+          : buyPrice;
 
-        const currentPrice =
-          liveStock
-            ? safeNumber(
-                liveStock.price
-              )
-            : buyPrice;
+      invested +=
+        qty * buyPrice;
 
-        invested +=
-          qty *
-          buyPrice;
-
-        currentValue +=
-          qty *
-          currentPrice;
-      }
-    );
+      currentValue +=
+        qty *
+        currentPrice;
+    });
 
     const pnl =
       currentValue -
@@ -1587,17 +1426,11 @@
 
     return {
       invested,
-
       currentValue,
-
       pnl,
-
       pnlPercent:
         invested > 0
-          ? (
-              pnl /
-              invested
-            ) *
+          ? (pnl / invested) *
             100
           : 0
     };
@@ -1625,10 +1458,7 @@
     top20List.innerHTML =
       monthlyStocks
         .map(
-          (
-            stock,
-            index
-          ) => {
+          (stock, index) => {
             const record =
               monitoring.records?.[
                 normalizeSymbol(
@@ -1751,54 +1581,38 @@
     exitReviews
   ) {
     let html =
-      `<hr>
-       <h3>
-         🔄 Replacement Candidates
-       </h3>`;
+      `<hr><h3>🔄 Replacement Candidates</h3>`;
 
     if (
       exitReviews.length
     ) {
-      html += `
-        <p>
-          <strong>
-            EXIT REVIEW:
-          </strong>
-          ${
-            exitReviews
-              .map(
-                s =>
-                  escapeHtml(
-                    s.symbol
-                  )
+      html +=
+        `<p><strong>EXIT REVIEW:</strong> ` +
+        exitReviews
+          .map(
+            s =>
+              escapeHtml(
+                s.symbol
               )
-              .join(", ")
-          }
-        </p>
-      `;
+          )
+          .join(", ") +
+        `</p>`;
     }
 
     if (
       !candidates.length
     ) {
-      html += `
-        <p>
-          Abhi koi valid daily replacement
-          candidate available nahi hai.
-          Current monthly snapshot maintain rahega.
-        </p>
-      `;
+      html +=
+        `<p>Abhi koi valid daily replacement candidate available nahi hai. Current monthly snapshot maintain rahega.</p>`;
 
       return html;
     }
 
     html += `
       <p>
-        Ye stocks current monthly Top-20 mein
-        nahi hain, lekin daily ranking mein
-        strong improvement dikha rahe hain.
-        Inhe next monthly review mein
-        consider kiya jayega.
+        Ye stocks current monthly Top-20 mein nahi hain,
+        lekin daily ranking mein strong improvement dikha rahe hain.
+        Inhe next monthly review mein consider kiya jayega.
       </p>
 
       <table>
@@ -1895,9 +1709,8 @@
 
       <p>
         Daily monitoring active hai.
-        Daily fluctuation se monthly
-        investment decision automatically
-        change nahi hota.
+        Daily fluctuation se monthly investment decision
+        automatically change nahi hota.
       </p>
 
       <p>
@@ -2063,7 +1876,7 @@
   ) {
     let html = `
       <h3>
-        🤖 Prototype-1 V12
+        🤖 Prototype-1 AI Stock Assistant
       </h3>
 
       <h4>
@@ -2123,45 +1936,16 @@
       <table>
         <thead>
           <tr>
-            <th>
-              Decision Rank
-            </th>
-
-            <th>
-              Company
-            </th>
-
-            <th>
-              Price
-            </th>
-
-            <th>
-              Target %
-            </th>
-
-            <th>
-              Target ₹
-            </th>
-
-            <th>
-              Shares
-            </th>
-
-            <th>
-              Actual ₹
-            </th>
-
-            <th>
-              Actual %
-            </th>
-
-            <th>
-              Sector
-            </th>
-
-            <th>
-              Group
-            </th>
+            <th>Decision Rank</th>
+            <th>Company</th>
+            <th>Price</th>
+            <th>Target %</th>
+            <th>Target ₹</th>
+            <th>Shares</th>
+            <th>Actual ₹</th>
+            <th>Actual %</th>
+            <th>Sector</th>
+            <th>Group</th>
           </tr>
         </thead>
 
@@ -2178,12 +1962,12 @@
             ? (
                 stock.investment /
                 plan.invested
-              ) *
-              100
+              ) * 100
             : 0;
 
         html += `
           <tr>
+
             <td>
               #${
                 decisionIndex + 1
@@ -2226,7 +2010,9 @@
 
             <td>
               <strong>
-                ${stock.quantity}
+                ${
+                  stock.quantity
+                }
               </strong>
             </td>
 
@@ -2253,6 +2039,7 @@
                 stock.businessGroup
               )}
             </td>
+
           </tr>
         `;
       }
@@ -2273,8 +2060,7 @@
 
     plan.selected
       .filter(
-        s =>
-          s.quantity > 0
+        s => s.quantity > 0
       )
       .forEach(
         stock => {
@@ -2308,8 +2094,7 @@
 
       <ul>
         <li>
-          Monthly Top-20 investment decision
-          ka primary reference hai.
+          Monthly Top-20 investment decision ka primary reference hai.
         </li>
 
         <li>
@@ -2317,34 +2102,27 @@
         </li>
 
         <li>
-          Daily fluctuation se automatic
-          BUY/SELL nahi hoga.
+          Daily fluctuation se automatic BUY/SELL nahi hoga.
         </li>
 
         <li>
-          Existing monthly memory ko daily
-          ranking overwrite nahi karegi.
+          Existing monthly memory ko daily ranking overwrite nahi karegi.
         </li>
 
         <li>
-          Strong deterioration par
-          EXIT REVIEW milega.
+          Strong deterioration par EXIT REVIEW milega.
         </li>
 
         <li>
-          EXIT REVIEW stock ko fresh
-          allocation nahi diya jayega.
+          EXIT REVIEW stock ko fresh allocation nahi diya jayega.
         </li>
 
         <li>
-          Improving daily stocks next monthly
-          review ke replacement candidates hain.
+          Improving daily stocks next monthly review ke replacement candidates hain.
         </li>
 
         <li>
-          Daily improvement current monthly
-          investment decision ko immediately
-          replace nahi karega.
+          Daily improvement current monthly investment decision ko immediately replace nahi karega.
         </li>
 
         <li>
@@ -2428,15 +2206,10 @@
     return html;
   }
 
-  function validatePlan(
-    plan
-  ) {
+  function validatePlan(plan) {
     const total =
       plan.selected.reduce(
-        (
-          sum,
-          s
-        ) =>
+        (sum, s) =>
           sum +
           safeNumber(
             s.investment
@@ -2457,8 +2230,7 @@
 
     if (
       plan.invested >
-      plan.budget +
-        0.01
+      plan.budget + 0.01
     ) {
       throw new Error(
         "Allocation validation failed: budget exceeded."
@@ -2526,37 +2298,33 @@
 
     Object.values(
       sectors
-    ).forEach(
-      v => {
-        if (
-          v >
-          plan.budget *
-            MAX_SECTOR_ALLOCATION +
-            0.01
-        ) {
-          throw new Error(
-            "Allocation validation failed: sector limit exceeded."
-          );
-        }
+    ).forEach(v => {
+      if (
+        v >
+        plan.budget *
+          MAX_SECTOR_ALLOCATION +
+          0.01
+      ) {
+        throw new Error(
+          "Allocation validation failed: sector limit exceeded."
+        );
       }
-    );
+    });
 
     Object.values(
       groups
-    ).forEach(
-      v => {
-        if (
-          v >
-          plan.budget *
-            MAX_GROUP_ALLOCATION +
-            0.01
-        ) {
-          throw new Error(
-            "Allocation validation failed: business-group limit exceeded."
-          );
-        }
+    ).forEach(v => {
+      if (
+        v >
+        plan.budget *
+          MAX_GROUP_ALLOCATION +
+          0.01
+      ) {
+        throw new Error(
+          "Allocation validation failed: business-group limit exceeded."
+        );
       }
-    );
+    });
   }
 
   /* =========================
@@ -2602,9 +2370,7 @@
         ranked
       );
 
-    if (
-      !monthlyMemory
-    ) {
+    if (!monthlyMemory) {
       throw new Error(
         "Monthly Top-20 snapshot create nahi ho paya."
       );
@@ -2660,11 +2426,6 @@
         monitoring
       );
 
-    /*
-      EXIT REVIEW stocks are explicitly
-      excluded from fresh BUY allocation.
-    */
-
     if (
       !decisionStocks.length
     ) {
@@ -2680,7 +2441,8 @@
       );
 
     if (
-      plan.selectedCount === 0
+      plan.selectedCount ===
+      0
     ) {
       throw new Error(
         "Is investment amount par whole-share allocation se koi valid stock allocate nahi ho paya."
@@ -2716,19 +2478,12 @@
 
     return {
       ranked,
-
       monthlyMemory,
-
       monitoring,
-
       monthlyList,
-
       exitReviews,
-
       replacementCandidates,
-
       decisionStocks,
-
       plan
     };
   }
@@ -2751,7 +2506,7 @@
           const totp =
             String(
               totpInput?.value ||
-                ""
+              ""
             ).trim();
 
           if (
@@ -2762,7 +2517,6 @@
             alert(
               "Please current 6-digit Kotak Neo TOTP enter karein."
             );
-
             return;
           }
 
@@ -2773,17 +2527,11 @@
             alert(
               "Market data engine load nahi hua. Page refresh karke dobara try karein."
             );
-
             return;
           }
 
           connectButton.disabled =
             true;
-
-          /*
-            IMPORTANT:
-            Existing quotes.js flow remains untouched.
-          */
 
           const result =
             await window.fetchMarketData(
@@ -2791,78 +2539,58 @@
             );
 
           /*
-            fetchMarketData() may return:
+            IMPORTANT:
+            Preserve the working quotes.js flow.
 
+            fetchMarketData() may return:
+            - complete API object
             - array
-            - {stocks: [...]}
-            - boolean while MARKET_DATA is
-              populated separately
-            - complete API response object
+            - object with stocks/data/result/etc.
+            - boolean while quotes.js stores the
+              actual payload in window.MARKET_DATA
+
+            Never replace a valid payload
+            with a boolean.
           */
 
           const resultRows =
-            extractQuoteRows(
+            extractMarketRows(
               result
             );
 
           const existingRows =
-            extractQuoteRows(
+            extractMarketRows(
               window.MARKET_DATA
             );
-
-          /*
-            If the returned result itself
-            contains quote rows, use those rows.
-          */
 
           if (
             resultRows.length
           ) {
-            window.MARKET_DATA =
+            if (
               Array.isArray(
                 result
               )
-                ? result
-                : {
-                    ...(result &&
-                    typeof result ===
-                      "object"
-                      ? result
-                      : {}),
-
-                    stocks:
-                      resultRows
-                  };
-          }
-
-          /*
-            If quotes.js returns true/false
-            and stores actual rows in
-            window.MARKET_DATA, preserve them.
-          */
-
-          else if (
-            existingRows.length
-          ) {
-            /*
-              Intentionally do nothing.
-
-              Existing MARKET_DATA is already
-              the actual live quote source.
-            */
-          }
-
-          /*
-            If result is an object but no rows
-            were found, retain raw response
-            for diagnostic information.
-          */
-
-          else if (
+            ) {
+              window.MARKET_DATA = {
+                success: true,
+                stocks: result
+              };
+            } else {
+              window.MARKET_DATA =
+                result;
+            }
+          } else if (
+            !existingRows.length &&
             result &&
             typeof result ===
               "object"
           ) {
+            /*
+              Keep raw object so diagnostics
+              expose the actual API shape instead
+              of incorrectly reporting 0/20.
+            */
+
             window.MARKET_DATA =
               result;
           }
@@ -2870,72 +2598,12 @@
           const stocks =
             getStocksFromMarketData();
 
-          const apiReceived =
-            Number(
-              window.MARKET_DATA
-                ?.received ??
-              window.MARKET_DATA
-                ?.totalReceived ??
-              stocks.length
-            );
-
-          const apiErrors =
-            Number(
-              window.MARKET_DATA
-                ?.totalErrors ??
-              (
-                Array.isArray(
-                  window.MARKET_DATA
-                    ?.errors
-                )
-                  ? window.MARKET_DATA
-                      .errors.length
-                  : 0
-              )
-            );
-
-          console.log(
-            "Prototype-1 live response:",
-            {
-              apiReceived,
-
-              apiErrors,
-
-              mappedStocks:
-                stocks.length,
-
-              responseType:
-                Array.isArray(
-                  window.MARKET_DATA
-                )
-                  ? "array"
-                  : typeof window.MARKET_DATA,
-
-              responseKeys:
-                window.MARKET_DATA &&
-                typeof window.MARKET_DATA ===
-                  "object"
-                  ? Object.keys(
-                      window.MARKET_DATA
-                    )
-                  : []
-            }
-          );
-
-          /*
-            Minimum requirement:
-            at least 20 valid stocks.
-
-            In normal Nifty-50 live operation
-            this should be 50/50.
-          */
-
           if (
             stocks.length <
             TARGET_TOP20
           ) {
             throw new Error(
-              `Live market data incomplete hai. ${stocks.length}/${TARGET_TOP20} valid stocks received. API received: ${apiReceived}. errors: ${apiErrors}.`
+              `Live market data incomplete hai. ${stocks.length}/${TARGET_TOP20} valid stocks received.`
             );
           }
 
@@ -2943,12 +2611,6 @@
             smartRankStocks(
               stocks
             );
-
-          /*
-            Monthly snapshot is created only
-            if there is no current-month snapshot.
-            Existing monthly snapshot is locked.
-          */
 
           const monthlyMemory =
             ensureMonthlyTop20(
@@ -2980,6 +2642,36 @@
             monthlyMemory
           );
 
+          const apiReceived =
+            Number(
+              window.MARKET_DATA
+                ?.totalReceived ??
+                window.MARKET_DATA
+                  ?.received ??
+                stocks.length
+            );
+
+          const apiRequested =
+            Number(
+              window.MARKET_DATA
+                ?.totalRequested ??
+                window.MARKET_DATA
+                  ?.requested ??
+                50
+            );
+
+          const apiErrors =
+            Array.isArray(
+              window.MARKET_DATA?.errors
+            )
+              ? window.MARKET_DATA
+                  .errors.length
+              : Number(
+                  window.MARKET_DATA
+                    ?.totalErrors ??
+                  0
+                );
+
           const status =
             document.getElementById(
               "marketStatus"
@@ -2989,59 +2681,69 @@
             status
           ) {
             status.textContent =
-              `Live market data connected successfully. ${stocks.length}/50 stocks received.`;
+              `Live market data connected successfully. ${stocks.length}/${apiRequested} stocks received.`;
           }
 
           if (
             recommendation
           ) {
-            recommendation.innerHTML = `
-              <div>
-                <strong>
-                  Live Market Data Connected ✅
-                </strong>
+            recommendation.innerHTML =
+              `
+                <div>
 
-                <br><br>
+                  <strong>
+                    Live Market Data Connected ✅
+                  </strong>
 
-                ${stocks.length}/50
-                valid stocks received.
+                  <br><br>
 
-                <br><br>
+                  ${stocks.length}/${apiRequested}
+                  valid stocks mapped.
 
-                Monthly Top-20 Memory:
-                <strong>
-                  ${escapeHtml(
-                    monthlyMemory.month
-                  )}
-                </strong>
+                  <br>
 
-                <br>
+                  API received:
+                  ${apiReceived}.
+                  Errors:
+                  ${apiErrors}.
 
-                Daily Monitoring:
-                <strong>
-                  ACTIVE
-                </strong>
+                  <br><br>
 
-                <br>
+                  Monthly Top-20 Memory:
+                  <strong>
+                    ${escapeHtml(
+                      monthlyMemory.month
+                    )}
+                  </strong>
 
-                Monthly Decision Mode:
-                <strong>
-                  ACTIVE
-                </strong>
-              </div>
+                  <br>
 
-              ${renderMonitoring(
+                  Daily Monitoring:
+                  <strong>
+                    ACTIVE
+                  </strong>
+
+                  <br>
+
+                  Monthly Decision Mode:
+                  <strong>
+                    ACTIVE
+                  </strong>
+
+                </div>
+
+              ` +
+              renderMonitoring(
                 ranked,
                 monthlyMemory,
                 monitoring
-              )}
-            `;
+              );
           }
         } catch (
           error
         ) {
           console.error(
-            "Prototype-1 V12 connect error:",
+            "Prototype-1 live connect error:",
             error
           );
 
@@ -3082,7 +2784,6 @@
             alert(
               "Please valid investment amount enter karein."
             );
-
             return;
           }
 
@@ -3096,7 +2797,6 @@
             alert(
               "Pehle Connect Live Market Data karke live quotes load karein."
             );
-
             return;
           }
 
@@ -3117,20 +2817,23 @@
           if (
             recommendation
           ) {
-            recommendation.innerHTML = `
-              <div>
-                <strong>
-                  ⚠️ Analysis Error
-                </strong>
+            recommendation.innerHTML =
+              `
+                <div>
 
-                <br>
+                  <strong>
+                    ⚠️ Analysis Error
+                  </strong>
 
-                ${escapeHtml(
-                  error?.message ||
-                    "Investment analysis failed."
-                )}
-              </div>
-            `;
+                  <br>
+
+                  ${escapeHtml(
+                    error?.message ||
+                      "Investment analysis failed."
+                  )}
+
+                </div>
+              `;
           }
 
           alert(
@@ -3198,6 +2901,6 @@
   }
 
   console.log(
-    "Prototype-1 App Engine V12.1 loaded successfully — live response adapter fixed; quotes.js flow unchanged."
+    "Prototype-1 App Engine V12 loaded successfully."
   );
 })();
